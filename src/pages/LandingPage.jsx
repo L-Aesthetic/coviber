@@ -124,7 +124,7 @@ const LandingPage = () => {
                         Find Your Founder Archetype
                     </button>
                     <p style={{ fontSize: '0.85rem', color: '#52525b' }}>
-                        Accepting the first 100 "Founding Members" for free.
+                        Free access for the first 3 months. No credit card required.
                     </p>
                 </motion.div>
             </header>
@@ -261,21 +261,40 @@ const InteractiveQuiz = () => {
     const [step, setStep] = useState(0); // 0 = start, 1-N = questions, 99 = email, 100 = result
     const [selectedOpt, setSelectedOpt] = useState(null); // Track visually selected option
     const [result, setResult] = useState(null);
+    const [answers, setAnswers] = useState({});
+    const [email, setEmail] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
     const totalQuestions = quizQuestions.length;
 
     const handleOptionClick = (type, optionId) => {
+        console.log(`Option clicked: ${optionId} (${type})`);
+
+        // 0. Prevent double clicks
+        if (selectedOpt) return;
+
         // 1. Highlight Selection
         setSelectedOpt(optionId);
 
         // 2. Wait and Advance
         setTimeout(() => {
-            setAnswers(prev => ({ ...prev, [step]: type }));
-            if (step < totalQuestions) {
-                setStep(step + 1);
-            } else {
-                setStep(99); // Go to email capture
-            }
+            console.log('Advancing step...');
+            setAnswers(prev => {
+                const newAnswers = { ...prev, [step]: type };
+                console.log('Answers updated:', newAnswers);
+                return newAnswers;
+            });
+
+            setStep(prevStep => {
+                const nextStep = prevStep + 1;
+                console.log(`Moving from ${prevStep} to ${nextStep} (Total: ${totalQuestions})`);
+                if (prevStep < totalQuestions) {
+                    return nextStep;
+                } else {
+                    return 99; // Go to email capture
+                }
+            });
+
             setSelectedOpt(null); // Reset selection for next Q
         }, 600);
     };
@@ -289,16 +308,32 @@ const InteractiveQuiz = () => {
         setResult(archetype);
 
         try {
-            // Insert into Supabase
-            const { error } = await supabase
+            // 1. Insert into Supabase (Data Persistence)
+            const { error: dbError } = await supabase
                 .from('leads')
                 .insert([
                     { email: email, archetype: archetype.name }
                 ]);
 
-            if (error) {
-                console.error('Error saving lead:', error);
+            if (dbError) {
+                console.error('Error saving lead:', dbError);
             }
+
+            // 2. Send Email via Vercel Function (Resend)
+            // Note: This fetch will assume the app is hosted or proxying /api correctly.
+            // In local Vite dev (without Vercel CLI), this might 404 unless proxy is set up, 
+            // but will work on Vercel deployment.
+            await fetch('/api/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    archetype: archetype.name
+                }),
+            });
+
         } catch (err) {
             console.error('Unexpected error:', err);
         }
@@ -306,7 +341,7 @@ const InteractiveQuiz = () => {
         setTimeout(() => {
             setIsLoading(false);
             setStep(100);
-        }, 1500); // Small fake delay
+        }, 1500);
     };
 
     // Start Screen
