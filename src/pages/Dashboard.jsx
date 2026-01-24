@@ -17,6 +17,12 @@ export default function Dashboard() {
         avgVesting: 0
     });
     const [loading, setLoading] = useState(true);
+    const [healthMetrics, setHealthMetrics] = useState({
+        contributionsThisWeek: 0,
+        totalContributions: 0,
+        legalDocsSigned: 0,
+        totalLegalDocs: 0
+    });
 
     // Mock Milestones Data (In real app, fetch from 'milestones' table)
     const [milestones, setMilestones] = useState([
@@ -85,6 +91,64 @@ export default function Dashboard() {
                     openMatches: matchesCount || 0,
                     avgVesting: avgVesting
                 });
+
+                // 3. Fetch Health Metrics (across all user's teams)
+                const teamIds = teamData.map(t => t.team_id);
+
+                if (teamIds.length > 0) {
+                    // Contributions this week
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+                    const [contribsWeek, contribsTotal, docsData] = await Promise.all([
+                        supabase
+                            .from('contributions')
+                            .select('id', { count: 'exact', head: true })
+                            .in('team_id', teamIds)
+                            .gte('created_at', oneWeekAgo.toISOString()),
+                        supabase
+                            .from('contributions')
+                            .select('id', { count: 'exact', head: true })
+                            .in('team_id', teamIds),
+                        supabase
+                            .from('legal_documents')
+                            .select('id, status')
+                            .in('team_id', teamIds)
+                    ]);
+
+                    const totalDocs = docsData.data?.length || 0;
+                    const signedDocs = docsData.data?.filter(d => d.status === 'signed').length || 0;
+
+                    setHealthMetrics({
+                        contributionsThisWeek: contribsWeek.count || 0,
+                        totalContributions: contribsTotal.count || 0,
+                        legalDocsSigned: signedDocs,
+                        totalLegalDocs: totalDocs
+                    });
+
+                    // 4. Fetch Upcoming Milestones (equity events)
+                    const { data: equityEvents } = await supabase
+                        .from('equity_events')
+                        .select('*')
+                        .in('team_id', teamIds)
+                        .order('created_at', { ascending: false })
+                        .limit(3);
+
+                    if (equityEvents && equityEvents.length > 0) {
+                        setMilestones(equityEvents.map(e => ({
+                            id: e.id,
+                            icon: e.event_type === 'vesting_milestone' ? CheckCircle2 : Calendar,
+                            label: e.description,
+                            date: new Date(e.created_at).toLocaleDateString(),
+                            color: e.event_type === 'vesting_milestone' ? '#10B981' : 'var(--accent-primary)'
+                        })));
+                    } else {
+                        // Keep default milestones if no events
+                        setMilestones([
+                            { id: 1, icon: AlertCircle, label: "No upcoming milestones", date: "Add equity events in Studio", color: "#F59E0B" }
+                        ]);
+                    }
+                }
 
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
