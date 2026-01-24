@@ -105,6 +105,19 @@ export default function EquityCalculator() {
         window.print();
     };
 
+    // Signing State
+    const [signData, setSignData] = useState({
+        companyName: '',
+        companyAddress: '',
+        govLaw: 'Delaware',
+        founderASign: '',
+        founderBSign: ''
+    });
+
+    const handleSignChange = (field, value) => {
+        setSignData({ ...signData, [field]: value });
+    };
+
     // EASE Agreement Generation Logic
     const generateEASEAgreement = () => {
         // Use the component's founderA, founderB, and split state variables
@@ -153,11 +166,11 @@ The parties agree as follows:
 SIGNATURE PAGE TO EQUITY AGREEMENT FOR SERVICE
 
 Effective Date: ${new Date().toLocaleDateString()}
-Governing Law: __________________________
+Governing Law: ${signData.govLaw || '__________________________'}
 
 Description of Services:
-- Role A: ${founderA.name} (${founderA.isCEO ? 'CEO/Founder' : 'Co-Founder'})
-- Role B: ${founderB.name} (${founderB.isTechnical ? 'CTO/Technical' : 'Co-Founder'})
+- Role A (${founderA.name}): ${founderA.isCEO ? 'CEO/Founder - Strategy, Management, Fundraising' : 'Co-Founder - Product, Operations'}
+- Role B (${founderB.name}): ${founderB.isTechnical ? 'CTO/Technical - Engineering, Architecture, Development' : 'Co-Founder - Marketing, Sales'}
 
 Expected Term of Services and Equity Vesting Term:
 ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based vesting (to be defined in definitives)'}
@@ -171,23 +184,23 @@ Type of Security: Restricted Common Stock
 Exercise/Purchase Price: Fair Market Value
 
 Vesting:
-[ ] Monthly: All shares shall vest on a pro rata basis monthly at the end of each full month of services during the Expected Term of Services.
+[X] Monthly: All shares shall vest on a pro rata basis monthly at the end of each full month of services during the Expected Term of Services.
 [ ] Completion: All shares shall vest upon the completion of the Services, subject to written confirmation by the Company.
 [ ] Custom Vesting: ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based'}
 
 -----------------------------------------------------------
 
-COMPANY: ________________________
-Signature: ________________________
-Name: ________________________
-Title: ________________________
-Address: ________________________
+COMPANY: ${signData.companyName || '________________________'}
+Signature: ${signData.founderASign ? `/s/ ${signData.founderASign}` : '________________________'}
+Name: ${signData.founderASign || '________________________'}
+Title: CEO
+Address: ${signData.companyAddress || '________________________'}
 
 CONSULTANT: ${founderB.name}
-Signature: ________________________
+Signature: ${signData.founderBSign ? `/s/ ${signData.founderBSign}` : '________________________'}
 Name: ${founderB.name}
 Title: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
-Address: ________________________
+Address: ${signData.companyAddress || '________________________'}
 `;
     };
 
@@ -447,16 +460,35 @@ Address: ________________________
                             onClick={e => e.stopPropagation()}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>EASE Agreement Agreement</h3>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Sign EASE Agreement</h3>
                                 <button className="btn-ghost" style={{ padding: '8px' }} onClick={() => setShowSummaryModal(false)}>
                                     <X size={20} />
                                 </button>
                             </div>
 
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Company Legal Name</label>
+                                    <input className="glass-input" style={{ width: '100%' }} placeholder="e.g. Acme Corp Inc." value={signData.companyName} onChange={e => handleSignChange('companyName', e.target.value)} />
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Company Address</label>
+                                    <input className="glass-input" style={{ width: '100%' }} placeholder="123 Startup Way, SF, CA" value={signData.companyAddress} onChange={e => handleSignChange('companyAddress', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Company Signatory ({founderA.name})</label>
+                                    <input className="glass-input" style={{ width: '100%', fontFamily: 'Caveat, cursive', fontSize: '1.2rem', color: 'var(--accent-primary)' }} placeholder="Type to sign..." value={signData.founderASign} onChange={e => handleSignChange('founderASign', e.target.value)} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Consultant ({founderB.name})</label>
+                                    <input className="glass-input" style={{ width: '100%', fontFamily: 'Caveat, cursive', fontSize: '1.2rem', color: 'var(--accent-primary)' }} placeholder="Type to sign..." value={signData.founderBSign} onChange={e => handleSignChange('founderBSign', e.target.value)} />
+                                </div>
+                            </div>
+
                             <div style={{
-                                background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '24px',
-                                fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                                marginBottom: '24px', border: '1px solid rgba(255,255,255,0.1)'
+                                background: 'white', color: 'black', borderRadius: '4px', padding: '40px',
+                                fontFamily: 'Times New Roman, serif', fontSize: '0.85rem', lineHeight: 1.4, whiteSpace: 'pre-wrap',
+                                marginBottom: '24px', border: '1px solid #ccc', maxHeight: '400px', overflowY: 'auto'
                             }}>
                                 {generateEASEAgreement()}
                             </div>
