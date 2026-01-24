@@ -88,12 +88,77 @@ function TabButton({ active, onClick, icon: Icon, label, count }) {
 }
 
 function ConversationsView() {
-    const conversations = [
-        { id: 1, name: 'Alex V.', role: 'Full Stack Engineer', lastMessage: 'Sounds great! When can we schedule the chemistry test?', time: '2 hours ago', unread: 2, avatar: '👨‍💻', match: 98 },
-        { id: 2, name: 'Sarah K.', role: 'Growth Marketer', lastMessage: 'I reviewed your brief - love the fintech angle.', time: '5 hours ago', unread: 0, avatar: '👩‍💼', match: 94 },
-        { id: 3, name: 'Jordan T.', role: 'Product Designer', lastMessage: 'Here\'s my portfolio link...', time: '1 day ago', unread: 1, avatar: '🎨', match: 89 },
-        { id: 4, name: 'Maya L.', role: 'Data Scientist', lastMessage: 'The equity split calculator is genius!', time: '2 days ago', unread: 0, avatar: '📊', match: 92 }
-    ];
+    const { user } = useAuth();
+    const [conversations, setConversations] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        const fetchConversations = async () => {
+            setLoading(true);
+
+            try {
+                // Fetch accepted intro requests (these are active matches)
+                const { data, error } = await supabase
+                    .from('intro_requests')
+                    .select(`
+                        *,
+                        from_user:from_user_id(id, name, role),
+                        to_user:to_user_id(id, name, role)
+                    `)
+                    .eq('status', 'accepted')
+                    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+                    .order('updated_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Transform to conversation format
+                const formattedConversations = data.map(req => {
+                    const otherUser = req.from_user_id === user.id ? req.to_user : req.from_user;
+                    return {
+                        id: otherUser.id,
+                        name: otherUser.name || 'Anonymous',
+                        role: otherUser.role || 'Builder',
+                        lastMessage: req.message || 'Connected!',
+                        time: getRelativeTime(req.updated_at),
+                        unread: 0, // TODO: Implement messaging system
+                        avatar: otherUser.name?.[0] || '👤',
+                        match: 95 // Placeholder
+                    };
+                });
+
+                setConversations(formattedConversations);
+            } catch (error) {
+                console.error('Error fetching conversations:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchConversations();
+    }, [user]);
+
+    const getRelativeTime = (date) => {
+        const now = new Date();
+        const past = new Date(date);
+        const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
+        if (diffHours < 1) return 'Just now';
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    };
+
+    if (loading) {
+        return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading matches...</div>;
+    }
+
+    if (conversations.length === 0) {
+        return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No active matches yet. Accept intro requests to start conversations!</div>;
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -104,7 +169,20 @@ function ConversationsView() {
                         style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', cursor: 'pointer' }}
                         whileHover={{ x: 4 }}
                     >
-                        <div style={{ fontSize: '2.5rem' }}>{conv.avatar}</div>
+                        <div style={{
+                            fontSize: '2rem',
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '12px',
+                            background: 'linear-gradient(135deg, #6366F1, #A855F7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 700
+                        }}>
+                            {conv.avatar}
+                        </div>
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
                                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{conv.name}</h3>
