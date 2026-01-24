@@ -126,7 +126,7 @@ export default function Dashboard() {
                         totalLegalDocs: totalDocs
                     });
 
-                    // 4. Fetch Upcoming Milestones (equity events)
+                    // 4. Fetch Recent Equity Events (not upcoming, these are logged events)
                     const { data: equityEvents } = await supabase
                         .from('equity_events')
                         .select('*')
@@ -135,17 +135,28 @@ export default function Dashboard() {
                         .limit(3);
 
                     if (equityEvents && equityEvents.length > 0) {
+                        const getRelativeTime = (date) => {
+                            const now = new Date();
+                            const past = new Date(date);
+                            const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
+                            const diffDays = Math.floor(diffHours / 24);
+                            if (diffHours < 1) return 'Just now';
+                            if (diffHours < 24) return `${diffHours} hours ago`;
+                            if (diffDays < 30) return `${diffDays} days ago`;
+                            return past.toLocaleDateString();
+                        };
+
                         setMilestones(equityEvents.map(e => ({
                             id: e.id,
-                            icon: e.event_type === 'vesting_milestone' ? CheckCircle2 : Calendar,
+                            icon: e.event_type === 'vesting_milestone' ? CheckCircle2 : TrendingUp,
                             label: e.description,
-                            date: new Date(e.created_at).toLocaleDateString(),
+                            date: getRelativeTime(e.created_at),
                             color: e.event_type === 'vesting_milestone' ? '#10B981' : 'var(--accent-primary)'
                         })));
                     } else {
-                        // Keep default milestones if no events
+                        // Show placeholder
                         setMilestones([
-                            { id: 1, icon: AlertCircle, label: "No upcoming milestones", date: "Add equity events in Studio", color: "#F59E0B" }
+                            { id: 1, icon: AlertCircle, label: "No equity events yet", date: "Events will appear here", color: "#6B7280" }
                         ]);
                     }
                 }
@@ -316,10 +327,10 @@ export default function Dashboard() {
                             </div>
                         </section>
 
-                        {/* Upcoming Milestones */}
+                        {/* Recent Equity Events */}
                         <section>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                                Upcoming Milestones
+                                Recent Equity Events
                             </h3>
                             <div className="saas-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {milestones.map(m => (
