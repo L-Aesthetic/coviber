@@ -23,7 +23,6 @@ export default function SidebarLayout({ children }) {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: Users, label: 'Teams', path: '/teams' },
         { icon: Search, label: 'Find Candidates', path: '/search' },
-        { icon: MessageSquare, label: 'Messages', path: '/pipeline?tab=conversations' },
         { icon: GitPullRequest, label: 'Pipeline', path: '/pipeline' },
         { icon: FileText, label: 'Alignment Audit', path: '/audit' },
         { icon: Brain, label: 'Vibe Quiz', path: '/quiz' },
