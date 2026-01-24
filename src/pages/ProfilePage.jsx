@@ -1,4 +1,4 @@
-import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2 } from 'lucide-react';
+import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -252,9 +252,19 @@ export default function ProfilePage() {
                             position: 'absolute', bottom: '-10px', right: '-10px',
                             background: profile.status === 'ready' ? '#10B981' : '#F59E0B',
                             padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800,
-                            color: 'white', border: '4px solid #1c1c24', textTransform: 'uppercase'
-                        }}>
+                            color: 'white', border: '4px solid #1c1c24', textTransform: 'uppercase',
+                            cursor: isEditing ? 'pointer' : 'default',
+                            transition: 'all 0.2s',
+                            boxShadow: isEditing ? '0 0 15px rgba(0,0,0,0.3)' : 'none'
+                        }}
+                            onClick={() => {
+                                if (isEditing) {
+                                    setProfile({ ...profile, status: profile.status === 'ready' ? 'exploring' : 'ready' });
+                                }
+                            }}
+                            title={isEditing ? "Click to toggle status" : ""}>
                             {profile.status === 'ready' ? 'Ready to Build' : 'Exploring'}
+                            {isEditing && <RefreshCcw size={12} style={{ display: 'inline', marginLeft: '6px' }} />}
                         </div>
                     </div>
 
