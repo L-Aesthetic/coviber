@@ -7,9 +7,15 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 
 export default function Pipeline() {
+    const { user } = useAuth();
     const [searchParams] = useSearchParams();
-    const tabFromUrl = searchParams.get('tab') || 'pipeline'; // Default to pipeline view
+    const tabFromUrl = searchParams.get('tab') || 'pipeline';
     const [activeTab, setActiveTab] = useState(tabFromUrl);
+    const [counts, setCounts] = useState({
+        conversations: 0,
+        intros: 0,
+        pipeline: 0
+    });
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -17,6 +23,44 @@ export default function Pipeline() {
             setActiveTab(tab);
         }
     }, [searchParams]);
+
+    // Fetch counts for tabs
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchCounts = async () => {
+            try {
+                // 1. Active Matches count (accepted intro requests)
+                const { count: matchesCount } = await supabase
+                    .from('intro_requests')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'accepted')
+                    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`);
+
+                // 2. Intro Requests count (pending)
+                const { count: introsCount } = await supabase
+                    .from('intro_requests')
+                    .select('*', { count: 'exact', head: true })
+                    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`);
+
+                // 3. Pipeline count
+                const { count: pipelineCount } = await supabase
+                    .from('pipeline_items')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('owner_id', user.id);
+
+                setCounts({
+                    conversations: matchesCount || 0,
+                    intros: introsCount || 0,
+                    pipeline: pipelineCount || 0
+                });
+            } catch (error) {
+                console.error('Error fetching counts:', error);
+            }
+        };
+
+        fetchCounts();
+    }, [user]);
 
     return (
         <div>
@@ -31,9 +75,9 @@ export default function Pipeline() {
 
             {/* Tabs */}
             <div className="saas-panel" style={{ padding: '4px', display: 'inline-flex', gap: '4px', marginBottom: '32px' }}>
-                <TabButton active={activeTab === 'conversations'} onClick={() => setActiveTab('conversations')} icon={MessageSquare} label="Active Matches" count={12} />
-                <TabButton active={activeTab === 'intros'} onClick={() => setActiveTab('intros')} icon={Send} label="Intro Requests" count={8} />
-                <TabButton active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} icon={GitPullRequest} label="Pipeline" count={48} />
+                <TabButton active={activeTab === 'conversations'} onClick={() => setActiveTab('conversations')} icon={MessageSquare} label="Active Matches" count={counts.conversations} />
+                <TabButton active={activeTab === 'intros'} onClick={() => setActiveTab('intros')} icon={Send} label="Intro Requests" count={counts.intros} />
+                <TabButton active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} icon={GitPullRequest} label="Pipeline" count={counts.pipeline} />
             </div>
 
             <AnimatePresence mode="wait">
@@ -656,7 +700,7 @@ function PipelineView() {
     );
 }
 
-function Column({ column, onDragStart, onDragOver, onDrop, onMove }) {
+function Column({ column, onDragStart, onDragOver, onDrop, onMove, onSortColumn, onRenameColumn, onClearColumn }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
