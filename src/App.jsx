@@ -18,7 +18,6 @@ import AccountSettings from './pages/AccountSettings';
 import Billing from './pages/Billing';
 import AlignmentAudit from './pages/AlignmentAudit';
 import AuditResults from './pages/AuditResults';
-import IncomingRequests from './pages/IncomingRequests';
 import LandingPage from './pages/LandingPage';
 import { AuthProvider } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
@@ -42,7 +41,6 @@ function App() {
                   <Route path="/profile/:id" element={<ProfilePage />} />
                   <Route path="/briefs" element={<BriefBuilder />} />
                   <Route path="/pipeline" element={<Pipeline />} />
-                  <Route path="/requests" element={<IncomingRequests />} />
                   <Route path="/session/:teamId" element={<LiveSession />} />
                   <Route path="/teams" element={<Teams />} />
                   <Route path="/studio/:teamId" element={<Studio />} />

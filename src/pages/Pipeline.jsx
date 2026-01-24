@@ -140,48 +140,149 @@ function ConversationsView() {
 }
 
 function IntrosView() {
-    const intros = [
-        { id: 1, from: 'Jessica M.', to: 'You', candidate: 'David R.', role: 'Backend Engineer', status: 'pending', message: 'David has 8 years at Google and is looking for a technical co-founder in fintech.', time: '3 hours ago' },
-        { id: 2, from: 'Mike P.', to: 'You', candidate: 'Emma S.', role: 'UX Designer', status: 'pending', message: 'Emma designed the onboarding for 2 unicorns. Perfect for consumer apps.', time: '1 day ago' },
-        { id: 3, from: 'You', to: 'Sarah K.', candidate: 'Alex V.', role: 'Full Stack', status: 'accepted', message: 'Both love fintech and have 3-year exit goals.', time: '2 days ago' }
-    ];
+    const { user } = useAuth();
+    const [intros, setIntros] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchIntros = async () => {
+            setLoading(true);
+
+            try {
+                // Fetch intro requests (both sent and received)
+                const { data, error } = await supabase
+                    .from('intro_requests')
+                    .select(`
+                        *,
+                        from_user:from_user_id(name),
+                        to_user:to_user_id(name)
+                    `)
+                    .or(`from_user_id.eq.${user.id},to_user_id.eq.${user.id}`)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                setIntros(data || []);
+            } catch (error) {
+                console.error('Error fetching intros:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchIntros();
+    }, [user]);
+
+    const handleAccept = async (introId) => {
+        try {
+            const { error } = await supabase
+                .from('intro_requests')
+                .update({ status: 'accepted', updated_at: new Date().toISOString() })
+                .eq('id', introId);
+
+            if (error) throw error;
+
+            // Update local state
+            setIntros(intros.map(i => i.id === introId ? { ...i, status: 'accepted' } : i));
+        } catch (error) {
+            console.error('Error accepting intro:', error);
+            alert('Failed to accept intro');
+        }
+    };
+
+    const handleDecline = async (introId) => {
+        try {
+            const { error } = await supabase
+                .from('intro_requests')
+                .update({ status: 'declined', updated_at: new Date().toISOString() })
+                .eq('id', introId);
+
+            if (error) throw error;
+
+            // Update local state
+            setIntros(intros.map(i => i.id === introId ? { ...i, status: 'declined' } : i));
+        } catch (error) {
+            console.error('Error declining intro:', error);
+            alert('Failed to decline intro');
+        }
+    };
+
+    const getRelativeTime = (date) => {
+        const now = new Date();
+        const past = new Date(date);
+        const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
+        if (diffHours < 1) return 'Just now';
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    };
+
+    if (loading) {
+        return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading intro requests...</div>;
+    }
+
+    if (intros.length === 0) {
+        return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>No intro requests yet.</div>;
+    }
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {intros.map(intro => (
-                <div key={intro.id} className="saas-panel" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                    {intro.from} → {intro.to}: <span style={{ color: 'var(--accent-primary)' }}>{intro.candidate}</span>
-                                </h3>
-                                {intro.status === 'pending' && (
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase' }}>Pending</span>
-                                )}
-                                {intro.status === 'accepted' && (
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-success)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <CheckCircle2 size={12} /> Accepted
-                                    </span>
-                                )}
+            {intros.map(intro => {
+                const isSent = intro.from_user_id === user?.id;
+                const isReceived = intro.to_user_id === user?.id;
+
+                return (
+                    <div key={intro.id} className="saas-panel" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        {isSent ? `To: ${intro.to_user?.name || 'Unknown'}` : `From: ${intro.from_user?.name || 'Unknown'}`}
+                                    </h3>
+                                    {intro.status === 'pending' && (
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase' }}>Pending</span>
+                                    )}
+                                    {intro.status === 'accepted' && (
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-success)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <CheckCircle2 size={12} /> Accepted
+                                        </span>
+                                    )}
+                                    {intro.status === 'declined' && (
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase' }}>Declined</span>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                                    {isSent ? 'You sent an intro request' : 'Intro request received'}
+                                </div>
+                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{intro.message || 'No message provided'}</div>
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '12px' }}>{intro.role}</div>
-                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{intro.message}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginLeft: '16px' }}>
+                                {getRelativeTime(intro.created_at)}
+                            </div>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginLeft: '16px' }}>{intro.time}</div>
+                        {intro.status === 'pending' && isReceived && (
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                <button
+                                    className="btn-primary"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => handleAccept(intro.id)}
+                                >
+                                    <CheckCircle2 size={16} /> Accept Intro
+                                </button>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => handleDecline(intro.id)}
+                                >
+                                    <X size={16} /> Decline
+                                </button>
+                            </div>
+                        )}
                     </div>
-                    {intro.status === 'pending' && (
-                        <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                            <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
-                                <CheckCircle2 size={16} /> Accept Intro
-                            </button>
-                            <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }}>
-                                <X size={16} /> Decline
-                            </button>
-                        </div>
-                    )}
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
