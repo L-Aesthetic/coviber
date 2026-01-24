@@ -1,12 +1,55 @@
 import { Search as SearchIcon, Filter, MapPin, Briefcase, Star, CheckCircle2, SlidersHorizontal, Zap, Hammer, Clock, Scale, Info, ShieldCheck, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 
 export default function SearchEngine() {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
+    const [candidates, setCandidates] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const candidates = [
+    // Fetch candidates from Supabase
+    useEffect(() => {
+        const fetchCandidates = async () => {
+            setLoading(true);
+
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .neq('id', user?.id || '');
+
+                if (error) throw error;
+
+                const formattedCandidates = data.map(profile => ({
+                    id: profile.id,
+                    name: profile.name || 'Anonymous',
+                    role: profile.role || 'Builder',
+                    location: profile.location || 'Remote',
+                    match: Math.min(100, 50 + (profile.bio ? 10 : 0) + ((profile.skills?.length || 0) * 5)),
+                    skills: profile.skills || [],
+                    isVerified: profile.subscription_tier !== 'free',
+                    hasShipped: profile.has_shipped || false,
+                    isExFounder: profile.is_ex_founder || false,
+                    bio: profile.bio || 'No bio available'
+                }));
+
+                setCandidates(formattedCandidates);
+            } catch (error) {
+                console.error('Error fetching candidates:', error);
+                setCandidates([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCandidates();
+    }, [user]);
+
+    const mockCandidates = [
         {
             id: "alex-v",
             name: "Alex V.",
@@ -185,7 +228,11 @@ export default function SearchEngine() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {filteredCandidates.length > 0 ? (
+                    {loading ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            Loading candidates...
+                        </div>
+                    ) : filteredCandidates.length > 0 ? (
                         filteredCandidates.map(c => (
                             <CandidateCard
                                 key={c.id}
@@ -194,7 +241,7 @@ export default function SearchEngine() {
                         ))
                     ) : (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            No candidates found matching "{searchQuery}"
+                            No candidates found {searchQuery && `matching "${searchQuery}"`}
                         </div>
                     )}
                 </div>
@@ -203,11 +250,6 @@ export default function SearchEngine() {
     );
 }
 
-// ... imports remain the same, ensure supabase is imported if not already globally available or passed down
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../context/AuthProvider'; // Assuming this hook exists
-
-// ... (SearchEngine component start) 
 
 function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio }) {
     return (
