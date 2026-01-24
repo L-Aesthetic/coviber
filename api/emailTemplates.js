@@ -15,7 +15,7 @@ export const getArchetypeEmail = (archetype) => {
             
             <!-- Header -->
             <div style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #222222; background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%);">
-                <img src="https://coviber.vercel.app/logo-full.png" alt="CoVibr" style="height: 48px; margin-bottom: 32px; display: block; margin-left: auto; margin-right: auto;" />
+                <img src="https://coviber.vercel.app/logo-full.png" alt="CoVibr" style="height: 64px; margin-bottom: 32px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">${data.icon}</div>
                 <h1 style="color: #ffffff; font-size: 28px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">${archetype}</h1>
                 <p style="color: ${data.color}; font-size: 15px; font-weight: 500; margin: 0;">"${data.headline}"</p>
