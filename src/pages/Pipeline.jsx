@@ -425,6 +425,7 @@ function PipelineView() {
     const [composerData, setComposerData] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newCandidateName, setNewCandidateName] = useState('');
+    const [renameModal, setRenameModal] = useState({ open: false, columnId: null, currentTitle: '' });
 
     // Fetch Pipeline
     useEffect(() => {
@@ -610,6 +611,34 @@ function PipelineView() {
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
                         onMove={handleMoveItem}
+                        onSortColumn={(colId) => {
+                            const sorted = [...columns[colId].items].sort((a, b) =>
+                                new Date(b.created_at || 0) - new Date(a.created_at || 0)
+                            );
+                            setColumns({
+                                ...columns,
+                                [colId]: { ...columns[colId], items: sorted }
+                            });
+                        }}
+                        onRenameColumn={(colId, currentTitle) => {
+                            setRenameModal({ open: true, columnId: colId, currentTitle });
+                        }}
+                        onClearColumn={async (colId) => {
+                            const itemIds = columns[colId].items.map(item => item.id);
+                            if (itemIds.length === 0) return;
+
+                            const { error } = await supabase
+                                .from('pipeline_items')
+                                .delete()
+                                .in('id', itemIds);
+
+                            if (!error) {
+                                setColumns({
+                                    ...columns,
+                                    [colId]: { ...columns[colId], items: [] }
+                                });
+                            }
+                        }}
                     />
                 ))}
             </div>
@@ -752,14 +781,19 @@ function Column({ column, onDragStart, onDragOver, onDrop, onMove, onSortColumn,
                                     padding: '4px'
                                 }}
                             >
-                                <div className="menu-item" onClick={() => { alert('Sort logic here'); setIsMenuOpen(false); }}>
+                                <div className="menu-item" onClick={() => { onSortColumn(column.id); setIsMenuOpen(false); }}>
                                     <TrendingUp size={14} /> Sort by Date
                                 </div>
-                                <div className="menu-item" onClick={() => { alert('Rename logic here'); setIsMenuOpen(false); }}>
+                                <div className="menu-item" onClick={() => { onRenameColumn(column.id, column.title); setIsMenuOpen(false); }}>
                                     <Edit3 size={14} /> Rename Column
                                 </div>
                                 <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
-                                <div className="menu-item" onClick={() => { alert('Clear logic here'); setIsMenuOpen(false); }} style={{ color: '#ef4444' }}>
+                                <div className="menu-item" onClick={async () => {
+                                    if (confirm(`Delete all ${column.items.length} items in "${column.title}"?`)) {
+                                        await onClearColumn(column.id);
+                                    }
+                                    setIsMenuOpen(false);
+                                }} style={{ color: '#ef4444' }}>
                                     <Trash2 size={14} /> Clear All Items
                                 </div>
                             </motion.div>
