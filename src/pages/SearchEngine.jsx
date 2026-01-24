@@ -318,15 +318,25 @@ function IntroButton({ candidate }) {
         setLoading(true);
 
         try {
-            // Add to pipeline as 'intro-requested' or 'contacted'
-            const { error } = await supabase
+            // 1. Add to requester's pipeline
+            await supabase
                 .from('pipeline_items')
                 .insert([{
                     owner_id: user.id,
                     name: candidate.name,
                     role: candidate.role,
-                    status: 'shortlist', // Start in shortlist or contacted
-                    notes: 'Intro requested from Search'
+                    status: 'contacted',
+                    notes: `Intro requested to ${candidate.name}`
+                }]);
+
+            // 2. Create intro request (so the other user can see it)
+            const { error } = await supabase
+                .from('intro_requests')
+                .insert([{
+                    from_user_id: user.id,
+                    to_user_id: candidate.id,
+                    status: 'pending',
+                    message: `Hi! I'd love to connect and explore potential collaboration.`
                 }]);
 
             if (error) throw error;
