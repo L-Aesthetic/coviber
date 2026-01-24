@@ -1,4 +1,4 @@
-import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save } from 'lucide-react';
+import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -16,6 +16,8 @@ export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [showVouchModal, setShowVouchModal] = useState(false);
+    const [showMediaEditModal, setShowMediaEditModal] = useState(false);
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState(null);
     const [newProject, setNewProject] = useState({ title: '', role: '', desc: '', stack: '' });
     const [newVouch, setNewVouch] = useState({ name: '', role: '', text: '' });
 
@@ -36,7 +38,8 @@ export default function ProfilePage() {
         projects: [],
         antiPitch: [],
         vouches: [],
-        vibe_data: []
+        vibe_data: [],
+        media_gallery: []
     });
 
     const isOwner = isSelf || (user && user.id === id);
@@ -76,6 +79,7 @@ export default function ProfilePage() {
                         vouches: data.vouches || [],
                         availability: data.avail_status || "Full-time",
                         commStyle: data.comm_style || "",
+                        media_gallery: data.media_gallery || [],
                         vibe_data: data.vibe_data || [
                             { subject: 'Risk', A: 120, fullMark: 150 },
                             { subject: 'Pace', A: 98, fullMark: 150 },
@@ -123,6 +127,7 @@ export default function ProfilePage() {
                 anti_pitch: profile.antiPitch,
                 vouches: profile.vouches,
                 vibe_data: profile.vibe_data,
+                media_gallery: profile.media_gallery,
                 avail_status: profile.availability,
                 updated_at: new Date().toISOString()
             };
@@ -181,6 +186,7 @@ export default function ProfilePage() {
                                 kryptonite: "Add your kryptonite",
                                 commStyle: "Add your communication style",
                                 triggerWarning: "",
+                                media_gallery: [],
                                 vibe_data: [
                                     { subject: 'Risk', A: 100, fullMark: 150 },
                                     { subject: 'Pace', A: 100, fullMark: 150 },
@@ -454,13 +460,61 @@ export default function ProfilePage() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
                         <section className="saas-panel" style={{ padding: '24px' }}>
-                            <h3 className="section-title" style={{ fontSize: '1rem' }}><Video size={18} /> Media Gallery</h3>
-                            <div style={{ aspectRatio: '16/9', background: 'black', borderRadius: '12px', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                <div style={{ position: 'absolute', inset: 0, opacity: 0.5, background: 'url(https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80) center/cover' }}></div>
-                                <Play size={24} fill="white" color="white" style={{ zIndex: 1 }} />
-                                <div style={{ position: 'absolute', bottom: '12px', left: '12px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '4px 8px', borderRadius: '4px' }}>60s Intro</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                <h3 className="section-title" style={{ fontSize: '1rem', marginBottom: 0 }}><Image size={18} /> Media Gallery</h3>
+                                {isEditing && (
+                                    <button
+                                        onClick={() => setShowMediaEditModal(true)}
+                                        className="btn-ghost"
+                                        style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+                                    >
+                                        <Edit2 size={12} style={{ marginRight: '4px' }} /> Edit
+                                    </button>
+                                )}
                             </div>
-                            {isEditing && <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: '8px', textAlign: 'center' }}>Video upload coming soon.</p>}
+
+                            {(profile.media_gallery && profile.media_gallery.length > 0) ? (
+                                <div
+                                    style={{ aspectRatio: '16/9', background: 'black', borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}
+                                    onClick={() => setSelectedMediaIndex(0)}
+                                >
+                                    <img
+                                        src={profile.media_gallery[0].url}
+                                        alt={profile.media_gallery[0].description}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent 30%)' }}></div>
+                                    <div style={{ position: 'absolute', bottom: '12px', left: '12px', right: '12px' }}>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white' }}>{profile.media_gallery[0].description}</div>
+                                        {profile.media_gallery.length > 1 && (
+                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>
+                                                + {profile.media_gallery.length - 1} more
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '50%' }}>
+                                        <Maximize2 size={16} color="white" />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{
+                                    aspectRatio: '16/9',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: '12px',
+                                    border: '1px dashed var(--border-subtle)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--text-tertiary)',
+                                    cursor: isEditing ? 'pointer' : 'default'
+                                }}
+                                    onClick={() => isEditing && setShowMediaEditModal(true)}
+                                >
+                                    <Image size={24} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                                    <span style={{ fontSize: '0.9rem' }}>{isEditing ? 'Add photos/videos' : 'No media added'}</span>
+                                </div>
+                            )}
                         </section>
 
                         <section className="saas-panel" style={{ padding: '24px' }}>
@@ -682,6 +736,166 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Media Gallery Edit Modal */}
+            <AnimatePresence>
+                {showMediaEditModal && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowMediaEditModal(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '600px', width: '100%', padding: '32px', maxHeight: '80vh', overflowY: 'auto' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>Edit Media Gallery</h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Add up to 5 images to showcase your work or vibe. Paste direct image URLs below.</p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {(profile.media_gallery || []).map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: '16px', alignItems: 'start', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                                        <div style={{ width: '80px', height: '60px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#000' }}>
+                                            <img src={item.url} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => e.target.src = 'https://via.placeholder.com/150?text=Invalid+URL'} />
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <input
+                                                className="glass-input"
+                                                value={item.url}
+                                                placeholder="Image URL..."
+                                                onChange={(e) => {
+                                                    const newGallery = [...profile.media_gallery];
+                                                    newGallery[i].url = e.target.value;
+                                                    setProfile({ ...profile, media_gallery: newGallery });
+                                                }}
+                                            />
+                                            <input
+                                                className="glass-input"
+                                                value={item.description}
+                                                placeholder="Description (e.g. 'Team Offsite 2024')"
+                                                onChange={(e) => {
+                                                    const newGallery = [...profile.media_gallery];
+                                                    newGallery[i].description = e.target.value;
+                                                    setProfile({ ...profile, media_gallery: newGallery });
+                                                }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const newGallery = profile.media_gallery.filter((_, idx) => idx !== i);
+                                                setProfile({ ...profile, media_gallery: newGallery });
+                                            }}
+                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {(profile.media_gallery?.length || 0) < 5 && (
+                                    <button
+                                        className="btn-ghost"
+                                        onClick={() => {
+                                            const newGallery = [...(profile.media_gallery || []), { url: '', description: '' }];
+                                            setProfile({ ...profile, media_gallery: newGallery });
+                                        }}
+                                        style={{ borderStyle: 'dashed', justifyContent: 'center' }}
+                                    >
+                                        <Plus size={18} style={{ marginRight: '8px' }} /> Add Image
+                                    </button>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ flex: 1, justifyContent: 'center' }}
+                                        onClick={() => setShowMediaEditModal(false)}
+                                    >
+                                        Done
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Full Screen Media Carousel Modal */}
+            <AnimatePresence>
+                {selectedMediaIndex !== null && profile.media_gallery?.[selectedMediaIndex] && (
+                    <div
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => setSelectedMediaIndex(null)}
+                    >
+                        <button
+                            style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', zIndex: 210 }}
+                            onClick={() => setSelectedMediaIndex(null)}
+                        >
+                            <XCircle size={24} />
+                        </button>
+
+                        <div
+                            style={{ width: '100%', maxWidth: '1000px', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <motion.img
+                                key={selectedMediaIndex}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                src={profile.media_gallery[selectedMediaIndex].url}
+                                alt={profile.media_gallery[selectedMediaIndex].description}
+                                style={{ maxHeight: '70vh', maxWidth: '100%', borderRadius: '8px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                            />
+
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{ color: 'white', textAlign: 'center' }}
+                            >
+                                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '8px' }}>{profile.media_gallery[selectedMediaIndex].description}</h3>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                    {profile.media_gallery.map((_, i) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                width: '8px', height: '8px', borderRadius: '50%',
+                                                background: i === selectedMediaIndex ? 'white' : 'rgba(255,255,255,0.3)',
+                                                cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                            onClick={() => setSelectedMediaIndex(i)}
+                                        />
+                                    ))}
+                                </div>
+                            </motion.div>
+
+                            {/* Navigation Arrows */}
+                            {selectedMediaIndex > 0 && (
+                                <button
+                                    style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedMediaIndex(selectedMediaIndex - 1);
+                                    }}
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                            )}
+                            {selectedMediaIndex < profile.media_gallery.length - 1 && (
+                                <button
+                                    style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedMediaIndex(selectedMediaIndex + 1);
+                                    }}
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
             </AnimatePresence>
