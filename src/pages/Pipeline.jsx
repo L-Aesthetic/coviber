@@ -145,7 +145,10 @@ function IntrosView() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false); // User not loaded, stop loading
+            return;
+        }
 
         const fetchIntros = async () => {
             setLoading(true);
