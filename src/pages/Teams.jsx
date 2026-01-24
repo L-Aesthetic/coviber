@@ -34,60 +34,91 @@ export default function Teams() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteList, setInviteList] = useState([]);
 
-    const [myTeams, setMyTeams] = useState([
-        {
-            id: '1',
-            name: 'FlowState',
-            role: 'Co-Founder',
-            members: 2,
-            status: 'active',
-            vesting: 65,
-            lastActive: '2 hours ago',
-            avatar: '🚀',
-            description: 'Building the next gen IDE.'
-        },
-        {
-            id: '2',
-            name: 'DevTool X',
-            role: 'Technical Lead',
-            members: 3,
-            status: 'active',
-            vesting: 25,
-            lastActive: '1 day ago',
-            avatar: '🛠️',
-            description: ' Stealth AI project.'
-        }
-    ]);
+    const [myTeams, setMyTeams] = useState([]);
+    const [invitations, setInvitations] = useState([]);
+    const [loadingTeams, setLoadingTeams] = useState(true);
 
-    const [invitations, setInvitations] = useState([
-        {
-            id: 'inv1',
-            teamName: 'AI Startup',
-            inviterName: 'Sarah K.',
-            role: 'Technical Co-Founder',
-            equity: '30%',
-            sentDate: '2 days ago',
-            avatar: '🤖'
-        }
-    ]);
+    // Fetch user's teams
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchTeams = async () => {
+            setLoadingTeams(true);
+
+            // Fetch teams where user is a member
+            const { data: memberships } = await supabase
+                .from('team_members')
+                .select(`
+                    *,
+                    team:team_id (
+                        id,
+                        name,
+                        description,
+                        created_at
+                    )
+                `)
+                .eq('user_id', user.id);
+
+            if (memberships) {
+                // Transform into teams format
+                const teams = await Promise.all(memberships.map(async (m) => {
+                    // Get member count for each team
+                    const { count } = await supabase
+                        .from('team_members')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('team_id', m.team_id);
+
+                    // Calculate last active (simplified)
+                    const lastActivity = await supabase
+                        .from('activity_logs')
+                        .select('created_at')
+                        .eq('team_id', m.team_id)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    const getRelativeTime = (date) => {
+                        if (!date) return 'No activity';
+                        const now = new Date();
+                        const past = new Date(date);
+                        const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
+                        const diffDays = Math.floor(diffHours / 24);
+                        if (diffHours < 1) return 'Just now';
+                        if (diffHours < 24) return `${diffHours}h ago`;
+                        if (diffDays < 7) return `${diffDays}d ago`;
+                        return past.toLocaleDateString();
+                    };
+
+                    return {
+                        id: m.team.id,
+                        name: m.team.name,
+                        role: m.role || 'Member',
+                        members: count || 1,
+                        status: 'active',
+                        vesting: Math.min(m.equity * 0.65, m.equity || 0), // Simple calculation
+                        lastActive: getRelativeTime(lastActivity?.data?.created_at),
+                        avatar: '🚀', // Could store in teams table
+                        description: m.team.description || 'No description'
+                    };
+                }));
+
+                setMyTeams(teams);
+            }
+
+            setLoadingTeams(false);
+        };
+
+        fetchTeams();
+    }, [user]);
 
     const handleAccept = (inv) => {
-        setMyTeams([...myTeams, {
-            id: Date.now().toString(),
-            name: inv.teamName,
-            role: inv.role,
-            members: 2,
-            status: 'active',
-            vesting: 0,
-            lastActive: 'Just now',
-            avatar: inv.avatar || '✨',
-            description: 'Joined via invitation.'
-        }]);
+        // TODO: Accept invitation logic when we implement invitations table
         setInvitations(invitations.filter(i => i.id !== inv.id));
         setActiveTab('my-teams');
     };
 
     const handleDecline = (id) => {
+        // TODO: Decline invitation logic
         setInvitations(invitations.filter(i => i.id !== id));
     };
 
@@ -115,21 +146,64 @@ export default function Teams() {
         setInviteList(inviteList.filter(e => e !== email));
     };
 
-    const submitCreateTeam = () => {
+    const submitCreateTeam = async () => {
         if (!newTeamName.trim()) return;
 
-        setMyTeams([...myTeams, {
-            id: Date.now().toString(),
-            name: newTeamName,
-            role: 'Founder',
-            members: 1 + inviteList.length,
-            status: 'active',
-            vesting: 0,
-            lastActive: 'Just now',
-            avatar: '🌱',
-            description: newTeamDesc || 'No description'
-        }]);
-        setIsModalOpen(false);
+        try {
+            // 1. Create team
+            const { data: newTeam, error: teamError } = await supabase
+                .from('teams')
+                .insert([{
+                    name: newTeamName,
+                    description: newTeamDesc || null
+                }])
+                .select()
+                .single();
+
+            if (teamError) throw teamError;
+
+            // 2. Add creator as first member
+            const { error: memberError } = await supabase
+                .from('team_members')
+                .insert([{
+                    team_id: newTeam.id,
+                    user_id: user.id,
+                    role: 'Founder',
+                    equity: 100 - (inviteList.length * 25) // Simple: split among invites
+                }]);
+
+            if (memberError) throw memberError;
+
+            // 3. Log activity
+            await supabase.from('activity_logs').insert([{
+                team_id: newTeam.id,
+                user_id: user.id,
+                action_type: 'team_created',
+                description: `Created team "${newTeamName}"`
+            }]);
+
+            // 4. TODO: Send invitations (if we implement team_invitations table)
+            // For now, just refresh teams list
+            setMyTeams([...myTeams, {
+                id: newTeam.id,
+                name: newTeamName,
+                role: 'Founder',
+                members: 1,
+                status: 'active',
+                vesting: 0,
+                lastActive: 'Just now',
+                avatar: '🌱',
+                description: newTeamDesc || 'No description'
+            }]);
+
+            setIsModalOpen(false);
+            setNewTeamName('');
+            setNewTeamDesc('');
+            setInviteList([]);
+        } catch (error) {
+            console.error('Error creating team:', error);
+            alert('Failed to create team. Please try again.');
+        }
     };
 
     return (
@@ -172,7 +246,11 @@ export default function Teams() {
             {/* Content */}
             {activeTab === 'my-teams' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {myTeams.length === 0 ? (
+                    {loadingTeams ? (
+                        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-tertiary)' }}>
+                            Loading your teams...
+                        </div>
+                    ) : myTeams.length === 0 ? (
                         <EmptyState
                             icon={Users}
                             title="No teams yet"
