@@ -10,50 +10,50 @@ export const getArchetypeEmail = (archetype) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Your CoVibr Archetype: ${archetype}</title>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #000000; font-family: Helvetica, Arial, sans-serif; color: #cccccc;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #0f0f0f; border: 1px solid #333333; border-radius: 12px; overflow: hidden; margin-top: 20px; margin-bottom: 20px;">
+    <body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #cccccc; -webkit-font-smoothing: antialiased;">
+        <div style="max-width: 640px; margin: 40px auto; background-color: #0f0f0f; border: 1px solid #222222; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.5);">
             
             <!-- Header -->
-            <div style="padding: 40px 20px; text-align: center; border-bottom: 1px solid #333333; background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0) 100%);">
-                <div style="font-size: 48px; margin-bottom: 10px;">${data.icon}</div>
-                <h1 style="color: #ffffff; font-size: 24px; margin: 0; text-transform: uppercase; letter-spacing: 2px;">${archetype}</h1>
-                <p style="color: ${data.color}; font-size: 16px; font-style: italic; margin-top: 8px;">"${data.headline}"</p>
+            <div style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #222222; background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%);">
+                <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">${data.icon}</div>
+                <h1 style="color: #ffffff; font-size: 28px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">${archetype}</h1>
+                <p style="color: ${data.color}; font-size: 15px; font-weight: 500; margin: 0;">"${data.headline}"</p>
             </div>
 
             <div style="padding: 30px;">
                 
                 <!-- Profile Analysis -->
-                <div style="margin-bottom: 30px;">
-                    <h2 style="color: #ffffff; font-size: 18px; border-left: 3px solid ${data.color}; padding-left: 10px; margin-top: 0;">🧠 Deep Profile Analysis</h2>
-                    <p style="line-height: 1.6; font-size: 15px;">${data.profile}</p>
+                <div style="margin-bottom: 32px;">
+                    <h2 style="color: #ffffff; font-size: 16px; border-left: 2px solid ${data.color}; padding-left: 12px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">🧠 Deep Profile Analysis</h2>
+                    <p style="line-height: 1.6; font-size: 15px; margin: 0; color: #a1a1aa;">${data.profile}</p>
                 </div>
 
                 <!-- Superpowers -->
-                <div style="margin-bottom: 30px; background-color: rgba(255,255,255,0.03); padding: 20px; border-radius: 8px;">
-                    <h2 style="color: #ffffff; font-size: 18px; margin-top: 0;">⚡ The Superpowers</h2>
-                    <p style="line-height: 1.6; font-size: 15px; margin-bottom: 15px;"><strong>${data.superpowerTitle}:</strong> ${data.superpowerDesc}</p>
-                    <p style="line-height: 1.6; font-size: 15px;"><em>Why you are essential:</em> ${data.superpowerEssential}</p>
+                <div style="margin-bottom: 32px; background-color: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h2 style="color: #ffffff; font-size: 16px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ The Superpowers</h2>
+                    <p style="line-height: 1.6; font-size: 15px; margin: 0 0 12px; color: #a1a1aa;"><strong style="color: #e4e4e7;">${data.superpowerTitle}:</strong> ${data.superpowerDesc}</p>
+                    <p style="line-height: 1.6; font-size: 15px; margin: 0; color: #a1a1aa;"><em style="color: #d4d4d8;">Why you are essential:</em> ${data.superpowerEssential}</p>
                 </div>
 
                 <!-- Fatal Flaws -->
-                <div style="margin-bottom: 30px;">
-                    <h2 style="color: #ef4444; font-size: 18px; border-left: 3px solid #ef4444; padding-left: 10px; margin-top: 0;">💀 The Fatal Flaw</h2>
-                    <p style="line-height: 1.6; font-size: 15px;"><strong>${data.flawTitle}:</strong> ${data.flawDesc}</p>
+                <div style="margin-bottom: 40px;">
+                    <h2 style="color: #ef4444; font-size: 16px; border-left: 2px solid #ef4444; padding-left: 12px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px;">💀 The Fatal Flaw</h2>
+                    <p style="line-height: 1.6; font-size: 15px; margin: 0; color: #a1a1aa;"><strong style="color: #e4e4e7;">${data.flawTitle}:</strong> ${data.flawDesc}</p>
                 </div>
 
                 <!-- Match Protocol -->
-                <div style="border: 1px solid ${data.color}; border-radius: 8px; padding: 25px; text-align: center; background-color: rgba(${data.rgb}, 0.1);">
-                    <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #888;">Compatibility Protocol</p>
-                    <h3 style="margin: 10px 0; color: #ffffff; font-size: 20px;">Your Perfect Match: <span style="color: ${data.color};">${data.match}</span></h3>
-                    <p style="font-size: 14px; line-height: 1.5; margin-bottom: 20px;">${data.matchWhy}</p>
+                <div style="border: 1px solid ${data.color}; border-radius: 12px; padding: 30px; text-align: center; background: radial-gradient(circle at center, rgba(${data.rgb}, 0.1) 0%, rgba(0,0,0,0) 70%);">
+                    <p style="margin: 0 0 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #71717a; font-weight: 600;">Compatibility Protocol</p>
+                    <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 20px;">Your Perfect Match: <span style="color: ${data.color};">${data.match}</span></h3>
+                    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px; color: #a1a1aa;">${data.matchWhy}</p>
                     
-                    <a href="https://covibr.vercel.app/login" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; font-size: 14px;">Find Your Co-Founder</a>
+                    <a href="https://covibr.vercel.app/landing" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">Find Your Co-Founder</a>
                 </div>
 
             </div>
 
-             <div style="padding: 20px; text-align: center; font-size: 12px; color: #666666; border-top: 1px solid #333333;">
-                <p>You are receiving this because you took the Founder Archetype protocol on CoVibr.</p>
+             <div style="padding: 24px; text-align: center; font-size: 12px; color: #52525b; border-top: 1px solid #222222; background-color: #0a0a0a;">
+                <p style="margin: 0;">You are receiving this because you initiated the protocol on CoVibr.</p>
             </div>
         </div>
     </body>
