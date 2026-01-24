@@ -584,6 +584,30 @@ function PipelineView() {
         setIsAddModalOpen(false);
     };
 
+    // Calculate Pipeline Health
+    const calculatePipelineHealth = () => {
+        const allItems = Object.values(columns).flatMap(col => col.items);
+        if (allItems.length === 0) return { status: 'No Data', color: '#6B7280' };
+
+        const staleItems = allItems.filter(item => item.staleDays >= 3).length;
+        const criticallyStale = allItems.filter(item => item.staleDays >= 7).length;
+        const stalePercentage = (staleItems / allItems.length) * 100;
+
+        if (criticallyStale > 0) {
+            return { status: 'Critical', color: '#EF4444' };
+        } else if (stalePercentage > 50) {
+            return { status: 'Needs Attention', color: '#F59E0B' };
+        } else if (stalePercentage > 25) {
+            return { status: 'Fair', color: '#F59E0B' };
+        } else if (allItems.length < 3) {
+            return { status: 'Low Volume', color: '#6366F1' };
+        } else {
+            return { status: 'Excellent', color: '#10B981' };
+        }
+    };
+
+    const pipelineHealth = calculatePipelineHealth();
+
     return (
         <div style={{ position: 'relative' }}>
             <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -594,7 +618,7 @@ function PipelineView() {
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div className="tag tag-blur">
                         <TrendingUp size={14} style={{ marginRight: '6px' }} />
-                        Health: <span style={{ color: '#10B981', marginLeft: '4px', fontWeight: 700 }}>Excellent</span>
+                        Health: <span style={{ color: pipelineHealth.color, marginLeft: '4px', fontWeight: 700 }}>{pipelineHealth.status}</span>
                     </div>
                     <button className="btn-primary" onClick={handleAddCandidate}>
                         <Plus size={16} /> Add Candidate
