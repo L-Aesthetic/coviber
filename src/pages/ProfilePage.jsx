@@ -14,6 +14,10 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [showProjectModal, setShowProjectModal] = useState(false);
+    const [showVouchModal, setShowVouchModal] = useState(false);
+    const [newProject, setNewProject] = useState({ title: '', role: '', desc: '', stack: '' });
+    const [newVouch, setNewVouch] = useState({ name: '', role: '', text: '' });
 
     // Initial Empty/Skeleton State
     const [profile, setProfile] = useState({
@@ -433,23 +437,10 @@ export default function ProfilePage() {
                             {isEditing && (
                                 <button
                                     className="btn-ghost"
-                                    style={{ border: '1px dashed var(--border-subtle)', justifyContent: 'center', color: 'var(--text-tertiary)' }}
-                                    onClick={() => {
-                                        const title = prompt("Project Title");
-                                        if (title) {
-                                            const newProj = {
-                                                title,
-                                                role: "Founder",
-                                                outcome: "Active",
-                                                desc: "Description...",
-                                                stack: "React, Node",
-                                                color: "#3b82f6"
-                                            };
-                                            setProfile({ ...profile, projects: [...(profile.projects || []), newProj] });
-                                        }
-                                    }}
+                                    style={{ padding: '12px', fontSize: '0.85rem' }}
+                                    onClick={() => setShowProjectModal(true)}
                                 >
-                                    + Add Request (Quick)
+                                    + Add Project (Quick)
                                 </button>
                             )}
                         </div>
@@ -480,12 +471,7 @@ export default function ProfilePage() {
                                     <button
                                         className="btn-ghost"
                                         style={{ fontSize: '0.8rem', padding: '8px' }}
-                                        onClick={() => {
-                                            const name = prompt("Name of voucher");
-                                            if (name) {
-                                                setProfile({ ...profile, vouches: [...(profile.vouches || []), { name, role: "Peer", text: "Vouch text..." }] });
-                                            }
-                                        }}
+                                        onClick={() => setShowVouchModal(true)}
                                     >+ Add Vouch</button>
                                 )}
                             </div>
