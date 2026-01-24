@@ -232,11 +232,23 @@ export default function Dashboard() {
                                 Team Health
                             </h3>
                             <div className="saas-panel" style={{ padding: '24px' }}>
-                                <HealthMetric label="Overall Vesting Progress" value={`${stats.avgVesting}%`} color="#10B981" />
+                                <HealthMetric
+                                    label="Overall Vesting Progress"
+                                    value={`${stats.avgVesting}%`}
+                                    color="#10B981"
+                                />
                                 <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '16px 0' }} />
-                                <HealthMetric label="Active Contributions This Week" value="87%" color="var(--accent-primary)" />
+                                <HealthMetric
+                                    label="Contributions This Week"
+                                    value={`${healthMetrics.contributionsThisWeek}/${healthMetrics.totalContributions}`}
+                                    color="var(--accent-primary)"
+                                />
                                 <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '16px 0' }} />
-                                <HealthMetric label="Legal Documents Signed" value="100%" color="#10B981" />
+                                <HealthMetric
+                                    label="Legal Documents Signed"
+                                    value={healthMetrics.totalLegalDocs > 0 ? `${healthMetrics.legalDocsSigned}/${healthMetrics.totalLegalDocs}` : 'None'}
+                                    color={healthMetrics.legalDocsSigned === healthMetrics.totalLegalDocs && healthMetrics.totalLegalDocs > 0 ? '#10B981' : '#F59E0B'}
+                                />
                             </div>
                         </section>
 
