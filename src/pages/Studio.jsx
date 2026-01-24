@@ -1,6 +1,7 @@
 import { ArrowLeft, Users, Zap, Settings, Calendar } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 // Sub-components
 import EquityTracker from '../components/workspace/EquityTracker';
@@ -10,19 +11,89 @@ import TeamFeed from '../components/workspace/TeamFeed';
 
 export default function Studio() {
     const { teamId } = useParams();
-    const [activeView, setActiveView] = useState('overview'); // overview, equity, legal, contributions, activity
+    const [activeView, setActiveView] = useState('overview');
+    const [team, setTeam] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        docsCount: 0,
+        docsSigned: 0,
+        contributionsCount: 0,
+        activitiesCount: 0
+    });
 
-    // Mock team data (expanded for MVP context)
-    const team = {
-        id: teamId || '1',
-        name: 'FlowState',
-        avatar: '🚀',
-        foundedDate: 'Jan 15, 2026',
-        members: [
-            { name: 'Louis L.', role: 'Technical Co-Founder', equity: 50, vested: 65, avatar: '👨‍💻', active: true },
-            { name: 'Sarah K.', role: 'Growth Co-Founder', equity: 50, vested: 65, avatar: '👩‍💼', active: false }
-        ]
-    };
+    // Fetch team data and stats
+    useEffect(() => {
+        const fetchTeamData = async () => {
+            setLoading(true);
+
+            // Fetch team info
+            const { data: teamData } = await supabase
+                .from('teams')
+                .select('*')
+                .eq('id', teamId)
+                .single();
+
+            // Fetch team members with profiles
+            const { data: membersData } = await supabase
+                .from('team_members')
+                .select(`*, profile:user_id(name, avatar_url)`)
+                .eq('team_id', teamId);
+
+            // Fetch stats for overview
+            const [docsRes, contribsRes, activitiesRes] = await Promise.all([
+                supabase.from('legal_documents').select('id, status', { count: 'exact' }).eq('team_id', teamId),
+                supabase.from('contributions').select('id', { count: 'exact' }).eq('team_id', teamId),
+                supabase.from('activity_logs').select('id', { count: 'exact' }).eq('team_id', teamId).limit(5)
+            ]);
+
+            const docsSigned = docsRes.data?.filter(d => d.status === 'signed').length || 0;
+
+            setStats({
+                docsCount: docsRes.data?.length || 0,
+                docsSigned,
+                contributionsCount: contribsRes.data?.length || 0,
+                activitiesCount: activitiesRes.data?.length || 0
+            });
+
+            // Build team object
+            if (teamData && membersData) {
+                setTeam({
+                    id: teamData.id,
+                    name: teamData.name,
+                    avatar: '🚀',
+                    foundedDate: new Date(teamData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    members: membersData.map(m => ({
+                        name: m.profile?.name || 'Unknown',
+                        role: m.role || 'Co-Founder',
+                        equity: m.equity || 0,
+                        vested: Math.min(m.equity * 0.65, m.equity), // Simple calculation
+                        avatar: m.profile?.avatar_url || '👤',
+                        active: true
+                    }))
+                });
+            }
+
+            setLoading(false);
+        };
+
+        fetchTeamData();
+    }, [teamId]);
+
+    if (loading) {
+        return (
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                Loading team data...
+            </div>
+        );
+    }
+
+    if (!team) {
+        return (
+            <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                Team not found
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -88,7 +159,7 @@ export default function Studio() {
             </div>
 
             {/* Content */}
-            {activeView === 'overview' && <WorkspaceOverview team={team} setActiveView={setActiveView} />}
+            {activeView === 'overview' && <WorkspaceOverview team={team} setActiveView={setActiveView} stats={stats} />}
             {activeView === 'equity' && <EquityTracker team={team} />}
             {activeView === 'legal' && <LegalVault team={team} />}
             {activeView === 'contributions' && <ContributionLog team={team} />}
@@ -119,8 +190,12 @@ function TabButton({ active, onClick, label }) {
     );
 }
 
-function WorkspaceOverview({ team, setActiveView }) {
-    // Reusing the overview logic but with links to the sub-modules
+function WorkspaceOverview({ team, setActiveView, stats }) {
+    // Calculate equity health (simple algorithm: check if split is fair)
+    const equityVariance = team.members.reduce((acc, m) => acc + Math.abs(m.equity - (100 / team.members.length)), 0);
+    const equityHealth = equityVariance < 10 ? 'Fair' : equityVariance < 30 ? 'Review' : 'Imbalanced';
+    const equityStatus = equityHealth === 'Fair' ? 'good' : equityHealth === 'Review' ? 'warning' : 'bad';
+
     return (
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -134,15 +209,27 @@ function WorkspaceOverview({ team, setActiveView }) {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <OverviewCard
                             title="Equity Health"
-                            value="Fair"
-                            status="good"
+                            value={equityHealth}
+                            status={equityStatus}
                             action={() => setActiveView('equity')}
                         />
                         <OverviewCard
                             title="Legal Status"
-                            value="3/4 Signed"
-                            status="warning"
+                            value={`${stats.docsSigned}/${stats.docsCount} Signed`}
+                            status={stats.docsSigned === stats.docsCount ? 'good' : 'warning'}
                             action={() => setActiveView('legal')}
+                        />
+                        <OverviewCard
+                            title="Contributions Logged"
+                            value={`${stats.contributionsCount}`}
+                            status="good"
+                            action={() => setActiveView('contributions')}
+                        />
+                        <OverviewCard
+                            title="Recent Activity"
+                            value={`${stats.activitiesCount} items`}
+                            status="good"
+                            action={() => setActiveView('activity')}
                         />
                     </div>
                 </div>
