@@ -1,30 +1,61 @@
+// ... imports
+import { useState, useEffect } from 'react';
 import { CreditCard, Calendar, Download, AlertCircle, CheckCircle2, Zap, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabaseClient'; // Import supabase
+import { useAuth } from '../context/AuthProvider'; // Import auth
 
 export default function Billing() {
+    const { user } = useAuth();
+    const [tier, setTier] = useState('founder'); // Default to free
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchTier = async () => {
+            const { data } = await supabase
+                .from('profiles')
+                .select('subscription_tier')
+                .eq('id', user.id)
+                .single();
+
+            if (data?.subscription_tier) {
+                setTier(data.subscription_tier);
+            }
+            setLoading(false);
+        };
+        fetchTier();
+    }, [user]);
+
+    const isPro = ['founder', 'pro', 'certified', 'accelerator'].includes(tier) && tier !== 'free'; // 'free' or undefined is regular free user? No, 'founder' is now a Pro tier.
+
+    let planConfig = { name: 'Free', price: 0, cycle: 'forever' };
+    if (tier === 'founder') planConfig = { name: 'Founder\'s Club', price: 0, cycle: 'Lifetime' };
+    if (tier === 'pro') planConfig = { name: 'Pro Member', price: 49, cycle: '/mo' };
+    if (tier === 'certified') planConfig = { name: 'Certified Pair', price: 399, cycle: 'One-time' };
+    if (tier === 'accelerator') planConfig = { name: 'Accelerator', price: 999, cycle: 'Custom' };
+
     const subscription = {
-        plan: 'Builder',
-        status: 'active',
-        price: 49,
-        billingCycle: 'monthly',
-        nextBilling: 'February 21, 2026',
+        plan: planConfig.name,
+        status: tier === 'founder' ? 'active (early bird)' : 'active',
+        price: planConfig.price,
+        billingCycle: planConfig.cycle,
+        nextBilling: tier === 'pro' ? 'March 21, 2026' : 'Lifetime Access',
         card: {
             brand: 'Visa',
-            last4: '4242',
-            exp: '12/27'
+            last4: '4242', // Mock
+            exp: '12/28'
         }
     };
 
-    const invoices = [
-        { id: 'INV-001', date: 'Jan 21, 2026', amount: 49, status: 'paid', pdf: '#' },
-        { id: 'INV-002', date: 'Dec 21, 2025', amount: 49, status: 'paid', pdf: '#' },
-        { id: 'INV-003', date: 'Nov 21, 2025', amount: 49, status: 'paid', pdf: '#' }
-    ];
+    const invoices = isPro ? [
+        { id: 'INV-2026-001', date: new Date().toLocaleDateString(), amount: 399, status: 'paid', pdf: '#' }
+    ] : [];
 
     const handleCancel = () => {
-        if (window.confirm("Are you sure you want to cancel your subscription? You will lose access to premium features at the end of the billing cycle.")) {
-            alert("Subscription scheduled for cancellation.");
+        if (window.confirm("Are you sure you want to cancel?")) {
+            alert("This is a demo. Cancellation logic would go here.");
         }
     };
 
@@ -57,8 +88,8 @@ export default function Billing() {
                                     {subscription.plan} Plan
                                 </h2>
                                 <span style={{
-                                    background: 'rgba(16, 185, 129, 0.1)',
-                                    color: '#10B981',
+                                    background: isPro ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.1)',
+                                    color: isPro ? '#10B981' : 'var(--text-tertiary)',
                                     padding: '4px 12px',
                                     borderRadius: '12px',
                                     fontSize: '0.75rem',
@@ -68,12 +99,12 @@ export default function Billing() {
                                     alignItems: 'center',
                                     gap: '4px'
                                 }}>
-                                    <CheckCircle2 size={12} />
-                                    Active
+                                    {isPro ? <CheckCircle2 size={12} /> : null}
+                                    {subscription.status}
                                 </span>
                             </div>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                Full access to all features
+                                {isPro ? "Full access to Chemistry Engine & Investor Reports" : "Basic profile & limited search visibility"}
                             </p>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -81,7 +112,7 @@ export default function Billing() {
                                 ${subscription.price}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>
-                                per {subscription.billingCycle === 'monthly' ? 'month' : 'year'}
+                                {subscription.billingCycle}
                             </div>
                         </div>
                     </div>
@@ -97,7 +128,7 @@ export default function Billing() {
                     }}>
                         <Calendar size={20} color="var(--accent-primary)" />
                         <div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Next billing date</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>Renewal Status</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                 {subscription.nextBilling}
                             </div>
@@ -105,129 +136,137 @@ export default function Billing() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <Link to="/upgrade" style={{ textDecoration: 'none', flex: 1 }}>
-                            <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                                <Zap size={16} />
-                                Upgrade Plan
+                        {!isPro && (
+                            <Link to="/upgrade" style={{ textDecoration: 'none', flex: 1 }}>
+                                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                                    <Zap size={16} />
+                                    Upgrade to Certified
+                                </button>
+                            </Link>
+                        )}
+                        {isPro && (
+                            <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={handleCancel}>
+                                Cancel Subscription
                             </button>
-                        </Link>
-                        <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={handleCancel}>
-                            Cancel Subscription
-                        </button>
+                        )}
                     </div>
                 </div>
 
-                {/* Payment Method */}
-                <div className="saas-panel" style={{ padding: '32px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <CreditCard size={20} color="var(--accent-primary)" />
-                        <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>Payment Method</h2>
-                    </div>
-
-                    <div style={{
-                        padding: '20px',
-                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        marginBottom: '20px'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <div style={{
-                                    width: '48px',
-                                    height: '32px',
-                                    background: 'white',
-                                    borderRadius: '6px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 800,
-                                    fontSize: '0.75rem',
-                                    color: '#1434CB'
-                                }}>
-                                    {subscription.card.brand.toUpperCase()}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                        •••• •••• •••• {subscription.card.last4}
-                                    </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                        Expires {subscription.card.exp}
-                                    </div>
-                                </div>
-                            </div>
-                            <button className="btn-ghost" style={{ padding: '8px 16px' }} onClick={handleUpdateCard}>
-                                Update
-                            </button>
+                {/* Payment Method - Only show if Pro */}
+                {isPro && (
+                    <div className="saas-panel" style={{ padding: '32px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                            <CreditCard size={20} color="var(--accent-primary)" />
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>Payment Method</h2>
                         </div>
-                    </div>
 
-                    <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAddPayment}>
-                        <CreditCard size={16} />
-                        Add New Payment Method
-                    </button>
-                </div>
-
-                {/* Billing History */}
-                <div className="saas-panel" style={{ padding: '32px' }}>
-                    <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '24px' }}>
-                        Billing History
-                    </h2>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                        {invoices.map((invoice, index) => (
-                            <div
-                                key={invoice.id}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '16px 0',
-                                    borderBottom: index < invoices.length - 1 ? '1px solid var(--border-subtle)' : 'none'
-                                }}
-                            >
+                        <div style={{
+                            padding: '20px',
+                            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(99, 102, 241, 0.2)',
+                            marginBottom: '20px'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                     <div style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        background: 'rgba(99, 102, 241, 0.1)',
+                                        width: '48px',
+                                        height: '32px',
+                                        background: 'white',
+                                        borderRadius: '6px',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        fontWeight: 800,
+                                        fontSize: '0.75rem',
+                                        color: '#1434CB'
                                     }}>
-                                        <Download size={18} color="var(--accent-primary)" />
+                                        {subscription.card.brand.toUpperCase()}
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                            {invoice.id}
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                            •••• •••• •••• {subscription.card.last4}
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                            {invoice.date}
+                                            Expires {subscription.card.exp}
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                            ${invoice.amount}.00
-                                        </div>
-                                        <div style={{ fontSize: '0.7rem', color: '#10B981', textTransform: 'uppercase', fontWeight: 700 }}>
-                                            {invoice.status}
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="btn-ghost"
-                                        style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-                                    >
-                                        <Download size={14} />
-                                        PDF
-                                    </button>
-                                </div>
+                                <button className="btn-ghost" style={{ padding: '8px 16px' }} onClick={handleUpdateCard}>
+                                    Update
+                                </button>
                             </div>
-                        ))}
+                        </div>
+
+                        <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAddPayment}>
+                            <CreditCard size={16} />
+                            Add New Payment Method
+                        </button>
                     </div>
-                </div>
+                )}
+
+                {/* Billing History */}
+                {isPro && (
+                    <div className="saas-panel" style={{ padding: '32px' }}>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '24px' }}>
+                            Billing History
+                        </h2>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                            {invoices.map((invoice, index) => (
+                                <div
+                                    key={invoice.id}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '16px 0',
+                                        borderBottom: index < invoices.length - 1 ? '1px solid var(--border-subtle)' : 'none'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            background: 'rgba(99, 102, 241, 0.1)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Download size={18} color="var(--accent-primary)" />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                                {invoice.id}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                {invoice.date}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                ${invoice.amount}.00
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: '#10B981', textTransform: 'uppercase', fontWeight: 700 }}>
+                                                {invoice.status}
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="btn-ghost"
+                                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                                        >
+                                            <Download size={14} />
+                                            PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Billing Info */}
                 <div className="saas-panel" style={{ padding: '24px', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
@@ -241,7 +280,7 @@ export default function Billing() {
                                 Contact our support team for questions about charges, refunds, or plan changes.
                             </p>
                             <a
-                                href="mailto:billing@covibr.com"
+                                href="mailto:covibr@gmail.com"
                                 style={{
                                     fontSize: '0.85rem',
                                     color: 'var(--accent-primary)',

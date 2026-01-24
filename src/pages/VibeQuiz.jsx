@@ -1,5 +1,8 @@
+// ... imports
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 import {
     ArrowRight,
     Shield,
@@ -16,7 +19,8 @@ import {
     Lightbulb,
     MessageSquare,
     Home,
-    Activity
+    Activity,
+    Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -143,6 +147,8 @@ export default function VibeQuiz() {
 
 function ResultsView({ answers }) {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [saving, setSaving] = useState(false);
 
     // Scoring Logic based on the user's detailed framework
     const calculateProfile = (ans) => {
@@ -153,7 +159,7 @@ function ResultsView({ answers }) {
             conscientious: 0,
             rainmaker: 0,
             expert: 0,
-            conductor: 0,
+            delegator: 0,
             resilience: 0
         };
 
@@ -201,6 +207,16 @@ function ResultsView({ answers }) {
             description = "You build robust, scalable systems. You need a partner who can push for speed and sales.";
         }
 
+        // Generate Radar Data [Risk, Pace, Control, Optimism, Details]
+        // Normalize roughly to 0-150 scale
+        const radarData = [
+            { subject: 'Risk', A: Math.min(150, (scores.action + scores.rich) * 20 + 50), fullMark: 150 },
+            { subject: 'Pace', A: Math.min(150, (scores.action * 30) + 50), fullMark: 150 },
+            { subject: 'Control', A: Math.min(150, (scores.king * 30) + 50), fullMark: 150 },
+            { subject: 'Optimism', A: Math.min(150, (scores.rich * 20) + 80), fullMark: 150 },
+            { subject: 'Details', A: Math.min(150, (scores.conscientious * 30) + 20), fullMark: 150 },
+        ];
+
         // Insights
         const insights = {
             stress: ans.stress_response === 'confront' ? "You tend to confront stress directly (Pursuer). Avoid avoidant partners." : (ans.stress_response === 'space' ? "You withdraw under stress (Distancer). You need space to process." : "You have a balanced, supportive stress response (Secure)."),
@@ -209,10 +225,36 @@ function ResultsView({ answers }) {
             dialect: ans.tech_debt === 'hack' ? "Your work dialect is 'Speed'. You view code as a means to an end." : "Your work dialect is 'Quality'. You view code as an asset."
         };
 
-        return { title, description, insights };
+        return { title, description, insights, radarData };
     };
 
     const profile = calculateProfile(answers);
+
+    const handleSync = async () => {
+        if (!user) return alert("Please log in to save your detailed profile.");
+        setSaving(true);
+        try {
+            const { error } = await supabase.from('profiles').upsert({
+                id: user.id,
+                // We map these to the closest available columns or reuse flexible ones
+                headline: profile.title,
+                bio: profile.description,
+                vibe_data: profile.radarData,
+                superpower: profile.insights.risk, // Mapping 'risk' insight to superpower for now
+                kryptonite: profile.insights.period, // Just an example, need actual mapping if user cares
+                comm_style: profile.insights.stress,
+                updated_at: new Date()
+            });
+
+            if (error) throw error;
+            navigate('/profile/me');
+        } catch (err) {
+            console.error(err);
+            alert("Failed to sync profile.");
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
@@ -266,11 +308,17 @@ function ResultsView({ answers }) {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button className="btn-ghost" onClick={() => window.location.reload()}>Retake Diagnostic</button>
-                    <button className="btn-primary" onClick={() => navigate('/')} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
-                        Sync Profile to Search <ArrowRight size={20} />
-                    </button>
+                    {user ? (
+                        <button className="btn-primary" onClick={handleSync} disabled={saving} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
+                            {saving ? "Syncing..." : "Sync Profile to Search"} <ArrowRight size={20} style={{ marginLeft: 8 }} />
+                        </button>
+                    ) : (
+                        <button className="btn-primary" onClick={() => navigate('/login')} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
+                            Log in to Save Results <ArrowRight size={20} style={{ marginLeft: 8 }} />
+                        </button>
+                    )}
                 </div>
 
                 <div className="saas-panel" style={{ marginTop: '48px', padding: '32px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)' }}>

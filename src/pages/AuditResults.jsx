@@ -115,7 +115,16 @@ export default function AuditResults() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }} className="no-print">
+                <style>{`
+                    @media print {
+                        .no-print { display: none !important; }
+                        .saas-panel { border: 1px solid #ccc !important; box-shadow: none !important; }
+                        body { background: white !important; color: black !important; }
+                        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    }
+                `}</style>
+                <button className="btn-ghost" onClick={() => window.print()}>Download Report</button>
                 <button className="btn-ghost" onClick={() => navigate('/audit')}>Retake Audit</button>
                 <button className="btn-primary" onClick={() => navigate('/equity')}>
                     Go to Equity Calculator <ArrowRight size={20} />

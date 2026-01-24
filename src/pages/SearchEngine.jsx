@@ -41,14 +41,45 @@ export default function SearchEngine() {
         }
     ];
 
+    const [filters, setFilters] = useState({
+        role: null,
+        remote: false,
+        shipped: false,
+        equity50: false,
+        funded: false,
+        nights: false,
+        exFounder: false,
+        verifiedExit: false,
+        vcBacked: false
+    });
+
     const filteredCandidates = candidates.filter(c => {
         const query = searchQuery.toLowerCase();
-        return (
+        const matchesQuery = (
             c.name.toLowerCase().includes(query) ||
             c.role.toLowerCase().includes(query) ||
             c.skills.some(s => s.toLowerCase().includes(query)) ||
             c.bio.toLowerCase().includes(query)
         );
+
+        const matchesRole = !filters.role || c.role.includes(filters.role) || (filters.role === 'Engineering' && (c.role.includes('Full Stack') || c.role.includes('Engineer') || c.role.includes('Architect')));
+
+        // Match logic using mock fields (assuming true if field undefined for simplicity in mock, or strictly false if verified required)
+        const matchesRemote = !filters.remote || c.location.toLowerCase().includes('remote');
+        const matchesShipped = !filters.shipped || c.hasShipped;
+
+        const matchesExFounder = !filters.exFounder || c.isExFounder;
+
+        // For simple MVP mocking, we'll assume bio keywords reflect these traits
+        const matchesEquity = !filters.equity50 || c.bio.toLowerCase().includes('equity');
+        const matchesFunded = !filters.funded || c.bio.toLowerCase().includes('funded');
+        const matchesNights = !filters.nights || c.bio.toLowerCase().includes('nights'); // Mock logic
+
+        // Strict Trust Signals
+        const matchesVerifiedExit = !filters.verifiedExit || c.bio.toLowerCase().includes('exit') || c.bio.toLowerCase().includes('acquisition');
+        const matchesVC = !filters.vcBacked || c.bio.toLowerCase().includes('series a') || c.bio.toLowerCase().includes('vc');
+
+        return matchesQuery && matchesRole && matchesRemote && matchesShipped && matchesExFounder && matchesEquity && matchesFunded && matchesNights && matchesVerifiedExit && matchesVC;
     });
 
     return (
@@ -62,31 +93,71 @@ export default function SearchEngine() {
                     </div>
                     <div className="saas-panel" style={{ padding: '24px' }}>
                         <FilterSection title="Role">
-                            <FilterOption label="Engineering" count={452} checked />
-                            <FilterOption label="Product" count={128} />
-                            <FilterOption label="Growth" count={84} />
+                            <FilterOption
+                                label="Engineering"
+                                checked={filters.role === 'Engineering'}
+                                onClick={() => setFilters(prev => ({ ...prev, role: prev.role === 'Engineering' ? null : 'Engineering' }))}
+                            />
+                            <FilterOption
+                                label="Product"
+                                checked={filters.role === 'Product'}
+                                onClick={() => setFilters(prev => ({ ...prev, role: prev.role === 'Product' ? null : 'Product' }))}
+                            />
+                            <FilterOption
+                                label="Growth"
+                                checked={filters.role === 'Growth'}
+                                onClick={() => setFilters(prev => ({ ...prev, role: prev.role === 'Growth' ? null : 'Growth' }))}
+                            />
                         </FilterSection>
 
                         <FilterSection title="Dealbreakers (Risk)">
-                            <FilterOption label="Equity (50/50 only)" />
-                            <FilterOption label="Funded (No Salary)" />
-                            <FilterOption label="Nights & Weekends" />
-                            <FilterOption label="Remote-First" checked />
+                            <FilterOption
+                                label="Equity (50/50 only)"
+                                checked={filters.equity50}
+                                onClick={() => setFilters(prev => ({ ...prev, equity50: !prev.equity50 }))}
+                            />
+                            <FilterOption
+                                label="Funded (No Salary)"
+                                checked={filters.funded}
+                                onClick={() => setFilters(prev => ({ ...prev, funded: !prev.funded }))}
+                            />
+                            <FilterOption
+                                label="Nights & Weekends"
+                                checked={filters.nights}
+                                onClick={() => setFilters(prev => ({ ...prev, nights: !prev.nights }))}
+                            />
+                            <FilterOption
+                                label="Remote-First"
+                                checked={filters.remote}
+                                onClick={() => setFilters(prev => ({ ...prev, remote: !prev.remote }))}
+                            />
                         </FilterSection>
 
                         <FilterSection title="Builder Proof">
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '12px' }}>
-                                <div className="glass-input" style={{ width: '40px', height: '22px', borderRadius: '11px', padding: '2px', position: 'relative' }}>
-                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--accent-primary)', position: 'absolute', right: '2px' }}></div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', marginBottom: '12px' }} onClick={() => setFilters(prev => ({ ...prev, shipped: !prev.shipped }))}>
+                                <div className="glass-input" style={{ width: '40px', height: '22px', borderRadius: '11px', padding: '2px', position: 'relative', background: filters.shipped ? 'var(--accent-primary)' : 'rgba(255,255,255,0.1)' }}>
+                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'white', position: 'absolute', right: filters.shipped ? '2px' : 'auto', left: filters.shipped ? 'auto' : '2px', transition: 'all 0.2s' }}></div>
                                 </div>
                                 <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Shipped to Prod</span>
                             </label>
                         </FilterSection>
 
                         <FilterSection title="Trust Signals">
-                            <FilterOption label="Verified Ex-Founder" />
-                            <FilterOption label="Verified Exit" />
-                            <FilterOption label="VC Backed" />
+                            <FilterOption
+                                label="Verified Ex-Founder"
+                                checked={filters.exFounder}
+                                onClick={() => setFilters(prev => ({ ...prev, exFounder: !prev.exFounder }))}
+                            />
+                            <FilterOption
+                                label="Verified Exit"
+                                checked={filters.verifiedExit}
+                                onClick={() => setFilters(prev => ({ ...prev, verifiedExit: !prev.verifiedExit }))}
+                            />
+                            <FilterOption
+                                label="VC Backed"
+                                checked={filters.vcBacked}
+                                onClick={() => setFilters(prev => ({ ...prev, vcBacked: !prev.vcBacked }))}
+                            />
                         </FilterSection>
                     </div>
                 </section>
@@ -132,9 +203,15 @@ export default function SearchEngine() {
     );
 }
 
+// ... imports remain the same, ensure supabase is imported if not already globally available or passed down
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider'; // Assuming this hook exists
+
+// ... (SearchEngine component start) 
+
 function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio }) {
     return (
-        <Link to={`/profile/${id}`} style={{ textDecoration: 'none' }}>
+        <Link to={`/profile/${id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -180,26 +257,66 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
                         <CompatibilityIcon icon={Zap} tooltip="Speed Vibe" active />
                     </div>
 
-                    <IntroButton />
+                    <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                        <IntroButton candidate={{ name, role, id }} />
+                    </div>
                 </div>
             </motion.div>
         </Link>
     )
 }
 
-function IntroButton() {
+function IntroButton({ candidate }) {
     const [sent, setSent] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
+
+    const handleRequest = async () => {
+        if (!user) return alert("Please login first");
+        setLoading(true);
+
+        try {
+            // Add to pipeline as 'intro-requested' or 'contacted'
+            const { error } = await supabase
+                .from('pipeline_items')
+                .insert([{
+                    owner_id: user.id,
+                    name: candidate.name,
+                    role: candidate.role,
+                    status: 'shortlist', // Start in shortlist or contacted
+                    notes: 'Intro requested from Search'
+                }]);
+
+            if (error) throw error;
+            setSent(true);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to request intro");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (sent) {
+        return (
+            <button
+                className="btn-ghost"
+                style={{ width: '100%', justifyContent: 'center', color: '#10B981', borderColor: '#10B981' }}
+                disabled
+            >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={16} /> Sent</span>
+            </button>
+        )
+    }
+
     return (
         <button
-            className={sent ? "btn-ghost" : "btn-primary"}
-            style={{ width: '100%', justifyContent: 'center', color: sent ? '#10B981' : 'white', borderColor: sent ? '#10B981' : 'transparent' }}
-            onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setSent(true);
-            }}
+            className="btn-primary"
+            style={{ width: '100%', justifyContent: 'center' }}
+            onClick={handleRequest}
+            disabled={loading}
         >
-            {sent ? <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={16} /> Sent</span> : "Request Intro"}
+            {loading ? "Sending..." : "Request Intro"}
         </button>
     )
 }
@@ -255,9 +372,9 @@ function FilterSection({ title, children }) {
     )
 }
 
-function FilterOption({ label, count, checked }) {
+function FilterOption({ label, count, checked, onClick }) {
     return (
-        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+        <label onClick={onClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '18px', height: '18px', borderRadius: '4px', border: '1px solid var(--border-subtle)', background: checked ? 'var(--accent-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {checked && <CheckCircle2 size={12} color="white" />}

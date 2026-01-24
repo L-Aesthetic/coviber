@@ -1,11 +1,10 @@
+// ... imports
 import { useState, useEffect } from 'react';
-import { MoreHorizontal, Calendar, MessageSquare, CheckCircle2, AlertCircle, Github, Clock, FileText, Send, UserCheck, TrendingUp, GitPullRequest, X } from 'lucide-react';
+import { MoreHorizontal, Calendar, MessageSquare, CheckCircle2, AlertCircle, Github, Clock, FileText, Send, UserCheck, TrendingUp, GitPullRequest, X, Plus, Trash2, Edit3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
-
-
 
 export default function Pipeline() {
     const [searchParams] = useSearchParams();
@@ -99,7 +98,7 @@ function ConversationsView() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {conversations.map(conv => (
-                <Link key={conv.id} to={`/profile`} style={{ textDecoration: 'none' }}>
+                <Link key={conv.id} to={`/profile/${conv.id}`} style={{ textDecoration: 'none' }}>
                     <motion.div
                         className="saas-panel hover-glass"
                         style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', cursor: 'pointer' }}
@@ -197,6 +196,8 @@ function PipelineView() {
     });
     const [isComposerOpen, setIsComposerOpen] = useState(false);
     const [composerData, setComposerData] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newCandidateName, setNewCandidateName] = useState('');
 
     // Fetch Pipeline
     useEffect(() => {
@@ -291,37 +292,68 @@ function PipelineView() {
         setDragSourceCol(null);
     };
 
-    const handleAddCandidate = async () => {
-        const name = prompt("Candidate Name:");
-        if (name && user) {
-            const newItem = {
-                name,
-                role: 'Unknown Role',
-                status: 'shortlist',
-                owner_id: user.id
-            };
+    const handleMoveItem = async (item, targetColId) => {
+        // Find source column
+        const sourceColId = Object.keys(columns).find(key => columns[key].items.find(i => i.id === item.id));
+        if (!sourceColId || sourceColId === targetColId) return;
 
-            // Backend Insert
-            const { data, error } = await supabase
+        // UI Update
+        const sourceItems = columns[sourceColId].items.filter(i => i.id !== item.id);
+        const targetItems = [...columns[targetColId].items, { ...item, status: targetColId }];
+
+        setColumns({
+            ...columns,
+            [sourceColId]: { ...columns[sourceColId], items: sourceItems },
+            [targetColId]: { ...columns[targetColId], items: targetItems }
+        });
+
+        // Backend Update
+        try {
+            await supabase
                 .from('pipeline_items')
-                .insert([newItem])
-                .select()
-                .single();
-
-            if (error) {
-                alert("Error adding candidate");
-                return;
-            }
-
-            // UI Update
-            setColumns({
-                ...columns,
-                shortlist: {
-                    ...columns.shortlist,
-                    items: [data, ...columns.shortlist.items]
-                }
-            });
+                .update({ status: targetColId })
+                .eq('id', item.id);
+        } catch (err) {
+            console.error(err);
         }
+    };
+
+    const handleAddCandidate = () => {
+        setNewCandidateName('');
+        setIsAddModalOpen(true);
+    };
+
+    const submitAddCandidate = async () => {
+        if (!newCandidateName.trim() || !user) return;
+
+        const newItem = {
+            name: newCandidateName,
+            role: 'Unknown Role',
+            status: 'shortlist',
+            owner_id: user.id
+        };
+
+        // Backend Insert
+        const { data, error } = await supabase
+            .from('pipeline_items')
+            .insert([newItem])
+            .select()
+            .single();
+
+        if (error) {
+            alert("Error adding candidate");
+            return;
+        }
+
+        // UI Update
+        setColumns({
+            ...columns,
+            shortlist: {
+                ...columns.shortlist,
+                items: [data, ...columns.shortlist.items]
+            }
+        });
+        setIsAddModalOpen(false);
     };
 
     return (
@@ -336,7 +368,9 @@ function PipelineView() {
                         <TrendingUp size={14} style={{ marginRight: '6px' }} />
                         Health: <span style={{ color: '#10B981', marginLeft: '4px', fontWeight: 700 }}>Excellent</span>
                     </div>
-                    <button className="btn-primary" onClick={handleAddCandidate}>+ Add Candidate</button>
+                    <button className="btn-primary" onClick={handleAddCandidate}>
+                        <Plus size={16} /> Add Candidate
+                    </button>
                 </div>
             </header>
 
@@ -348,6 +382,7 @@ function PipelineView() {
                         onDragStart={handleDragStart}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
+                        onMove={handleMoveItem}
                     />
                 ))}
             </div>
@@ -387,11 +422,60 @@ function PipelineView() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Add Candidate Modal */}
+            <AnimatePresence>
+                {isAddModalOpen && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+                    }} onClick={() => setIsAddModalOpen(false)}>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Plus size={24} color="var(--accent-primary)" />
+                                Add Candidate
+                            </h3>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Name *</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    className="glass-input"
+                                    placeholder="e.g. John Doe, Sarah..."
+                                    value={newCandidateName}
+                                    onChange={e => setNewCandidateName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && submitAddCandidate()}
+                                    style={{ width: '100%', fontSize: '1.1rem' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={submitAddCandidate}>
+                                    Add to Pipeline
+                                </button>
+                                <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsAddModalOpen(false)}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
 
-function Column({ column, onDragStart, onDragOver, onDrop }) {
+function Column({ column, onDragStart, onDragOver, onDrop, onMove }) {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
     return (
         <div
             style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
@@ -404,11 +488,56 @@ function Column({ column, onDragStart, onDragOver, onDrop }) {
                     <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{column.title}</span>
                     <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>{column.items.length}</span>
                 </div>
-                <div
-                    style={{ cursor: 'pointer', position: 'relative' }}
-                    onClick={() => alert(`Settings for ${column.title}`)}
-                >
-                    <MoreHorizontal size={16} color="var(--text-tertiary)" />
+                <div style={{ position: 'relative' }}>
+                    <div
+                        className="icon-btn"
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        style={{
+                            padding: '6px',
+                            cursor: 'pointer',
+                            borderRadius: '6px',
+                            background: isMenuOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <MoreHorizontal size={16} color="var(--text-tertiary)" />
+                    </div>
+
+                    <AnimatePresence>
+                        {isMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '8px',
+                                    background: 'rgba(28, 28, 36, 0.95)',
+                                    backdropFilter: 'blur(12px)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '12px',
+                                    width: '180px',
+                                    zIndex: 50,
+                                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                                    overflow: 'hidden',
+                                    padding: '4px'
+                                }}
+                            >
+                                <div className="menu-item" onClick={() => { alert('Sort logic here'); setIsMenuOpen(false); }}>
+                                    <TrendingUp size={14} /> Sort by Date
+                                </div>
+                                <div className="menu-item" onClick={() => { alert('Rename logic here'); setIsMenuOpen(false); }}>
+                                    <Edit3 size={14} /> Rename Column
+                                </div>
+                                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
+                                <div className="menu-item" onClick={() => { alert('Clear logic here'); setIsMenuOpen(false); }} style={{ color: '#ef4444' }}>
+                                    <Trash2 size={14} /> Clear All Items
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
@@ -419,6 +548,7 @@ function Column({ column, onDragStart, onDragOver, onDrop }) {
                         item={item}
                         colId={column.id}
                         onDragStart={onDragStart}
+                        onMove={onMove}
                     />
                 ))}
                 {column.items.length === 0 && (
@@ -431,7 +561,8 @@ function Column({ column, onDragStart, onDragOver, onDrop }) {
     )
 }
 
-function Card({ item, colId, onDragStart }) {
+function Card({ item, colId, onDragStart, onMove }) {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isStale = item.staleDays >= 3;
     const isCriticallyStale = item.staleDays >= 7;
 
@@ -480,14 +611,84 @@ function Card({ item, colId, onDragStart }) {
                     <div
                         onClick={(e) => {
                             e.stopPropagation();
-                            alert("Archive / Delete / Move");
+                            setIsMenuOpen(!isMenuOpen);
                         }}
-                        style={{ cursor: 'pointer' }}
+                        style={{
+                            padding: '4px',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            background: isMenuOpen ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            transition: 'all 0.2s'
+                        }}
                     >
                         <MoreHorizontal size={14} color="var(--text-tertiary)" />
                     </div>
+
+                    {/* Dropdown Menu */}
+                    <AnimatePresence>
+                        {isMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '4px',
+                                    background: 'rgba(28, 28, 36, 0.95)',
+                                    backdropFilter: 'blur(12px)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '8px',
+                                    padding: '4px',
+                                    zIndex: 50,
+                                    minWidth: '160px',
+                                    boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                                }}
+                            >
+                                <div style={{ fontSize: '0.65rem', padding: '8px', color: 'var(--text-tertiary)', fontWeight: 700, letterSpacing: '0.05em' }}>MOVE CARD</div>
+                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onMove(item, 'shortlist'); setIsMenuOpen(false); }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)' }}></div> Shortlist
+                                </div>
+                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onMove(item, 'contacted'); setIsMenuOpen(false); }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }}></div> Intro Sent
+                                </div>
+                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onMove(item, 'chemistry'); setIsMenuOpen(false); }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EC4899' }}></div> Chemistry
+                                </div>
+                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); onMove(item, 'offer'); setIsMenuOpen(false); }}>
+                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#8B5CF6' }}></div> Offer
+                                </div>
+                                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
+                                <div className="menu-item" onClick={(e) => { e.stopPropagation(); alert('Archived'); setIsMenuOpen(false); }} style={{ color: '#ef4444' }}>
+                                    <Trash2 size={12} /> Archive
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
+
+            <style>{`
+                .menu-item {
+                    padding: 8px 10px;
+                    font-size: 0.85rem;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    border-radius: 6px;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .menu-item:hover {
+                    background: rgba(255,255,255,0.08);
+                    color: white;
+                }
+                .icon-btn:hover {
+                    background: rgba(255,255,255,0.05);
+                }
+            `}</style>
 
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>{item.role}</div>
 

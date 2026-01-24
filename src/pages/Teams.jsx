@@ -1,10 +1,39 @@
-import { Users, Plus, Mail, Settings as SettingsIcon, Crown, Zap, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+// ...imports
+import { Users, Plus, Mail, Settings as SettingsIcon, Crown, Zap, Calendar, TrendingUp, AlertCircle, MoreVertical, Trash2, LogOut, Edit3, X, Lock } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 
 export default function Teams() {
-    const [activeTab, setActiveTab] = useState('my-teams'); // 'my-teams' or 'invitations'
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('my-teams');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Pro Tier check
+    const [tier, setTier] = useState('founder');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchTier = async () => {
+            const { data } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).single();
+            if (data?.subscription_tier) setTier(data.subscription_tier);
+            setLoading(false);
+        };
+        fetchTier();
+    }, [user]);
+
+    const isPro = ['founder', 'pro', 'certified', 'accelerator'].includes(tier);
+
+    // Create Team Form State
+    const [newTeamName, setNewTeamName] = useState('');
+    const [newTeamDesc, setNewTeamDesc] = useState('');
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteList, setInviteList] = useState([]);
+
     const [myTeams, setMyTeams] = useState([
         {
             id: '1',
@@ -12,9 +41,10 @@ export default function Teams() {
             role: 'Co-Founder',
             members: 2,
             status: 'active',
-            vesting: 65, // percentage vested
+            vesting: 65,
             lastActive: '2 hours ago',
-            avatar: '🚀'
+            avatar: '🚀',
+            description: 'Building the next gen IDE.'
         },
         {
             id: '2',
@@ -24,7 +54,8 @@ export default function Teams() {
             status: 'active',
             vesting: 25,
             lastActive: '1 day ago',
-            avatar: '🛠️'
+            avatar: '🛠️',
+            description: ' Stealth AI project.'
         }
     ]);
 
@@ -49,7 +80,8 @@ export default function Teams() {
             status: 'active',
             vesting: 0,
             lastActive: 'Just now',
-            avatar: inv.avatar || '✨'
+            avatar: inv.avatar || '✨',
+            description: 'Joined via invitation.'
         }]);
         setInvitations(invitations.filter(i => i.id !== inv.id));
         setActiveTab('my-teams');
@@ -60,19 +92,44 @@ export default function Teams() {
     };
 
     const handleCreateTeam = () => {
-        const name = prompt("Enter Team Name:");
-        if (name) {
-            setMyTeams([...myTeams, {
-                id: Date.now().toString(),
-                name: name,
-                role: 'Founder',
-                members: 1,
-                status: 'active',
-                vesting: 0,
-                lastActive: 'Just now',
-                avatar: '🌱'
-            }]);
+        if (!isPro) {
+            if (window.confirm("Team Creation is a Pro feature. Upgrade to unlock?")) {
+                navigate('/upgrade');
+            }
+            return;
         }
+        setNewTeamName('');
+        setNewTeamDesc('');
+        setInviteList([]);
+        setIsModalOpen(true);
+    };
+
+    const addInvite = () => {
+        if (inviteEmail && !inviteList.includes(inviteEmail)) {
+            setInviteList([...inviteList, inviteEmail]);
+            setInviteEmail('');
+        }
+    };
+
+    const removeInvite = (email) => {
+        setInviteList(inviteList.filter(e => e !== email));
+    };
+
+    const submitCreateTeam = () => {
+        if (!newTeamName.trim()) return;
+
+        setMyTeams([...myTeams, {
+            id: Date.now().toString(),
+            name: newTeamName,
+            role: 'Founder',
+            members: 1 + inviteList.length,
+            status: 'active',
+            vesting: 0,
+            lastActive: 'Just now',
+            avatar: '🌱',
+            description: newTeamDesc || 'No description'
+        }]);
+        setIsModalOpen(false);
     };
 
     return (
@@ -86,9 +143,13 @@ export default function Teams() {
                         Manage your founding teams and collaborations.
                     </p>
                 </div>
-                <button className="btn-primary" onClick={handleCreateTeam} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Plus size={18} />
-                    Create Team
+                <button
+                    className={isPro ? "btn-primary" : "btn-ghost"}
+                    onClick={handleCreateTeam}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: isPro ? 1 : 0.7 }}
+                >
+                    {isPro ? <Plus size={18} /> : <Lock size={16} />}
+                    {isPro ? "Create Team" : "Unlock Team Creation"}
                 </button>
             </header>
 
@@ -145,6 +206,95 @@ export default function Teams() {
                     )}
                 </div>
             )}
+
+            {/* Create Team Modal */}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+                    }} onClick={() => setIsModalOpen(false)}>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ width: '500px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Users size={24} color="var(--accent-primary)" />
+                                Create New Team
+                            </h3>
+
+                            {/* Team Name */}
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Team Name *</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    className="glass-input"
+                                    placeholder="e.g. Stealth AI, Project X..."
+                                    value={newTeamName}
+                                    onChange={e => setNewTeamName(e.target.value)}
+                                    style={{ width: '100%', fontSize: '1rem' }}
+                                />
+                            </div>
+
+                            {/* Description */}
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Pitch / Description</label>
+                                <textarea
+                                    className="glass-input"
+                                    placeholder="What are you building? Keep it short."
+                                    value={newTeamDesc}
+                                    onChange={e => setNewTeamDesc(e.target.value)}
+                                    style={{ width: '100%', fontSize: '0.9rem', minHeight: '80px', fontFamily: 'inherit' }}
+                                />
+                            </div>
+
+                            {/* Invite Members */}
+                            <div style={{ marginBottom: '32px' }}>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Invite Co-Founders</label>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                                    <input
+                                        type="email"
+                                        className="glass-input"
+                                        placeholder="founder@email.com"
+                                        value={inviteEmail}
+                                        onChange={e => setInviteEmail(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && addInvite()}
+                                        style={{ flex: 1, fontSize: '0.9rem' }}
+                                    />
+                                    <button className="btn-secondary" onClick={addInvite}>
+                                        Add
+                                    </button>
+                                </div>
+                                {/* Invite List */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                    {inviteList.map(email => (
+                                        <div key={email} className="tag" style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '6px' }}>
+                                            {email}
+                                            <div onClick={() => removeInvite(email)} style={{ cursor: 'pointer', display: 'flex' }}>
+                                                <X size={12} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={submitCreateTeam}>
+                                    Launch Team
+                                </button>
+                                <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setIsModalOpen(false)}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -183,11 +333,13 @@ function TabButton({ active, onClick, label, count }) {
 }
 
 function TeamCard({ team }) {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
     return (
         <Link to={`/studio/${team.id}`} style={{ textDecoration: 'none' }}>
             <motion.div
                 className="saas-panel hover-glass"
-                style={{ padding: '24px', cursor: 'pointer' }}
+                style={{ padding: '24px', cursor: 'pointer', position: 'relative' }}
                 whileHover={{ x: 4 }}
             >
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
@@ -226,6 +378,9 @@ function TeamCard({ team }) {
                                 </span>
                             )}
                         </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
+                            {team.description}
+                        </p>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                             <Crown size={14} color="var(--accent-primary)" />
@@ -265,27 +420,66 @@ function TeamCard({ team }) {
                     </div>
 
                     {/* Actions */}
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <Link to={`/studio/${team.id}`}>
                             <button
                                 className="btn-primary"
-                                style={{ padding: '10px 20px', height: '100%' }}
+                                style={{ padding: '10px 20px', height: '40px' }}
                             >
                                 <Zap size={16} style={{ marginRight: '8px' }} />
-                                Open Studio
+                                Studio
                             </button>
                         </Link>
-                        <button
-                            className="btn-ghost"
-                            style={{ padding: '10px 12px' }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                alert('Settings panel would open here');
-                            }}
-                        >
-                            <SettingsIcon size={16} />
-                        </button>
+
+                        {/* Settings Menu Trigger */}
+                        <div style={{ position: 'relative' }} onClick={e => e.preventDefault()}>
+                            <button
+                                className="btn-ghost"
+                                style={{ padding: '10px 12px', height: '40px' }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setIsSettingsOpen(!isSettingsOpen);
+                                }}
+                            >
+                                <SettingsIcon size={16} />
+                            </button>
+
+                            {/* Dropdown */}
+                            <AnimatePresence>
+                                {isSettingsOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            right: 0,
+                                            marginTop: '8px',
+                                            background: '#1c1c24',
+                                            border: '1px solid var(--border-subtle)',
+                                            borderRadius: '12px',
+                                            width: '180px',
+                                            zIndex: 50,
+                                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                                            overflow: 'hidden'
+                                        }}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <Edit3 size={14} /> Rename
+                                        </div>
+                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <Users size={14} /> Manage Members
+                                        </div>
+                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444' }}>
+                                            <LogOut size={14} /> Leave Team
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </div>
             </motion.div>

@@ -18,6 +18,13 @@ export default function Dashboard() {
     });
     const [loading, setLoading] = useState(true);
 
+    // Mock Milestones Data (In real app, fetch from 'milestones' table)
+    const [milestones, setMilestones] = useState([
+        { id: 1, icon: CheckCircle2, label: "FlowState 1-year cliff", date: "In 2 months", color: "#10B981" },
+        { id: 2, icon: Calendar, label: "DevTool X vesting", date: "In 9 months", color: "var(--accent-primary)" },
+        { id: 3, icon: AlertCircle, label: "83(b) deadline", date: "In 12 days", color: "#F59E0B" }
+    ]);
+
     useEffect(() => {
         if (!user) return;
 
@@ -41,15 +48,24 @@ export default function Dashboard() {
                 if (teamError) throw teamError;
 
                 // Format teams for display
-                const formattedTeams = teamData.map(item => ({
-                    id: item.teams.id,
-                    name: item.teams.name,
-                    avatar: item.teams.avatar_url || '🚀', // Default avatar
-                    members: 1, // Placeholder until we count members per team
-                    vesting: Math.floor(Math.random() * 100), // Placeholder logic
-                    lastActive: new Date(item.teams.created_at).toLocaleDateString(),
-                    status: 'active'
-                }));
+                const formattedTeams = teamData.map(item => {
+                    // Calculate mock vesting based on created_at
+                    const createdAt = new Date(item.teams.created_at);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - createdAt);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const vesting = Math.min(100, Math.floor((diffDays / 365) * 25)); // 4 year vesting assumption
+
+                    return {
+                        id: item.teams.id,
+                        name: item.teams.name,
+                        avatar: item.teams.avatar_url || '🚀',
+                        members: 1, // Placeholder until we count members per team
+                        vesting: vesting,
+                        lastActive: new Date(item.teams.created_at).toLocaleDateString(),
+                        status: 'active'
+                    };
+                });
 
                 setTeams(formattedTeams);
 
@@ -59,11 +75,15 @@ export default function Dashboard() {
                     .select('*', { count: 'exact', head: true })
                     .eq('owner_id', user.id);
 
+                // Calculate Avg Vesting
+                const totalVesting = formattedTeams.reduce((acc, curr) => acc + curr.vesting, 0);
+                const avgVesting = formattedTeams.length > 0 ? Math.floor(totalVesting / formattedTeams.length) : 0;
+
                 setStats({
                     teamCount: formattedTeams.length,
-                    activeSessions: formattedTeams.length > 0 ? 1 : 0, // Mock active session if team exists
+                    activeSessions: formattedTeams.length > 0 ? 1 : 0,
                     openMatches: matchesCount || 0,
-                    avgVesting: 45 // Placeholder
+                    avgVesting: avgVesting
                 });
 
             } catch (error) {
@@ -89,7 +109,7 @@ export default function Dashboard() {
                         Dashboard
                     </h1>
                     <p style={{ color: 'var(--text-secondary)' }}>
-                        Good afternoon, Louis. Your teams are building.
+                        Good afternoon, {user?.email?.split('@')[0] || 'Builder'}. Your teams are building.
                     </p>
                 </div>
 
@@ -123,7 +143,7 @@ export default function Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
                     <StatCard icon={Users} label="Your Teams" value={stats.teamCount.toString()} linkTo="/teams" />
                     <StatCard icon={Zap} label="Active Sessions" value={stats.activeSessions.toString()} linkTo={teams.length > 0 ? `/session/${teams[0].id}` : '/teams'} />
-                    <StatCard icon={GitPullRequest} label="Open Matches" value={stats.openMatches.toString()} linkTo="/pipeline?tab=conversations" />
+                    <StatCard icon={GitPullRequest} label="Open Matches" value={stats.openMatches.toString()} linkTo="/pipeline?tab=matches" />
                     <StatCard icon={TrendingUp} label="Avg. Vesting" value={`${stats.avgVesting}%`} linkTo="/teams" />
                 </div>
 
@@ -140,9 +160,13 @@ export default function Dashboard() {
                                 </Link>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {teams.map(team => (
+                                {teams.length > 0 ? teams.map(team => (
                                     <TeamQuickCard key={team.id} team={team} />
-                                ))}
+                                )) : (
+                                    <div className="saas-panel" style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                        No active teams found. <Link to="/teams" style={{ color: 'var(--accent-primary)' }}>Create one</Link>.
+                                    </div>
+                                )}
                             </div>
                         </section>
 
@@ -208,7 +232,7 @@ export default function Dashboard() {
                                 Team Health
                             </h3>
                             <div className="saas-panel" style={{ padding: '24px' }}>
-                                <HealthMetric label="Overall Vesting Progress" value="45%" color="#10B981" />
+                                <HealthMetric label="Overall Vesting Progress" value={`${stats.avgVesting}%`} color="#10B981" />
                                 <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '16px 0' }} />
                                 <HealthMetric label="Active Contributions This Week" value="87%" color="var(--accent-primary)" />
                                 <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '16px 0' }} />
@@ -222,9 +246,9 @@ export default function Dashboard() {
                                 Upcoming Milestones
                             </h3>
                             <div className="saas-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <MilestoneItem icon={CheckCircle2} label="FlowState 1-year cliff" date="In 2 months" color="#10B981" />
-                                <MilestoneItem icon={Calendar} label="DevTool X vesting" date="In 9 months" color="var(--accent-primary)" />
-                                <MilestoneItem icon={AlertCircle} label="83(b) deadline" date="In 12 days" color="#F59E0B" />
+                                {milestones.map(m => (
+                                    <MilestoneItem key={m.id} icon={m.icon} label={m.label} date={m.date} color={m.color} />
+                                ))}
                             </div>
                         </section>
 

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 
 export default function LiveSession() {
     const { teamId } = useParams();
@@ -31,25 +32,121 @@ export default function LiveSession() {
         return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // --- Mock Data ---
-    const [tasks, setTasks] = useState([
-        { id: 1, title: 'Setup Postgres Database (Supabase)', type: 'Tech', assignee: 'Alex V.', status: 'todo' },
-        { id: 2, title: 'Finalize Brand Colors (Figma)', type: 'Design', assignee: 'You', status: 'todo' },
-        { id: 3, title: 'Agree on Delaware C-Corp vs. LLC', type: 'Legal', assignee: 'Shared', status: 'todo' },
-        { id: 4, title: 'Build Login Component (Next.js 14)', type: 'Frontend', assignee: 'You', status: 'progress', liveStatus: 'Editing auth.tsx' },
-        { id: 5, title: "Draft 'Problem Slide' for Pitch Deck", type: 'Strategy', assignee: 'Shared', status: 'progress' },
-        { id: 6, title: 'Repo Initialized (GitHub)', type: 'Infra', assignee: 'Alex V.', status: 'shipped', time: '2h ago' },
-        { id: 7, title: 'Domain Purchased (lemonpay.io)', type: 'Marketing', assignee: 'You', status: 'shipped', time: '1h ago' },
-    ]);
+    // --- Real Data State ---
+    const [tasks, setTasks] = useState([]);
+    const [feed, setFeed] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const [feed, setFeed] = useState([
-        { id: 1, type: 'system', user: 'System', content: '🎉 Milestone Unlocked: "First Feature Shipped"', time: '10:22 AM', icon: Zap, color: '#F59E0B' },
-        { id: 2, type: 'chat', user: 'You', content: 'We are live. Login works.', time: '10:21 AM' },
-        { id: 3, type: 'system', user: 'Vercel', content: '🚀 Deployment Successful (preview-8a7d)', time: '10:20 AM', icon: ExternalLink, color: '#10B981' },
-        { id: 4, type: 'chat', user: 'You', content: 'On it. Checking Vercel logs.', time: '10:18 AM' },
-        { id: 5, type: 'chat', user: 'Alex V.', content: 'Yo, check the PR. I think the middleware is blocking the dashboard route.', time: '10:17 AM' },
-        { id: 6, type: 'system', user: 'GitHub', content: '🐙 Alex V. pushed to main: "feat: added supabase auth hooks"', meta: '+120 / -45 lines', time: '10:15 AM', icon: GithubIcon, color: '#6366F1' },
-    ]);
+    // Add Task State
+    const [isAddingTask, setIsAddingTask] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+
+    // Shared Notes State
+    const [notes, setNotes] = useState('');
+    const [notesId, setNotesId] = useState(null);
+    const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+    // Credentials State
+    const [credentials, setCredentials] = useState([]);
+    const [isAddingCredential, setIsAddingCredential] = useState(false);
+    const [newCredTitle, setNewCredTitle] = useState('');
+    const [newCredValue, setNewCredValue] = useState('');
+
+    // Debounced Save for Notes (Simple Async)
+    const updateNotes = async (newContent) => {
+        setNotes(newContent);
+        setIsSavingNotes(true);
+        // In a real app we would use useDebounce, but here we just upsert async
+        const { data } = await supabase
+            .from('shared_notes')
+            .upsert({
+                ...(notesId ? { id: notesId } : {}),
+                team_id: teamId,
+                content: newContent,
+                last_updated_by: (await supabase.auth.getUser()).data.user?.id
+            })
+            .select()
+            .single();
+
+        if (data) setNotesId(data.id);
+        setIsSavingNotes(false);
+    };
+
+    // --- Supabase Subscription ---
+    useEffect(() => {
+        // 1. Initial Fetch
+        const fetchData = async () => {
+            setLoading(true);
+            const { data: tasksData } = await supabase
+                .from('tasks')
+                .select(`*, assignee:assignee_id(name)`) // Join to get name
+                .eq('team_id', teamId);
+
+            const { data: feedData } = await supabase
+                .from('activity_logs')
+                .select(`*, user:user_id(name)`)
+                .eq('team_id', teamId)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            const { data: notesData } = await supabase
+                .from('shared_notes')
+                .select('*')
+                .eq('team_id', teamId)
+                .single();
+
+            const { data: credsData } = await supabase
+                .from('credentials')
+                .select('*')
+                .eq('team_id', teamId);
+
+            if (tasksData) setTasks(tasksData.map(t => ({ ...t, assignee: t.assignee?.name || 'Unassigned' })));
+            if (feedData) setFeed(feedData.map(f => ({
+                id: f.id,
+                user: f.user?.name || 'System',
+                content: f.description,
+                time: new Date(f.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                type: f.action_type === 'system' ? 'system' : 'chat',
+                // Mock icons/colors for MVP based on action type
+                color: f.action_type === 'system' ? '#F59E0B' : undefined,
+                icon: f.action_type === 'system' ? Zap : undefined
+            })));
+
+            if (notesData) {
+                setNotes(notesData.content);
+                setNotesId(notesData.id);
+            } else {
+                setNotes(`# MVP Requirements\n\n1. Built with CoVibr.\n2. ...`);
+            }
+            if (credsData) setCredentials(credsData);
+
+            setLoading(false);
+        };
+
+        fetchData();
+
+        // 2. Realtime Subscription
+        const channel = supabase
+            .channel('room-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `team_id=eq.${teamId}` }, (payload) => {
+                console.log('Task Change:', payload);
+                fetchData(); // Simple re-fetch for now to handle joins
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs', filter: `team_id=eq.${teamId}` }, (payload) => {
+                const newLog = payload.new;
+                fetchData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'shared_notes', filter: `team_id=eq.${teamId}` }, (payload) => {
+                if (payload.new && payload.new.content !== notes) {
+                    setNotes(payload.new.content);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [teamId]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 100px)', gap: '20px' }}>
@@ -117,29 +214,167 @@ export default function LiveSession() {
                                     exit={{ opacity: 0, y: -10 }}
                                     style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', height: '100%' }}
                                 >
-                                    <KanbanColumn title="To Do" tasks={tasks.filter(t => t.status === 'todo')} color="var(--text-tertiary)" />
+                                    <KanbanColumn
+                                        title="To Do"
+                                        tasks={tasks.filter(t => t.status === 'todo')}
+                                        color="var(--text-tertiary)"
+                                        onAddTask={() => setIsAddingTask(true)}
+                                    />
                                     <KanbanColumn title="In Progress" tasks={tasks.filter(t => t.status === 'progress')} color="var(--accent-primary)" active />
                                     <KanbanColumn title="Shipped" tasks={tasks.filter(t => t.status === 'shipped')} color="#10B981" />
+                                </motion.div>
+                            )}
+
+                            {/* Add Task Overlay */}
+                            {isAddingTask && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '20%', left: '33%', transform: 'translateX(-50%)',
+                                        width: '300px',
+                                        background: '#151515',
+                                        border: '1px solid var(--accent-primary)',
+                                        borderRadius: '12px',
+                                        padding: '16px',
+                                        zIndex: 50,
+                                        boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+                                    }}
+                                >
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '8px' }}>New Task</h4>
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        if (!newTaskTitle.trim()) return;
+
+                                        // 1. Insert Task
+                                        const { error } = await supabase.from('tasks').insert([{
+                                            team_id: teamId,
+                                            title: newTaskTitle,
+                                            status: 'todo',
+                                            type: 'General',
+                                            // Fallback for user ID if auth is tricky in preview
+                                            assignee_id: (await supabase.auth.getUser()).data.user?.id
+                                        }]);
+
+                                        if (!error) {
+                                            // 2. Log Activity
+                                            await supabase.from('activity_logs').insert([{
+                                                team_id: teamId,
+                                                user_id: (await supabase.auth.getUser()).data.user?.id,
+                                                action_type: 'task_created',
+                                                description: `Added task: "${newTaskTitle}"`
+                                            }]);
+                                            setNewTaskTitle('');
+                                            setIsAddingTask(false);
+                                        }
+                                    }}>
+                                        <input
+                                            autoFocus
+                                            className="glass-input"
+                                            placeholder="Task title..."
+                                            value={newTaskTitle}
+                                            onChange={e => setNewTaskTitle(e.target.value)}
+                                            style={{ marginBottom: '8px' }}
+                                        />
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                            <button type="button" className="btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setIsAddingTask(false)}>Cancel</button>
+                                            <button type="submit" className="btn-primary" style={{ fontSize: '0.8rem' }}>Create</button>
+                                        </div>
+                                    </form>
                                 </motion.div>
                             )}
 
                             {activeTab === 'notes' && (
                                 <motion.div key="notes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                                     <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px' }}>Product Requirements Document (Live)</h2>
-                                    <textarea
-                                        className="glass-input"
-                                        style={{ flex: 1, resize: 'none', lineHeight: 1.6, fontSize: '0.95rem' }}
-                                        defaultValue={`# MVP Requirements (LemonPay.io)\n\n1. User can sign up via Supabase Auth.\n2. User can add a credit card (Stripe Elements).\n3. User sees 'Success' screen/dog animation.\n\n## Constraints\n- NO landing page builder (hand-code).\n- NO extra features (no search, no profile).\n- MUST be mobile responsive.`}
-                                    />
+                                    <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                        <textarea
+                                            className="glass-input"
+                                            style={{ flex: 1, resize: 'none', lineHeight: 1.6, fontSize: '0.95rem' }}
+                                            value={notes}
+                                            onChange={(e) => updateNotes(e.target.value)}
+                                            placeholder="Start capturing requirements..."
+                                        />
+                                        {isSavingNotes && (
+                                            <div style={{ position: 'absolute', bottom: '12px', right: '12px', fontSize: '0.7rem', color: 'var(--accent-primary)', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                Saving...
+                                            </div>
+                                        )}
+                                    </div>
                                 </motion.div>
                             )}
 
                             {activeTab === 'vault' && (
                                 <motion.div key="vault" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Team Secrets</h3>
+                                        <button
+                                            className="btn-ghost"
+                                            style={{ fontSize: '0.8rem' }}
+                                            onClick={() => setIsAddingCredential(true)}
+                                        >
+                                            + Add Secret
+                                        </button>
+                                    </div>
+
+                                    {isAddingCredential && (
+                                        <div className="saas-panel" style={{ padding: '16px', marginBottom: '16px', border: '1px solid var(--accent-primary)' }}>
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                if (!newCredTitle || !newCredValue) return;
+
+                                                await supabase.from('credentials').insert([{
+                                                    team_id: teamId,
+                                                    title: newCredTitle,
+                                                    value: newCredValue,
+                                                    is_link: newCredValue.startsWith('http')
+                                                }]);
+
+                                                // Log it
+                                                await supabase.from('activity_logs').insert([{
+                                                    team_id: teamId,
+                                                    user_id: (await supabase.auth.getUser()).data.user?.id,
+                                                    action_type: 'credential_added',
+                                                    description: `Added secret: "${newCredTitle}"`
+                                                }]);
+
+                                                setNewCredTitle('');
+                                                setNewCredValue('');
+                                                setIsAddingCredential(false);
+                                            }}>
+                                                <input
+                                                    className="glass-input"
+                                                    placeholder="Key Name (e.g. Stripe Pub Key)"
+                                                    value={newCredTitle}
+                                                    onChange={e => setNewCredTitle(e.target.value)}
+                                                    style={{ marginBottom: '8px', fontSize: '0.9rem' }}
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    className="glass-input"
+                                                    placeholder="Value (e.g. pk_test_...)"
+                                                    value={newCredValue}
+                                                    onChange={e => setNewCredValue(e.target.value)}
+                                                    style={{ marginBottom: '12px', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                                                />
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                                    <button type="button" className="btn-ghost" onClick={() => setIsAddingCredential(false)}>Cancel</button>
+                                                    <button type="submit" className="btn-primary">Safe Save</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    )}
+
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                                        <VaultCard title="Stripe Public Key" value="pk_test_51Mz..." />
-                                        <VaultCard title="Supabase URL" value="https://xyz.supabase.co" />
-                                        <VaultCard title="Figma Design File" value="figma.com/file/..." isLink />
+                                        {credentials.length === 0 && !isAddingCredential && (
+                                            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
+                                                No shared secrets yet. Add API keys or links here.
+                                            </div>
+                                        )}
+                                        {credentials.map(cred => (
+                                            <VaultCard key={cred.id} title={cred.title} value={cred.value} isLink={cred.is_link} />
+                                        ))}
                                     </div>
                                 </motion.div>
                             )}
@@ -246,7 +481,7 @@ function ModuleTab({ active, onClick, icon: Icon, label }) {
     )
 }
 
-function KanbanColumn({ title, tasks, color, active }) {
+function KanbanColumn({ title, tasks, color, active, onAddTask }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: `2px solid ${active ? color : 'var(--border-subtle)'}` }}>
@@ -254,7 +489,14 @@ function KanbanColumn({ title, tasks, color, active }) {
                     <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{title.toUpperCase()}</h3>
                     <div style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-tertiary)' }}>{tasks.length}</div>
                 </div>
-                <button style={{ color: 'var(--text-tertiary)', border: 'none', background: 'none' }}><Plus size={16} /></button>
+                {onAddTask && (
+                    <button
+                        onClick={onAddTask}
+                        style={{ color: 'var(--text-tertiary)', border: 'none', background: 'none', cursor: 'pointer' }}
+                    >
+                        <Plus size={16} />
+                    </button>
+                )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {tasks.map(task => (

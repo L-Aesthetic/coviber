@@ -1,4 +1,7 @@
+// ... imports
 import { useState } from 'react';
+import { supabase } from '../lib/supabaseClient'; // Import supabase
+import { useAuth } from '../context/AuthProvider'; // Import auth
 import {
     Check, Zap, Shield, Rocket, Lock,
     CreditCard, Info, Star, ChevronRight,
@@ -9,15 +12,42 @@ import { useNavigate } from 'react-router-dom';
 
 export default function UpgradePage() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [selectedPlan, setSelectedPlan] = useState('certified');
     const [isSuccess, setIsSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [cardData, setCardData] = useState({ number: '', exp: '', cvc: '', name: 'Louis Lubin' });
     const billingCycle = 'yearly';
 
     const plans = {
-        founder: { name: 'Founder', price: 0, features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats'] },
-        certified: { name: 'Certified', price: 399, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] },
+        founder: { name: 'Founder (Limited)', price: 0, originalPrice: 49, features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats', 'Early Access Badge'] },
+        pro: { name: 'Pro Member', price: 49, billingCycle: '/mo', features: ['Unlimited Matches', 'Full Chemistry Tests', 'Deep Vibe Analytics', 'Priority Support'] },
+        certified: { name: 'Certified Pair', price: 399, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] },
         accelerator: { name: 'Accelerator', price: 'Custom', features: ['Cohort Dashboard', 'Batch Analytics', 'Risk Heatmaps', 'Dedicated Support'] }
+    };
+
+    const handleUpgrade = async (planKey) => {
+        if (!user) return alert("Please log in to upgrade.");
+        setLoading(true);
+        setSelectedPlan(planKey);
+
+        // Mocking Stripe latency
+        await new Promise(r => setTimeout(r, 1500));
+
+        try {
+            // Update profile with new tier
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subscription_tier: planKey })
+                .eq('id', user.id);
+
+            setIsSuccess(true);
+        } catch (err) {
+            console.error(err);
+            setIsSuccess(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (isSuccess) {
@@ -26,6 +56,7 @@ export default function UpgradePage() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Same UI as before ... */}
             {/* Background Decorations */}
             <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', background: 'rgba(99, 102, 241, 0.1)', filter: 'blur(120px)', borderRadius: '50%' }}></div>
             <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', background: 'rgba(168, 85, 247, 0.1)', filter: 'blur(120px)', borderRadius: '50%' }}></div>
@@ -72,30 +103,39 @@ export default function UpgradePage() {
                     </div>
 
                     {/* Plan Cards */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <PlanCard
                             active={selectedPlan === 'founder'}
                             onClick={() => setSelectedPlan('founder')}
-                            title="Founder"
-                            price="Free"
-                            description="Vibe Quiz & basic matching."
-                            muted
+                            title="Founder's Club"
+                            price="$0"
+                            originalPrice="$49/mo"
+                            description="First 100 Users Only. Full Access."
+                            limited
+                        />
+                        <PlanCard
+                            active={selectedPlan === 'pro'}
+                            onClick={() => setSelectedPlan('pro')}
+                            title="Pro Member"
+                            price="$49"
+                            billingCycle="/mo"
+                            description="Standard monthly subscription."
                         />
                         <PlanCard
                             active={selectedPlan === 'certified'}
                             onClick={() => setSelectedPlan('certified')}
                             title="Certified Pair"
                             price="$399"
-                            description="Full Chemistry Test + Investor Report."
-                            popular
+                            description="One-time validation + Report."
+                            isOneTime
                         />
                         <PlanCard
                             active={selectedPlan === 'accelerator'}
                             onClick={() => setSelectedPlan('accelerator')}
                             title="Accelerator"
                             price="Custom"
-                            description="Cohort-wide risk analytics."
-                            oneTime
+                            description="Cohort analytics."
+                            muted
                         />
                     </div>
                 </div>
@@ -193,9 +233,11 @@ export default function UpgradePage() {
                     </div>
 
                     {/* CTA */}
+                    {/* CTA */}
                     <button
-                        onClick={() => setIsSuccess(true)}
+                        onClick={() => handleUpgrade(selectedPlan)}
                         className="btn-primary"
+                        disabled={loading}
                         style={{
                             width: '100%',
                             height: '56px',
@@ -205,7 +247,7 @@ export default function UpgradePage() {
                             marginBottom: '24px'
                         }}
                     >
-                        Unlock Full Access
+                        {loading ? 'Processing...' : `Unlock ${plans[selectedPlan].name}`}
                     </button>
 
                     {/* Trust Signals */}
@@ -226,7 +268,7 @@ export default function UpgradePage() {
     );
 }
 
-function PlanCard({ active, onClick, title, price, description, popular, oneTime, muted }) {
+function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, description, popular, limited, isOneTime, muted }) {
     return (
         <motion.div
             whileHover={{ y: -4 }}
@@ -240,47 +282,42 @@ function PlanCard({ active, onClick, title, price, description, popular, oneTime
                 transition: 'all 0.3s',
                 opacity: muted ? 0.6 : 1,
                 position: 'relative',
-                paddingTop: popular || oneTime ? '36px' : '20px' // Add extra padding when badges are present
+                paddingTop: popular || limited || isOneTime ? '36px' : '20px',
+                minHeight: '140px'
             }}
         >
             {popular && (
                 <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--accent-primary)',
-                    color: 'white',
-                    fontSize: '0.6rem',
-                    fontWeight: 900,
-                    padding: '3px 10px',
-                    borderRadius: '4px',
-                    textTransform: 'uppercase',
-                    whiteSpace: 'nowrap'
+                    position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'var(--accent-primary)', color: 'white', fontSize: '0.6rem', fontWeight: 900,
+                    padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap'
                 }}>Most Popular</div>
             )}
-            {oneTime && (
+            {limited && (
                 <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: '#F59E0B',
-                    color: '#000',
-                    fontSize: '0.6rem',
-                    fontWeight: 900,
-                    padding: '3px 10px',
-                    borderRadius: '4px',
-                    textTransform: 'uppercase',
-                    whiteSpace: 'nowrap'
-                }}>Add-on</div>
+                    position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)',
+                    background: '#EF4444', color: 'white', fontSize: '0.6rem', fontWeight: 900,
+                    padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap'
+                }}>First 100 Only</div>
+            )}
+            {isOneTime && (
+                <div style={{
+                    position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)',
+                    background: '#F59E0B', color: '#000', fontSize: '0.6rem', fontWeight: 900,
+                    padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap'
+                }}>One-Time</div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h4>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>{price}</div>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h4>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{description}</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '4px' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{price}</div>
+                {billingCycle && <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{billingCycle}</div>}
+                {originalPrice && <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textDecoration: 'line-through' }}>{originalPrice}</div>}
+            </div>
+
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{description}</p>
         </motion.div>
     );
 }

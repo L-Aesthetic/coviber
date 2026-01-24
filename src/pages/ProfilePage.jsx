@@ -13,6 +13,7 @@ export default function ProfilePage() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
 
     // Initial Empty/Skeleton State
     const [profile, setProfile] = useState({
@@ -42,7 +43,10 @@ export default function ProfilePage() {
             try {
                 // Determine which ID to fetch
                 const targetId = isSelf ? user?.id : id;
-                if (!targetId) return;
+                if (!targetId) {
+                    setLoading(false);
+                    return;
+                }
 
                 const { data, error } = await supabase
                     .from('profiles')
@@ -51,28 +55,23 @@ export default function ProfilePage() {
                     .single();
 
                 if (error) {
-                    // If profile doesn't exist yet (new user), we might need to rely on the trigger content or just show defaults
+                    // If profile doesn't exist yet (new user)
                     if (error.code === 'PGRST116') {
-                        console.warn("Profile not found, using defaults");
-                        // For now, keep defaults if it's a new user who hasn't set anything
-                        if (isSelf) {
-                            setProfile(prev => ({ ...prev, name: user.email.split('@')[0], email: user.email }));
-                        }
+                        // Do nothing, just stop loading. 
+                        // Render will show "Create Profile" because profile.name is empty.
                     } else {
                         throw error;
                     }
                 } else if (data) {
-                    // Map DB fields to State fields if they differ, or use spread if they match
+                    // Map DB fields to State fields
                     setProfile({
                         ...data,
-                        // Ensure arrays are initialized
                         tags: data.tags || [],
                         projects: data.projects || [],
-                        antiPitch: data.anti_pitch || [], // Map snake_case to camelCase
+                        antiPitch: data.anti_pitch || [],
                         vouches: data.vouches || [],
                         availability: data.avail_status || "Full-time",
                         commStyle: data.comm_style || "",
-                        // Mock vibe data if empty for now
                         vibe_data: data.vibe_data || [
                             { subject: 'Risk', A: 120, fullMark: 150 },
                             { subject: 'Pace', A: 98, fullMark: 150 },
@@ -92,47 +91,16 @@ export default function ProfilePage() {
 
         if (user || id) {
             fetchProfile();
+        } else {
+            // If auth is done but no user, stop loading
+            const timer = setTimeout(() => setLoading(false), 2000);
+            return () => clearTimeout(timer);
         }
     }, [user, id, isSelf]);
 
-    const handleSave = async () => {
-        try {
-            const updates = {
-                id: user.id,
-                name: profile.name,
-                headline: profile.headline,
-                location: profile.location,
-                bio: profile.bio,
-                tags: profile.tags,
-                projects: profile.projects,
-                anti_pitch: profile.antiPitch, // camel to snake
-                superpower: profile.superpower,
-                kryptonite: profile.kryptonite,
-                comm_style: profile.commStyle,
-                trigger_warning: profile.triggerWarning,
-                avail_status: profile.availability,
-                updated_at: new Date(),
-            };
+    // ... handleSave ...
 
-            const { error } = await supabase.from('profiles').upsert(updates);
-            if (error) throw error;
-            setIsEditing(false);
-            alert("Profile saved successfully!");
-        } catch (error) {
-            alert('Error updating profile: ' + error.message);
-        }
-    };
-
-    // Mock Data for Radar
-    const vibeData = [
-        { subject: 'Risk', A: 120, fullMark: 150 },
-        { subject: 'Pace', A: 98, fullMark: 150 },
-        { subject: 'Control', A: 86, fullMark: 150 },
-        { subject: 'Optimism', A: 130, fullMark: 150 },
-        { subject: 'Details', A: 60, fullMark: 150 },
-    ];
-
-    if (loading && !profile.name) {
+    if (loading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '100px' }}>
                 <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid rgba(99,102,241,0.3)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%' }}></div>
@@ -140,8 +108,54 @@ export default function ProfilePage() {
         )
     }
 
+    // New User State
+    if (!profile.name && !isEditing) {
+        return (
+            <div style={{ maxWidth: '800px', margin: '60px auto', textAlign: 'center' }}>
+                <div className="saas-panel" style={{ padding: '60px' }}>
+                    <div style={{ width: '80px', height: '80px', background: 'rgba(99,102,241,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                        <Users size={40} color="var(--accent-primary)" />
+                    </div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '16px' }}>Setup Your Founder Profile</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '32px', maxWidth: '500px', margin: '0 auto 32px' }}>
+                        Your profile is your pitch to potential co-founders. Add your bio, experience, and vibe signature to get verified matches.
+                    </p>
+                    <button
+                        className="btn-primary"
+                        style={{ padding: '16px 32px', fontSize: '1.1rem' }}
+                        onClick={() => {
+                            setProfile(prev => ({
+                                ...prev,
+                                name: user?.email?.split('@')[0] || "Founder",
+                                headline: "Ready to Build",
+                                status: "ready",
+                                role: "Founder",
+                                tags: [],
+                                projects: [],
+                                antiPitch: [],
+                                vouches: [],
+                                vibe_data: [
+                                    { subject: 'Risk', A: 100, fullMark: 150 },
+                                    { subject: 'Pace', A: 100, fullMark: 150 },
+                                    { subject: 'Control', A: 100, fullMark: 150 },
+                                    { subject: 'Optimism', A: 100, fullMark: 150 },
+                                    { subject: 'Details', A: 100, fullMark: 150 },
+                                ]
+                            }));
+                            setIsEditing(true);
+                        }}
+                    >
+                        <Edit2 size={20} style={{ marginRight: '10px' }} />
+                        Create My Profile
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
+            {/* ... Header ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <button
                     className="btn-ghost"
@@ -193,16 +207,34 @@ export default function ProfilePage() {
 
                     <div style={{ flex: 1 }}>
                         <div style={{ marginBottom: '16px' }}>
+                            {/* ... Inputs ... */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
                                 {isEditing ? (
                                     <input className="glass-input" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} style={{ fontSize: '2rem', fontWeight: 800, padding: '12px 16px' }} />
                                 ) : (
-                                    <h1 style={{ fontSize: '3rem', fontWeight: 850, letterSpacing: '-0.02em' }}>{profile.name}</h1>
+                                    <h1 style={{ fontSize: '3rem', fontWeight: 850, letterSpacing: '-0.02em', color: profile.name ? 'inherit' : 'var(--text-tertiary)' }}>
+                                        {profile.name || "Your Name"}
+                                    </h1>
                                 )}
 
-                                <div className="tag tag-green" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px' }}>
-                                    <ShieldCheck size={18} /> Verified Ex-Stripe
-                                </div>
+                                {isEditing ? (
+                                    <div
+                                        className={`tag ${profile.verified_at ? 'tag-green' : 'tag-blur'}`}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', cursor: 'pointer' }}
+                                        onClick={() => {
+                                            const newVal = profile.verified_at ? null : 'Stripe'; // Toggle logic
+                                            const company = newVal ? prompt("Verify with which company/identity?", "Ex-Stripe") : null;
+                                            if (newVal && company) setProfile({ ...profile, verified_at: company });
+                                            else setProfile({ ...profile, verified_at: null });
+                                        }}
+                                    >
+                                        <ShieldCheck size={18} /> {profile.verified_at ? `Verified: ${profile.verified_at}` : 'Click to Verify'}
+                                    </div>
+                                ) : (
+                                    <div className={`tag ${profile.verified_at ? 'tag-green' : 'tag-blur'}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px' }}>
+                                        <ShieldCheck size={18} /> {profile.verified_at ? `Verified: ${profile.verified_at}` : 'Get Verified'}
+                                    </div>
+                                )}
                             </div>
 
                             {isEditing ? (
@@ -227,11 +259,31 @@ export default function ProfilePage() {
                             </p>
                         )}
 
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            {profile.tags.map((tag, i) => (
-                                <span key={i} className="tag tag-blue" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>{tag}</span>
-                            ))}
-                        </div>
+                        {isEditing ? (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                    className="glass-input"
+                                    placeholder="Add tag..."
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const val = e.target.value.trim();
+                                            if (val) setProfile({ ...profile, tags: [...profile.tags, val] });
+                                            e.target.value = '';
+                                        }
+                                    }}
+                                    style={{ padding: '6px 12px', width: '150px', fontSize: '0.9rem' }}
+                                />
+                                {(profile.tags || []).map((tag, i) => (
+                                    <span key={i} className="tag tag-blue" onClick={() => setProfile({ ...profile, tags: profile.tags.filter((_, idx) => idx !== i) })} style={{ fontSize: '0.9rem', padding: '6px 14px', cursor: 'pointer' }}>{tag} <XCircle size={12} style={{ marginLeft: '4px' }} /></span>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {(profile.tags || []).map((tag, i) => (
+                                    <span key={i} className="tag tag-blue" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>{tag}</span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -242,6 +294,7 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <section className="saas-panel" style={{ padding: '32px' }}>
                         <h3 className="section-title"><Brain size={20} /> Vibe Signature</h3>
+                        {/* ... Chart code (omitted for brevity, assume unchanged) ... */}
                         <div style={{ height: '300px', width: '100%', margin: '20px 0' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={profile.vibe_data || []}>
@@ -259,22 +312,59 @@ export default function ProfilePage() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
-                            <ManualItem icon={<Zap size={18} />} title="My Superpower" text={profile.superpower} />
-                            <ManualItem icon={<XCircle size={18} />} title="My Kryptonite" text={profile.kryptonite} />
-                            <ManualItem icon={<MessageCircle size={18} />} title="Communication" text={profile.commStyle} />
-                            <ManualItem icon={<AlertTriangle size={18} />} title="Trigger Warning" text={profile.triggerWarning} color="rgba(245, 158, 11, 0.1)" />
+                            {['superpower', 'kryptonite', 'commStyle', 'triggerWarning'].map((field, i) => (
+                                <div key={field} style={{
+                                    padding: '20px', borderRadius: '16px', background: isEditing ? 'rgba(255,255,255,0.05)' : (field === 'triggerWarning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.03)'), border: '1px solid var(--border-subtle)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', color: 'var(--accent-primary)' }}>
+                                        {i === 0 ? <Zap size={18} /> : i === 1 ? <XCircle size={18} /> : i === 2 ? <MessageCircle size={18} /> : <AlertTriangle size={18} />}
+                                        <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            {i === 0 ? 'My Superpower' : i === 1 ? 'My Kryptonite' : i === 2 ? 'Communication' : 'Trigger Warning'}
+                                        </h4>
+                                    </div>
+                                    {isEditing ? (
+                                        <textarea
+                                            className="glass-input"
+                                            value={profile[field] || ''}
+                                            onChange={e => setProfile({ ...profile, [field]: e.target.value })}
+                                            style={{ width: '100%', minHeight: '60px', fontSize: '0.95rem' }}
+                                        />
+                                    ) : (
+                                        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{profile[field]}</p>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </section>
 
                     <section className="saas-panel" style={{ padding: '32px' }}>
                         <h3 className="section-title"><Target size={20} /> What I'm NOT Looking For</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {profile.antiPitch && profile.antiPitch.map((item, i) => (
-                                <div key={i} style={{ display: 'flex', gap: '12px', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                                    <XCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
-                                    <span>{item}</span>
+                            {(profile.antiPitch || []).map((item, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '16px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <XCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+                                        <span>{item}</span>
+                                    </div>
+                                    {isEditing && <XCircle size={16} style={{ cursor: 'pointer', color: 'var(--text-tertiary)' }} onClick={() => setProfile({ ...profile, antiPitch: profile.antiPitch.filter((_, idx) => idx !== i) })} />}
                                 </div>
                             ))}
+                            {isEditing && (
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="Add dealbreaker..."
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                const val = e.target.value.trim();
+                                                if (val) setProfile({ ...profile, antiPitch: [...(profile.antiPitch || []), val] });
+                                                e.target.value = '';
+                                            }
+                                        }}
+                                        style={{ flex: 1 }}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </section>
                 </div>
@@ -284,11 +374,13 @@ export default function ProfilePage() {
                     <section className="saas-panel" style={{ padding: '32px' }}>
                         <h3 className="section-title"><Trophy size={20} /> Trophy Case (Proof of Work)</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                            {profile.projects && profile.projects.map((proj, i) => (
-                                <div key={i} className="saas-panel project-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: proj.isFailure ? '1px dashed rgba(239, 68, 68, 0.3)' : '1px solid var(--border-subtle)' }}>
+                            {(profile.projects || []).map((proj, i) => (
+                                <div key={i} className="saas-panel project-card" style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', border: proj.isFailure ? '1px dashed rgba(239, 68, 68, 0.3)' : '1px solid var(--border-subtle)', position: 'relative' }}>
+                                    {isEditing && <button onClick={() => setProfile({ ...profile, projects: profile.projects.filter((_, idx) => idx !== i) })} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><XCircle size={16} /></button>}
+
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: proj.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: proj.color || '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                                                 {proj.isFailure ? <XCircle size={24} /> : <Github size={24} />}
                                             </div>
                                             <div>
@@ -296,12 +388,33 @@ export default function ProfilePage() {
                                                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>{proj.role} • {proj.outcome}</span>
                                             </div>
                                         </div>
-                                        <ExternalLink size={18} color="var(--text-tertiary)" />
                                     </div>
                                     <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>{proj.desc}</p>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stack: {proj.stack}</div>
                                 </div>
                             ))}
+                            {isEditing && (
+                                <button
+                                    className="btn-ghost"
+                                    style={{ border: '1px dashed var(--border-subtle)', justifyContent: 'center', color: 'var(--text-tertiary)' }}
+                                    onClick={() => {
+                                        const title = prompt("Project Title");
+                                        if (title) {
+                                            const newProj = {
+                                                title,
+                                                role: "Founder",
+                                                outcome: "Active",
+                                                desc: "Description...",
+                                                stack: "React, Node",
+                                                color: "#3b82f6"
+                                            };
+                                            setProfile({ ...profile, projects: [...(profile.projects || []), newProj] });
+                                        }
+                                    }}
+                                >
+                                    + Add Request (Quick)
+                                </button>
+                            )}
                         </div>
                     </section>
 
@@ -313,17 +426,31 @@ export default function ProfilePage() {
                                 <Play size={24} fill="white" color="white" style={{ zIndex: 1 }} />
                                 <div style={{ position: 'absolute', bottom: '12px', left: '12px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '4px 8px', borderRadius: '4px' }}>60s Intro</div>
                             </div>
+                            {isEditing && <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: '8px', textAlign: 'center' }}>Video upload coming soon.</p>}
                         </section>
 
                         <section className="saas-panel" style={{ padding: '24px' }}>
                             <h3 className="section-title" style={{ fontSize: '1rem' }}><FileText size={18} /> Social Proof</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {profile.vouches && profile.vouches.map((vouch, i) => (
-                                    <div key={i}>
+                                {(profile.vouches || []).map((vouch, i) => (
+                                    <div key={i} style={{ position: 'relative' }}>
+                                        {isEditing && <XCircle size={12} style={{ position: 'absolute', top: 0, right: 0, cursor: 'pointer', color: '#ef4444' }} onClick={() => setProfile({ ...profile, vouches: profile.vouches.filter((_, idx) => idx !== i) })} />}
                                         <p style={{ fontSize: '0.9rem', fontStyle: 'italic', color: 'var(--text-secondary)', marginBottom: '8px' }}>"{vouch.text}"</p>
                                         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>— {vouch.name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>({vouch.role})</span></div>
                                     </div>
                                 ))}
+                                {isEditing && (
+                                    <button
+                                        className="btn-ghost"
+                                        style={{ fontSize: '0.8rem', padding: '8px' }}
+                                        onClick={() => {
+                                            const name = prompt("Name of voucher");
+                                            if (name) {
+                                                setProfile({ ...profile, vouches: [...(profile.vouches || []), { name, role: "Peer", text: "Vouch text..." }] });
+                                            }
+                                        }}
+                                    >+ Add Vouch</button>
+                                )}
                             </div>
                         </section>
                     </div>
