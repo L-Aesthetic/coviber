@@ -20,6 +20,7 @@ export default function ProfilePage() {
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(null);
     const [newProject, setNewProject] = useState({ title: '', role: '', desc: '', stack: '' });
     const [newVouch, setNewVouch] = useState({ name: '', role: '', text: '' });
+    const [initialStatus, setInitialStatus] = useState('ready'); // For setup screen
 
     // Initial Empty/Skeleton State
     const [profile, setProfile] = useState({
@@ -166,6 +167,34 @@ export default function ProfilePage() {
                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: '32px', maxWidth: '500px', margin: '0 auto 32px' }}>
                         Your profile is your pitch to potential co-founders. Add your bio, experience, and vibe signature to get verified matches.
                     </p>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px', gap: '16px' }}>
+                        <div
+                            onClick={() => setInitialStatus('ready')}
+                            style={{
+                                padding: '12px 24px', borderRadius: '12px', cursor: 'pointer', border: '2px solid',
+                                borderColor: initialStatus === 'ready' ? '#10B981' : 'transparent',
+                                background: initialStatus === 'ready' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.05)',
+                                color: initialStatus === 'ready' ? '#10B981' : 'var(--text-secondary)'
+                            }}
+                        >
+                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>Ready to Build</div>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Actively looking</div>
+                        </div>
+                        <div
+                            onClick={() => setInitialStatus('exploring')}
+                            style={{
+                                padding: '12px 24px', borderRadius: '12px', cursor: 'pointer', border: '2px solid',
+                                borderColor: initialStatus === 'exploring' ? '#F59E0B' : 'transparent',
+                                background: initialStatus === 'exploring' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255,255,255,0.05)',
+                                color: initialStatus === 'exploring' ? '#F59E0B' : 'var(--text-secondary)'
+                            }}
+                        >
+                            <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>Exploring</div>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Just browsing</div>
+                        </div>
+                    </div>
+
                     <button
                         className="btn-primary"
                         style={{ padding: '16px 32px', fontSize: '1.1rem' }}
@@ -176,7 +205,7 @@ export default function ProfilePage() {
                                 headline: "Ready to Build",
                                 bio: "Add your bio here...",
                                 location: "Add location",
-                                status: "ready",
+                                status: initialStatus,
                                 role: "Founder",
                                 tags: [],
                                 projects: [],
