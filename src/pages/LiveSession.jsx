@@ -141,6 +141,9 @@ export default function LiveSession() {
                     setNotes(payload.new.content);
                 }
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'credentials', filter: `team_id=eq.${teamId}` }, (payload) => {
+                fetchData();
+            })
             .subscribe();
 
         return () => {
