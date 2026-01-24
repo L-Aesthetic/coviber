@@ -1,19 +1,90 @@
 import { GitCommit, Calendar, MessageSquare, Plus, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 
 export default function ContributionLog({ team }) {
     const [activeType, setActiveType] = useState('all');
+    const [contributions, setContributions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isAdding, setIsAdding] = useState(false);
+    const [newContribution, setNewContribution] = useState({
+        type: 'code',
+        title: '',
+        description: '',
+        impact_level: 'medium'
+    });
 
-    const contributions = [
-        { id: 1, type: 'code', user: 'Louis L.', title: 'Implemented Authentication', description: 'Added JWT auth flow with refresh tokens', value: 'High', date: '2 hours ago', icon: GitCommit },
-        { id: 2, type: 'meeting', user: 'Sarah K.', title: 'Investor Pitch', description: 'Met with Sequoia scout for initial screening', value: 'High', date: '5 hours ago', icon: Calendar },
-        { id: 3, type: 'strategy', user: 'Team', title: 'Product Roadmap Q1', description: 'Finalized feature set for MVP launch', value: 'Medium', date: '1 day ago', icon: MessageSquare },
-        { id: 4, type: 'code', user: 'Louis L.', title: 'Bug Fixes', description: 'Fixed navigation glitch on mobile', value: 'Low', date: '1 day ago', icon: GitCommit },
-    ];
+    // Fetch contributions
+    useEffect(() => {
+        const fetchContributions = async () => {
+            setLoading(true);
+            const { data } = await supabase
+                .from('contributions')
+                .select(`*, user:user_id(name)`)
+                .eq('team_id', team.id)
+                .order('created_at', { ascending: false });
 
-    const filteredContributions = activeType === 'all'
-        ? contributions
-        : contributions.filter(c => c.type === activeType);
+            if (data) {
+                setContributions(data.map(c => ({
+                    ...c,
+                    user: c.user?.name || 'Unknown',
+                    date: new Date(c.created_at).toLocaleDateString()
+                })));
+            }
+            setLoading(false);
+        };
+
+        fetchContributions();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel('contributions-updates')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'contributions',
+                filter: `team_id=eq.${team.id}`
+            }, () => {
+                fetchContributions();
+            })
+            .subscribe();
+
+        return () => supabase.removeChannel(channel);
+    }, [team.id]);
+
+    const handleAddContribution = async (e) => {
+        e.preventDefault();
+        if (!newContribution.title) return;
+
+        await supabase.from('contributions').insert([{
+            team_id: team.id,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            ...newContribution
+        }]);
+
+        // Log activity
+        await supabase.from('activity_logs').insert([{
+            team_id: team.id,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            action_type: 'contribution_logged',
+            description: `Logged contribution: "${newContribution.title}"`
+        }]);
+
+        setNewContribution({ type: 'code', title: '', description: '', impact_level: 'medium' });
+        setIsAdding(false);
+    };
+
+    // Icon mapping
+    const getIcon = (type) => {
+        const icons = {
+            code: GitCommit,
+            meeting: Calendar,
+            strategy: MessageSquare,
+            design: MessageSquare,
+            sales: MessageSquare
+        };
+        return icons[type] || MessageSquare;
+    };
 
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '24px' }}>
@@ -22,11 +93,61 @@ export default function ContributionLog({ team }) {
                     <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                         Contribution Log
                     </h2>
-                    <button className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}>
+                    <button className="btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }} onClick={() => setIsAdding(true)}>
                         <Plus size={14} />
                         Log Contribution
                     </button>
                 </div>
+
+                {/* Add Contribution Form */}
+                {isAdding && (
+                    <div className="saas-panel" style={{ padding: '20px', marginBottom: '20px', border: '1px solid var(--accent-primary)' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '12px' }}>Log New Contribution</h3>
+                        <form onSubmit={handleAddContribution}>
+                            <select
+                                className="glass-input"
+                                value={newContribution.type}
+                                onChange={e => setNewContribution({ ...newContribution, type: e.target.value })}
+                                style={{ marginBottom: '12px' }}
+                            >
+                                <option value="code">Code</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="strategy">Strategy</option>
+                                <option value="design">Design</option>
+                                <option value="sales">Sales</option>
+                            </select>
+                            <input
+                                autoFocus
+                                className="glass-input"
+                                placeholder="Title (e.g. Implemented Authentication)"
+                                value={newContribution.title}
+                                onChange={e => setNewContribution({ ...newContribution, title: e.target.value })}
+                                style={{ marginBottom: '12px' }}
+                            />
+                            <textarea
+                                className="glass-input"
+                                placeholder="Description (optional)"
+                                value={newContribution.description}
+                                onChange={e => setNewContribution({ ...newContribution, description: e.target.value })}
+                                style={{ marginBottom: '12px', minHeight: '80px', resize: 'vertical' }}
+                            />
+                            <select
+                                className="glass-input"
+                                value={newContribution.impact_level}
+                                onChange={e => setNewContribution({ ...newContribution, impact_level: e.target.value })}
+                                style={{ marginBottom: '12px' }}
+                            >
+                                <option value="low">Low Impact</option>
+                                <option value="medium">Medium Impact</option>
+                                <option value="high">High Impact</option>
+                            </select>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn-ghost" onClick={() => setIsAdding(false)}>Cancel</button>
+                                <button type="submit" className="btn-primary">Log Contribution</button>
+                            </div>
+                        </form>
+                    </div>
+                )}
 
                 {/* Filters */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -49,39 +170,50 @@ export default function ContributionLog({ team }) {
 
                 {/* List */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {filteredContributions.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <div key={item.id} className="saas-panel hover-glass" style={{ padding: '20px', background: 'rgba(255, 255, 255, 0.02)', cursor: 'pointer' }}>
-                                <div style={{ display: 'flex', gap: '16px' }}>
-                                    <div style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
-                                    }}>
-                                        <Icon size={18} color="var(--text-secondary)" />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.title}</h3>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{item.date}</span>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
+                            Loading contributions...
+                        </div>
+                    ) : contributions.length === 0 && !isAdding ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
+                            No contributions logged yet. Click "Log Contribution" to add one.
+                        </div>
+                    ) : (
+                        (activeType === 'all' ? contributions : contributions.filter(c => c.type === activeType))
+                            .map((item) => {
+                                const Icon = getIcon(item.type);
+                                return (
+                                    <div key={item.id} className="saas-panel hover-glass" style={{ padding: '20px', background: 'rgba(255, 255, 255, 0.02)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', gap: '16px' }}>
+                                            <div style={{
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '10px',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0
+                                            }}>
+                                                <Icon size={18} color="var(--text-secondary)" />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.title}</h3>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{item.date}</span>
+                                                </div>
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                                    <strong style={{ color: 'var(--accent-primary)' }}>{item.user}</strong> • {item.description}
+                                                </p>
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
+                                                    Impact: {item.impact_level}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                                            <strong style={{ color: 'var(--accent-primary)' }}>{item.user}</strong> • {item.description}
-                                        </p>
-                                        <div style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
-                                            Impact: {item.value}
-                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                );
+                            })
+                    )}
                 </div>
             </div>
 
