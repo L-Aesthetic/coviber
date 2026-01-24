@@ -45,21 +45,33 @@ export default function Teams() {
         const fetchTeams = async () => {
             setLoadingTeams(true);
 
-            // Fetch teams where user is a member
-            const { data: memberships } = await supabase
-                .from('team_members')
-                .select(`
-                    *,
-                    team:team_id (
-                        id,
-                        name,
-                        description,
-                        created_at
-                    )
-                `)
-                .eq('user_id', user.id);
+            try {
+                // Fetch teams where user is a member
+                const { data: memberships, error } = await supabase
+                    .from('team_members')
+                    .select(`
+                        *,
+                        team:team_id (
+                            id,
+                            name,
+                            description,
+                            created_at
+                        )
+                    `)
+                    .eq('user_id', user.id);
 
-            if (memberships) {
+                if (error) {
+                    console.error('Error fetching teams:', error);
+                    setLoadingTeams(false);
+                    return;
+                }
+
+                if (!memberships || memberships.length === 0) {
+                    setMyTeams([]);
+                    setLoadingTeams(false);
+                    return;
+                }
+
                 // Transform into teams format
                 const teams = await Promise.all(memberships.map(async (m) => {
                     // Get member count for each team
@@ -97,15 +109,17 @@ export default function Teams() {
                         status: 'active',
                         vesting: Math.min(m.equity * 0.65, m.equity || 0), // Simple calculation
                         lastActive: getRelativeTime(lastActivity?.data?.created_at),
-                        avatar: '🚀', // Could store in teams table
+                        avatar: '🚀',
                         description: m.team.description || 'No description'
                     };
                 }));
 
                 setMyTeams(teams);
+            } catch (error) {
+                console.error('Error in fetchTeams:', error);
+            } finally {
+                setLoadingTeams(false);
             }
-
-            setLoadingTeams(false);
         };
 
         fetchTeams();
