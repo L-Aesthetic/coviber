@@ -1,5 +1,5 @@
 import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
