@@ -31,7 +31,7 @@ const LandingPage = () => {
             }}>
                 {/* Left: Logo */}
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '80px' }} />
+                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '90px' }} />
                 </div>
 
                 {/* Center: Links */}
