@@ -98,7 +98,44 @@ export default function ProfilePage() {
         }
     }, [user, id, isSelf]);
 
-    // ... handleSave ...
+
+    const handleSave = async () => {
+        if (!user) return;
+
+        try {
+            const profileData = {
+                id: user.id,
+                name: profile.name,
+                headline: profile.headline,
+                role: profile.role,
+                location: profile.location,
+                bio: profile.bio,
+                tags: profile.tags,
+                superpower: profile.superpower,
+                kryptonite: profile.kryptonite,
+                comm_style: profile.commStyle,
+                trigger_warning: profile.triggerWarning,
+                projects: profile.projects,
+                anti_pitch: profile.antiPitch,
+                vouches: profile.vouches,
+                vibe_data: profile.vibe_data,
+                avail_status: profile.availability,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabase
+                .from('profiles')
+                .upsert(profileData, { onConflict: 'id' });
+
+            if (error) throw error;
+
+            setIsEditing(false);
+            alert('Profile saved successfully!');
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            alert('Failed to save profile: ' + error.message);
+        }
+    };
 
     if (loading) {
         return (
