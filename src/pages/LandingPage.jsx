@@ -30,11 +30,8 @@ const LandingPage = () => {
                 borderBottom: '1px solid rgba(255,255,255,0.08)'
             }}>
                 {/* Left: Logo */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '-0.5px' }}>
-                    <div style={{ background: 'linear-gradient(135deg, var(--landing-purple), #6366F1)', borderRadius: '8px', padding: '4px' }}>
-                        <Zap size={20} color="white" fill="white" />
-                    </div>
-                    CoVibr
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '40px' }} />
                 </div>
 
                 {/* Center: Links */}

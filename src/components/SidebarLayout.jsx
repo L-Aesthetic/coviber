@@ -48,14 +48,8 @@ export default function SidebarLayout({ children }) {
                 zIndex: 50
             }}>
                 {/* Logo */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px', paddingLeft: '8px' }}>
-                    <div style={{
-                        width: '28px',
-                        height: '28px',
-                        background: 'linear-gradient(135deg, #6366F1, #EC4899)',
-                        borderRadius: '8px'
-                    }}></div>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'Outfit' }}>CoVibr</span>
+                <div style={{ marginBottom: '40px', paddingLeft: '8px' }}>
+                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '36px', display: 'block' }} />
                 </div>
 
                 {/* Navigation */}
