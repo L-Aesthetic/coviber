@@ -121,6 +121,7 @@ function ConversationsView() {
                     const otherUser = req.from_user_id === user.id ? req.to_user : req.from_user;
                     return {
                         id: otherUser.id,
+                        conversationId: req.id, // The intro_requests ID is the conversation ID
                         name: otherUser.name || 'Anonymous',
                         role: otherUser.role || 'Builder',
                         lastMessage: req.message || 'Connected!',
@@ -163,7 +164,7 @@ function ConversationsView() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {conversations.map(conv => (
-                <Link key={conv.id} to={`/profile/${conv.id}`} style={{ textDecoration: 'none' }}>
+                <Link key={conv.id} to={`/messages/${conv.conversationId}`} style={{ textDecoration: 'none' }}>
                     <motion.div
                         className="saas-panel hover-glass"
                         style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', cursor: 'pointer' }}
