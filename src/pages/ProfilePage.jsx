@@ -507,6 +507,178 @@ export default function ProfilePage() {
                     border-color: var(--accent-primary) !important;
                 }
             `}</style>
+
+            {/* Add Project Modal */}
+            <AnimatePresence>
+                {showProjectModal && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowProjectModal(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '500px', width: '100%', padding: '32px' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>Add Project</h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Project Title</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="e.g., FinanceHub"
+                                        value={newProject.title}
+                                        onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Your Role</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="e.g., Co-founder"
+                                        value={newProject.role}
+                                        onChange={(e) => setNewProject({ ...newProject, role: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Tech Stack</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="e.g., React, Node, PostgreSQL"
+                                        value={newProject.stack}
+                                        onChange={(e) => setNewProject({ ...newProject, stack: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Description</label>
+                                    <textarea
+                                        className="glass-input"
+                                        placeholder="Brief description of the project..."
+                                        rows={3}
+                                        value={newProject.desc}
+                                        onChange={(e) => setNewProject({ ...newProject, desc: e.target.value })}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ flex: 1 }}
+                                        onClick={() => {
+                                            if (newProject.title.trim()) {
+                                                setProfile({
+                                                    ...profile,
+                                                    projects: [...(profile.projects || []), {
+                                                        title: newProject.title,
+                                                        role: newProject.role || 'Founder',
+                                                        outcome: 'Active',
+                                                        desc: newProject.desc || 'Description...',
+                                                        stack: newProject.stack || 'Various',
+                                                        color: '#3b82f6'
+                                                    }]
+                                                });
+                                                setNewProject({ title: '', role: '', desc: '', stack: '' });
+                                                setShowProjectModal(false);
+                                            }
+                                        }}
+                                    >
+                                        Add Project
+                                    </button>
+                                    <button
+                                        className="btn-ghost"
+                                        style={{ flex: 1 }}
+                                        onClick={() => {
+                                            setNewProject({ title: '', role: '', desc: '', stack: '' });
+                                            setShowProjectModal(false);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Add Vouch Modal */}
+            <AnimatePresence>
+                {showVouchModal && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowVouchModal(false)}>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '500px', width: '100%', padding: '32px' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '24px' }}>Add Vouch</h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Name</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="e.g., Sarah Chen"
+                                        value={newVouch.name}
+                                        onChange={(e) => setNewVouch({ ...newVouch, name: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Their Role</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="e.g., Former Co-founder"
+                                        value={newVouch.role}
+                                        onChange={(e) => setNewVouch({ ...newVouch, role: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Testimonial</label>
+                                    <textarea
+                                        className="glass-input"
+                                        placeholder="What did they say about working with you?"
+                                        rows={4}
+                                        value={newVouch.text}
+                                        onChange={(e) => setNewVouch({ ...newVouch, text: e.target.value })}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{ flex: 1 }}
+                                        onClick={() => {
+                                            if (newVouch.name.trim() && newVouch.text.trim()) {
+                                                setProfile({
+                                                    ...profile,
+                                                    vouches: [...(profile.vouches || []), {
+                                                        name: newVouch.name,
+                                                        role: newVouch.role || 'Peer',
+                                                        text: newVouch.text
+                                                    }]
+                                                });
+                                                setNewVouch({ name: '', role: '', text: '' });
+                                                setShowVouchModal(false);
+                                            }
+                                        }}
+                                    >
+                                        Add Vouch
+                                    </button>
+                                    <button
+                                        className="btn-ghost"
+                                        style={{ flex: 1 }}
+                                        onClick={() => {
+                                            setNewVouch({ name: '', role: '', text: '' });
+                                            setShowVouchModal(false);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
