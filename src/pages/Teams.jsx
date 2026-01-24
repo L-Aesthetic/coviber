@@ -40,7 +40,10 @@ export default function Teams() {
 
     // Fetch user's teams
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            setLoadingTeams(false); // User not loaded yet, stop loading
+            return;
+        }
 
         const fetchTeams = async () => {
             setLoadingTeams(true);
