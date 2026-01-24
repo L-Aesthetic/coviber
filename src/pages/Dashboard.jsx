@@ -126,37 +126,47 @@ export default function Dashboard() {
                         totalLegalDocs: totalDocs
                     });
 
-                    // 4. Fetch Recent Equity Events (not upcoming, these are logged events)
-                    const { data: equityEvents } = await supabase
-                        .from('equity_events')
+                    // 4. Fetch Recent Activity (from activity logs that ARE being populated)
+                    const { data: recentActivity } = await supabase
+                        .from('activity_logs')
                         .select('*')
                         .in('team_id', teamIds)
                         .order('created_at', { ascending: false })
-                        .limit(3);
+                        .limit(5);
 
-                    if (equityEvents && equityEvents.length > 0) {
+                    if (recentActivity && recentActivity.length > 0) {
                         const getRelativeTime = (date) => {
                             const now = new Date();
                             const past = new Date(date);
                             const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
                             const diffDays = Math.floor(diffHours / 24);
                             if (diffHours < 1) return 'Just now';
-                            if (diffHours < 24) return `${diffHours} hours ago`;
-                            if (diffDays < 30) return `${diffDays} days ago`;
+                            if (diffHours < 24) return `${diffHours}h ago`;
+                            if (diffDays < 30) return `${diffDays}d ago`;
                             return past.toLocaleDateString();
                         };
 
-                        setMilestones(equityEvents.map(e => ({
-                            id: e.id,
-                            icon: e.event_type === 'vesting_milestone' ? CheckCircle2 : TrendingUp,
-                            label: e.description,
-                            date: getRelativeTime(e.created_at),
-                            color: e.event_type === 'vesting_milestone' ? '#10B981' : 'var(--accent-primary)'
+                        const getActivityIcon = (actionType) => {
+                            const icons = {
+                                'legal_doc_added': CheckCircle2,
+                                'contribution_logged': TrendingUp,
+                                'task_created': Calendar,
+                                'team_created': Users
+                            };
+                            return icons[actionType] || AlertCircle;
+                        };
+
+                        setMilestones(recentActivity.map(a => ({
+                            id: a.id,
+                            icon: getActivityIcon(a.action_type),
+                            label: a.description,
+                            date: getRelativeTime(a.created_at),
+                            color: 'var(--accent-primary)'
                         })));
                     } else {
                         // Show placeholder
                         setMilestones([
-                            { id: 1, icon: AlertCircle, label: "No equity events yet", date: "Events will appear here", color: "#6B7280" }
+                            { id: 1, icon: AlertCircle, label: "No recent activity", date: "Activity will appear here", color: "#6B7280" }
                         ]);
                     }
                 }
@@ -327,10 +337,10 @@ export default function Dashboard() {
                             </div>
                         </section>
 
-                        {/* Recent Equity Events */}
+                        {/* Recent Activity */}
                         <section>
                             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                                Recent Equity Events
+                                Recent Activity
                             </h3>
                             <div className="saas-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {milestones.map(m => (
