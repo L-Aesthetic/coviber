@@ -11,10 +11,11 @@ export const getArchetypeEmail = (archetype) => {
         <title>Your CoVibr Archetype: ${archetype}</title>
     </head>
     <body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #cccccc; -webkit-font-smoothing: antialiased;">
-        <div style="max-width: 640px; margin: 40px auto; background-color: #0f0f0f; border: 1px solid #222222; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.5);">
+        <div style="max-width: 800px; margin: 20px auto; background-color: #0f0f0f; border: 1px solid #222222; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.5);">
             
             <!-- Header -->
             <div style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #222222; background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%);">
+                <img src="https://coviber.vercel.app/logo-full.png" alt="CoVibr" style="height: 48px; margin-bottom: 32px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="font-size: 56px; margin-bottom: 16px; line-height: 1;">${data.icon}</div>
                 <h1 style="color: #ffffff; font-size: 28px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">${archetype}</h1>
                 <p style="color: ${data.color}; font-size: 15px; font-weight: 500; margin: 0;">"${data.headline}"</p>
@@ -47,7 +48,7 @@ export const getArchetypeEmail = (archetype) => {
                     <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 20px;">Your Perfect Match: <span style="color: ${data.color};">${data.match}</span></h3>
                     <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px; color: #a1a1aa;">${data.matchWhy}</p>
                     
-                    <a href="https://covibr.vercel.app/landing" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">Find Your Co-Founder</a>
+                    <a href="https://coviber.vercel.app/landing" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">Find Your Co-Founder</a>
                 </div>
 
             </div>
