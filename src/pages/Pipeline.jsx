@@ -1,0 +1,562 @@
+import { useState, useEffect } from 'react';
+import { MoreHorizontal, Calendar, MessageSquare, CheckCircle2, AlertCircle, Github, Clock, FileText, Send, UserCheck, TrendingUp, GitPullRequest, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useSearchParams } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
+
+
+
+export default function Pipeline() {
+    const [searchParams] = useSearchParams();
+    const tabFromUrl = searchParams.get('tab') || 'pipeline'; // Default to pipeline view
+    const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['conversations', 'intros', 'pipeline'].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    return (
+        <div>
+            <header style={{ marginBottom: '32px' }}>
+                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    Communications Hub
+                </h1>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                    Manage your matches, intro requests, and pipeline.
+                </p>
+            </header>
+
+            {/* Tabs */}
+            <div className="saas-panel" style={{ padding: '4px', display: 'inline-flex', gap: '4px', marginBottom: '32px' }}>
+                <TabButton active={activeTab === 'conversations'} onClick={() => setActiveTab('conversations')} icon={MessageSquare} label="Active Matches" count={12} />
+                <TabButton active={activeTab === 'intros'} onClick={() => setActiveTab('intros')} icon={Send} label="Intro Requests" count={8} />
+                <TabButton active={activeTab === 'pipeline'} onClick={() => setActiveTab('pipeline')} icon={GitPullRequest} label="Pipeline" count={48} />
+            </div>
+
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    {activeTab === 'conversations' && <ConversationsView />}
+                    {activeTab === 'intros' && <IntrosView />}
+                    {activeTab === 'pipeline' && <PipelineView />}
+                </motion.div>
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function TabButton({ active, onClick, icon: Icon, label, count }) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                background: active ? 'var(--accent-primary)' : 'transparent',
+                color: active ? 'white' : 'var(--text-tertiary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+            }}
+        >
+            <Icon size={16} />
+            {label}
+            <span style={{
+                background: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 700
+            }}>
+                {count}
+            </span>
+        </button>
+    );
+}
+
+function ConversationsView() {
+    const conversations = [
+        { id: 1, name: 'Alex V.', role: 'Full Stack Engineer', lastMessage: 'Sounds great! When can we schedule the chemistry test?', time: '2 hours ago', unread: 2, avatar: '👨‍💻', match: 98 },
+        { id: 2, name: 'Sarah K.', role: 'Growth Marketer', lastMessage: 'I reviewed your brief - love the fintech angle.', time: '5 hours ago', unread: 0, avatar: '👩‍💼', match: 94 },
+        { id: 3, name: 'Jordan T.', role: 'Product Designer', lastMessage: 'Here\'s my portfolio link...', time: '1 day ago', unread: 1, avatar: '🎨', match: 89 },
+        { id: 4, name: 'Maya L.', role: 'Data Scientist', lastMessage: 'The equity split calculator is genius!', time: '2 days ago', unread: 0, avatar: '📊', match: 92 }
+    ];
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {conversations.map(conv => (
+                <Link key={conv.id} to={`/profile`} style={{ textDecoration: 'none' }}>
+                    <motion.div
+                        className="saas-panel hover-glass"
+                        style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', cursor: 'pointer' }}
+                        whileHover={{ x: 4 }}
+                    >
+                        <div style={{ fontSize: '2.5rem' }}>{conv.avatar}</div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{conv.name}</h3>
+                                <span className="tag tag-purple" style={{ fontSize: '0.7rem' }}>{conv.match}% Match</span>
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>{conv.role}</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{conv.lastMessage}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{conv.time}</div>
+                            {conv.unread > 0 && (
+                                <div style={{
+                                    background: 'var(--accent-primary)',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    width: '24px',
+                                    height: '24px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700
+                                }}>
+                                    {conv.unread}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                </Link>
+            ))}
+        </div>
+    );
+}
+
+function IntrosView() {
+    const intros = [
+        { id: 1, from: 'Jessica M.', to: 'You', candidate: 'David R.', role: 'Backend Engineer', status: 'pending', message: 'David has 8 years at Google and is looking for a technical co-founder in fintech.', time: '3 hours ago' },
+        { id: 2, from: 'Mike P.', to: 'You', candidate: 'Emma S.', role: 'UX Designer', status: 'pending', message: 'Emma designed the onboarding for 2 unicorns. Perfect for consumer apps.', time: '1 day ago' },
+        { id: 3, from: 'You', to: 'Sarah K.', candidate: 'Alex V.', role: 'Full Stack', status: 'accepted', message: 'Both love fintech and have 3-year exit goals.', time: '2 days ago' }
+    ];
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {intros.map(intro => (
+                <div key={intro.id} className="saas-panel" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                    {intro.from} → {intro.to}: <span style={{ color: 'var(--accent-primary)' }}>{intro.candidate}</span>
+                                </h3>
+                                {intro.status === 'pending' && (
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase' }}>Pending</span>
+                                )}
+                                {intro.status === 'accepted' && (
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-success)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <CheckCircle2 size={12} /> Accepted
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '12px' }}>{intro.role}</div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{intro.message}</div>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', marginLeft: '16px' }}>{intro.time}</div>
+                    </div>
+                    {intro.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                            <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                                <CheckCircle2 size={16} /> Accept Intro
+                            </button>
+                            <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }}>
+                                <X size={16} /> Decline
+                            </button>
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function PipelineView() {
+    const { user } = useAuth();
+    const [columns, setColumns] = useState({
+        shortlist: { id: 'shortlist', title: 'Shortlist', color: 'var(--accent-primary)', items: [] },
+        contacted: { id: 'contacted', title: 'Intro Sent', color: '#F59E0B', items: [] },
+        chemistry: { id: 'chemistry', title: 'Chemistry Test', color: '#EC4899', items: [] },
+        offer: { id: 'offer', title: 'Offer / Closing', color: '#8B5CF6', items: [] }
+    });
+    const [isComposerOpen, setIsComposerOpen] = useState(false);
+    const [composerData, setComposerData] = useState(null);
+
+    // Fetch Pipeline
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchPipeline = async () => {
+            const { data, error } = await supabase
+                .from('pipeline_items')
+                .select('*')
+                .eq('owner_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) console.error("Error fetching pipeline:", error);
+
+            if (data) {
+                const newCols = {
+                    shortlist: { ...columns.shortlist, items: [] },
+                    contacted: { ...columns.contacted, items: [] },
+                    chemistry: { ...columns.chemistry, items: [] },
+                    offer: { ...columns.offer, items: [] }
+                };
+
+                data.forEach(item => {
+                    const status = item.status || 'shortlist';
+                    if (newCols[status]) {
+                        // Adapt DB fields to UI fields
+                        newCols[status].items.push({
+                            ...item,
+                            waiting: 'Just now', // Placeholder time logic
+                            staleDays: 0
+                        });
+                    }
+                });
+                setColumns(newCols);
+            }
+        };
+
+        fetchPipeline();
+    }, [user]);
+
+    // DnD State
+    const [draggedItem, setDraggedItem] = useState(null);
+    const [dragSourceCol, setDragSourceCol] = useState(null);
+
+    const handleDragStart = (e, item, colId) => {
+        setDraggedItem(item);
+        setDragSourceCol(colId);
+        e.dataTransfer.setData('text/plain', item.id);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = async (e, targetColId) => {
+        e.preventDefault();
+        if (!draggedItem || !dragSourceCol) return;
+        if (dragSourceCol === targetColId) return;
+
+        // Optimistic UI Update
+        const sourceItems = columns[dragSourceCol].items.filter(i => i.id !== draggedItem.id);
+        const targetItems = [...columns[targetColId].items, { ...draggedItem, status: targetColId }];
+
+        setColumns({
+            ...columns,
+            [dragSourceCol]: { ...columns[dragSourceCol], items: sourceItems },
+            [targetColId]: { ...columns[targetColId], items: targetItems }
+        });
+
+        // Backend Update
+        try {
+            const { error } = await supabase
+                .from('pipeline_items')
+                .update({ status: targetColId })
+                .eq('id', draggedItem.id);
+
+            if (error) throw error;
+        } catch (err) {
+            console.error("Failed to move item:", err);
+            // Revert UI if needed (omitted for brevity)
+        }
+
+        // Trigger Composer if moving to 'Contacted'
+        if (dragSourceCol === 'shortlist' && targetColId === 'contacted') {
+            setComposerData(draggedItem);
+            setIsComposerOpen(true);
+        }
+
+        setDraggedItem(null);
+        setDragSourceCol(null);
+    };
+
+    const handleAddCandidate = async () => {
+        const name = prompt("Candidate Name:");
+        if (name && user) {
+            const newItem = {
+                name,
+                role: 'Unknown Role',
+                status: 'shortlist',
+                owner_id: user.id
+            };
+
+            // Backend Insert
+            const { data, error } = await supabase
+                .from('pipeline_items')
+                .insert([newItem])
+                .select()
+                .single();
+
+            if (error) {
+                alert("Error adding candidate");
+                return;
+            }
+
+            // UI Update
+            setColumns({
+                ...columns,
+                shortlist: {
+                    ...columns.shortlist,
+                    items: [data, ...columns.shortlist.items]
+                }
+            });
+        }
+    };
+
+    return (
+        <div style={{ position: 'relative' }}>
+            <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px' }}>Pipeline</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Managing candidates for <b>SaaS CTO Brief</b></p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <div className="tag tag-blur">
+                        <TrendingUp size={14} style={{ marginRight: '6px' }} />
+                        Health: <span style={{ color: '#10B981', marginLeft: '4px', fontWeight: 700 }}>Excellent</span>
+                    </div>
+                    <button className="btn-primary" onClick={handleAddCandidate}>+ Add Candidate</button>
+                </div>
+            </header>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', alignItems: 'start' }}>
+                {Object.values(columns).map(col => (
+                    <Column
+                        key={col.id}
+                        column={col}
+                        onDragStart={handleDragStart}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                    />
+                ))}
+            </div>
+
+            {/* Simulated Email Composer Popup */}
+            <AnimatePresence>
+                {isComposerOpen && (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ width: '500px', padding: '32px' }}
+                        >
+                            <h3 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Send size={20} color="var(--accent-primary)" />
+                                Send Intro to {composerData?.name}
+                            </h3>
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Subject</label>
+                                <input className="glass-input" value={`CoVibr Intro: Scaling SaaS CTO role`} readOnly />
+                            </div>
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Body</label>
+                                <textarea
+                                    className="glass-input"
+                                    style={{ height: '150px', resize: 'none' }}
+                                    defaultValue={`Hi ${composerData?.name}, I saw your background at Stripe and loved your work on FlowState. I'm building a co-founder matching OS and think we'd vibe...`}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setIsComposerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>Cancel</button>
+                                <button className="btn-primary" onClick={() => setIsComposerOpen(false)}>Send Elevator Pitch</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function Column({ column, onDragStart, onDragOver, onDrop }) {
+    return (
+        <div
+            style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            onDragOver={onDragOver}
+            onDrop={(e) => onDrop(e, column.id)}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: column.color }}></div>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{column.title}</span>
+                    <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600 }}>{column.items.length}</span>
+                </div>
+                <div
+                    style={{ cursor: 'pointer', position: 'relative' }}
+                    onClick={() => alert(`Settings for ${column.title}`)}
+                >
+                    <MoreHorizontal size={16} color="var(--text-tertiary)" />
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '400px' }}>
+                {column.items.map(item => (
+                    <Card
+                        key={item.id}
+                        item={item}
+                        colId={column.id}
+                        onDragStart={onDragStart}
+                    />
+                ))}
+                {column.items.length === 0 && (
+                    <div style={{ border: '2px dashed rgba(255,255,255,0.05)', borderRadius: '12px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
+                        Drop here
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+function Card({ item, colId, onDragStart }) {
+    const isStale = item.staleDays >= 3;
+    const isCriticallyStale = item.staleDays >= 7;
+
+    const getBgColor = () => {
+        if (isCriticallyStale) return 'rgba(239, 68, 68, 0.08)';
+        if (isStale) return 'rgba(245, 158, 11, 0.08)';
+        return 'var(--bg-secondary)';
+    };
+
+    const getBorderColor = () => {
+        if (isCriticallyStale) return 'rgba(239, 68, 68, 0.2)';
+        if (isStale) return 'rgba(245, 158, 11, 0.2)';
+        return 'var(--border-subtle)';
+    };
+
+    return (
+        <motion.div
+            layoutId={item.id}
+            whileHover={{ scale: 1.02 }}
+            className="saas-panel hover-glass"
+            draggable
+            onDragStart={(e) => onDragStart(e, item, colId)}
+            style={{
+                padding: '16px',
+                cursor: 'grab',
+                background: getBgColor(),
+                border: `1px solid ${getBorderColor()}`,
+                position: 'relative',
+                overflow: 'visible'
+            }}
+            onClick={() => {
+                if (colId === 'chemistry') window.location.href = `/chemistry/${item.id}`;
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {item.name}
+                    {isCriticallyStale && <AlertCircle size={14} color="#EF4444" title="Ghosting Risk" />}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', position: 'relative' }}>
+                    {isStale && (
+                        <button className="tag" style={{ background: 'var(--accent-primary)', color: 'white', padding: '2px 8px', fontSize: '0.7rem', border: 'none', cursor: 'pointer' }}>
+                            Nudge
+                        </button>
+                    )}
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            alert("Archive / Delete / Move");
+                        }}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        <MoreHorizontal size={14} color="var(--text-tertiary)" />
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>{item.role}</div>
+
+            {/* Chemistry Test Telemetry */}
+            {colId === 'chemistry' && (
+                <div style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
+                        <span>Progress</span>
+                        <span>{item.progress}%</span>
+                    </div>
+                    <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{ width: `${item.progress}%`, height: '100%', background: '#EC4899' }}></div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}><Github size={12} /> {item.ghStatus}</span>
+                        <span style={{ fontSize: '0.7rem', color: '#EC4899', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {item.deadline}</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Offer Preview */}
+            {colId === 'offer' && (
+                <div style={{ marginBottom: '12px', background: 'rgba(139, 92, 246, 0.1)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#8B5CF6', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Equity Split</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#8B5CF6' }}>{item.equity}</div>
+                </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                {item.waiting && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isCriticallyStale ? '#EF4444' : 'inherit' }}>
+                        <MessageSquare size={12} /> {item.waiting} wait
+                    </div>
+                )}
+                <div className="memo-trigger" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-primary)', cursor: 'help' }}>
+                    <FileText size={12} /> Memo
+                    <div className="memo-popup" style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '0',
+                        width: '100%',
+                        background: 'rgba(25, 25, 35, 0.98)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        marginBottom: '10px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                        zIndex: 20,
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.2s, transform 0.2s',
+                        transform: 'translateY(5px)'
+                    }}>
+                        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '4px', fontWeight: 700 }}>Private Notes</div>
+                        <p style={{ color: 'var(--text-primary)', fontSize: '0.8rem', lineHeight: '1.4', margin: 0 }}>
+                            {item.notes}
+                        </p>
+                        <div style={{ position: 'absolute', top: '100%', left: '20px', border: '8px solid transparent', borderTopColor: 'rgba(25, 25, 35, 0.98)' }}></div>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                .memo-trigger:hover .memo-popup {
+                    opacity: 1;
+                    pointer-events: auto;
+                    transform: translateY(0);
+                }
+            `}</style>
+        </motion.div>
+    )
+}
