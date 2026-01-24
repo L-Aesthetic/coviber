@@ -725,6 +725,81 @@ function PipelineView() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Rename Column Modal */}
+            <AnimatePresence>
+                {renameModal.open && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+                    }} onClick={() => setRenameModal({ open: false, columnId: null, currentTitle: '' })}>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Edit3 size={24} color="var(--accent-primary)" />
+                                Rename Column
+                            </h3>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Column Name *</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    className="glass-input"
+                                    placeholder="Enter new name..."
+                                    defaultValue={renameModal.currentTitle}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            const newTitle = e.target.value.trim();
+                                            if (newTitle && renameModal.columnId) {
+                                                setColumns({
+                                                    ...columns,
+                                                    [renameModal.columnId]: { ...columns[renameModal.columnId], title: newTitle }
+                                                });
+                                                setRenameModal({ open: false, columnId: null, currentTitle: '' });
+                                            }
+                                        }
+                                    }}
+                                    style={{ width: '100%', fontSize: '1.1rem' }}
+                                    id="rename-input"
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    className="btn-primary"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => {
+                                        const newTitle = document.getElementById('rename-input').value.trim();
+                                        if (newTitle && renameModal.columnId) {
+                                            setColumns({
+                                                ...columns,
+                                                [renameModal.columnId]: { ...columns[renameModal.columnId], title: newTitle }
+                                            });
+                                            setRenameModal({ open: false, columnId: null, currentTitle: '' });
+                                        }
+                                    }}
+                                >
+                                    Rename
+                                </button>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => setRenameModal({ open: false, columnId: null, currentTitle: '' })}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
