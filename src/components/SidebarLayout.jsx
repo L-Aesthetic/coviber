@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 
 export default function SidebarLayout({ children }) {
@@ -23,6 +23,7 @@ export default function SidebarLayout({ children }) {
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: Users, label: 'Teams', path: '/teams' },
         { icon: Search, label: 'Find Candidates', path: '/search' },
+        { icon: MessageSquare, label: 'Messages', path: '/pipeline?tab=conversations' },
         { icon: GitPullRequest, label: 'Pipeline', path: '/pipeline' },
         { icon: FileText, label: 'Alignment Audit', path: '/audit' },
         { icon: Brain, label: 'Vibe Quiz', path: '/quiz' },
