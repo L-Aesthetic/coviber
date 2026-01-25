@@ -202,7 +202,7 @@ export default function ProfilePage() {
                             setProfile(prev => ({
                                 ...prev,
                                 name: user?.email?.split('@')[0] || "Founder",
-                                headline: "Ready to Build",
+                                headline: "SaaS Founder",
                                 bio: "Add your bio here...",
                                 location: "Add location",
                                 status: initialStatus,
@@ -352,7 +352,10 @@ export default function ProfilePage() {
                             </div>
 
                             {isEditing ? (
-                                <input className="glass-input" value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} style={{ width: '100%', marginBottom: '16px', fontSize: '1.2rem', fontWeight: 600 }} />
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: '4px' }}>Headline</label>
+                                    <input className="glass-input" value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} style={{ width: '100%', fontSize: '1.2rem', fontWeight: 600 }} placeholder="e.g. Building the next big thing" />
+                                </div>
                             ) : (
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--accent-primary)', marginBottom: '16px' }}>
                                     {profile.headline}
