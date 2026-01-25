@@ -1,5 +1,6 @@
 // ... imports
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../../supabaseClient';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
@@ -101,166 +102,197 @@ export default function EquityCalculator() {
         { month: 48, Louis: 65, Alex: 35 },
     ];
 
-    const handlePrint = () => {
-        window.print();
+    // const handlePrint = () => { // Removed
+    //     window.print();
+    // };
+
+    // Signing State (Legacy - Removed)
+    // const [signData, setSignData] = useState({ // Removed
+    //     companyName: '',
+    //     companyAddress: '',
+    //     govLaw: 'Delaware',
+    //     founderASign: '',
+    //     founderBSign: ''
+    // });
+    const [killSwitchActive, setKillSwitchActive] = useState(false); // Kept for now, but will be removed from UI
+    const [creating, setCreating] = useState(false);
+
+    // EASE Agreement Creation Logic (DB)
+    const handleCreateAgreement = async () => {
+        setCreating(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert("Please log in to create an agreement.");
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('agreements')
+                .insert({
+                    founder_a_id: user.id,
+                    founder_b_email: 'founder_b@example.com', // In real app, prompt for email or use founderB state if relevant
+                    status: 'draft',
+                    // kill_switch_active: killSwitchActive, // Removed
+                    content_data: {
+                        founderA,
+                        founderB,
+                        split: { founderA: split[0].value, founderB: split[1].value },
+                        config
+                    }
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            navigate(`/agreement/${data.id}`);
+
+        } catch (err) {
+            alert('Error creating agreement: ' + err.message);
+        } finally {
+            setCreating(false);
+        }
     };
 
-    // Signing State
-    const [signData, setSignData] = useState({
-        companyName: '',
-        companyAddress: '',
-        govLaw: 'Delaware',
-        founderASign: '',
-        founderBSign: ''
-    });
-    const [killSwitchActive, setKillSwitchActive] = useState(false);
+    // EASE Agreement Generation Logic (Removed)
+    // const generateEASEAgreement = () => {
+    //     // Use the component's founderA, founderB, and split state variables
+    //     const founderAPercent = split[0].value;
+    //     const founderBPercent = split[1].value;
 
-    const handleSignChange = (field, value) => {
-        setSignData({ ...signData, [field]: value });
-    };
+    //     // This is a simplified generation based on the inputs
+    //     // In a real app, you would likely map the "Role" and "Contribution" to the EASE tables
+    //     // For now, we will fill in the placeholders using the provided data
 
-    // EASE Agreement Generation Logic
-    const generateEASEAgreement = () => {
-        // Use the component's founderA, founderB, and split state variables
-        const founderAPercent = split[0].value;
-        const founderBPercent = split[1].value;
+    //     return `Equity Agreement for Service (EASE)
+    // Version 1.0
 
-        // This is a simplified generation based on the inputs
-        // In a real app, you would likely map the "Role" and "Contribution" to the EASE tables
-        // For now, we will fill in the placeholders using the provided data
+    // ${killSwitchActive ? '*** CONDITIONAL PROBATIONARY AGREEMENT ***\n*** SUBJECT TO IMMEDIATE TERMINATION (SECTION 4) ***\n' : ''}
+    // This Equity Agreement for Service (this "Agreement") is entered into as of ${new Date().toLocaleDateString()} by and between the undersigned company (the "Company") and the undersigned service provider (the "Consultant").
 
-        return `Equity Agreement for Service (EASE)
-Version 1.0
+    // The parties agree as follows:
 
-${killSwitchActive ? '*** CONDITIONAL PROBATIONARY AGREEMENT ***\n*** SUBJECT TO IMMEDIATE TERMINATION (SECTION 4) ***\n' : ''}
-This Equity Agreement for Service (this "Agreement") is entered into as of ${new Date().toLocaleDateString()} by and between the undersigned company (the "Company") and the undersigned service provider (the "Consultant").
+    // 1. Services. Consultant agrees to act as a consultant to the Company and provide services to the Company as further described on the signature page hereto or as otherwise mutually agreed to by the parties (collectively, the "Services").
 
-The parties agree as follows:
+    // 2. Compensation. Calculated based on the contributions detailed in Exhibit A. The Company will take the requisite actions to authorize any equity compensation within 30 days from the date of this Agreement. 
 
-1. Services. Consultant agrees to act as a consultant to the Company and provide services to the Company as further described on the signature page hereto or as otherwise mutually agreed to by the parties (collectively, the "Services").
+    // 3. Expenses. The Company shall reimburse reasonable travel and related expenses incurred by Consultant in the course of performing services hereunder, provided that Consultant obtains prior written approval of any such expenditures in sufficient detail and indicates a maximum reimbursable amount for each such approval.
 
-2. Compensation. Calculated based on the contributions detailed in Exhibit A. The Company will take the requisite actions to authorize any equity compensation within 30 days from the date of this Agreement. 
+    // 4. Term and Termination. The term of this Agreement shall continue until the completion of the Services, provided that this Agreement may be terminated at any time by either party for any reason upon five (5) days prior written notice. Upon termination the Company shall have no further obligation or liability except for the compensation earned by Consultant through the date of termination. The obligations of Consultant in Sections 6 through 9 shall survive the termination of this Agreement.
+    // ${killSwitchActive ? '   \n   **[CRITICAL: 48-HOUR KILL SWITCH ACTIVE]**\n   Notwithstanding the foregoing, the Company reserves the absolute right to terminate this Agreement immediately (VOIDING ALL EQUITY) if the Consultant fails to deliver the initial "Proof of Work" within 48 hours of the Effective Date.' : ''}
 
-3. Expenses. The Company shall reimburse reasonable travel and related expenses incurred by Consultant in the course of performing services hereunder, provided that Consultant obtains prior written approval of any such expenditures in sufficient detail and indicates a maximum reimbursable amount for each such approval.
+    // 5. Independent Contractor. Consultant’s relationship with the Company will be that of an independent contractor and not that of an employee. Consultant will not be eligible for any employee benefits, nor will the Company make deductions from payments made to Consultant for employment or income taxes, all of which will be Consultant’s responsibility. Consultant will have no authority to enter into contracts that bind the Company or create obligations on the part of the Company without the prior written authorization of the Company.
 
-4. Term and Termination. The term of this Agreement shall continue until the completion of the Services, provided that this Agreement may be terminated at any time by either party for any reason upon five (5) days prior written notice. Upon termination the Company shall have no further obligation or liability except for the compensation earned by Consultant through the date of termination. The obligations of Consultant in Sections 6 through 9 shall survive the termination of this Agreement.
-${killSwitchActive ? '   \n   **[CRITICAL: 48-HOUR KILL SWITCH ACTIVE]**\n   Notwithstanding the foregoing, the Company reserves the absolute right to terminate this Agreement immediately (VOIDING ALL EQUITY) if the Consultant fails to deliver the initial "Proof of Work" within 48 hours of the Effective Date.' : ''}
+    // 6. Nondisclosure of Confidential Information.
+    //    1. Agreement Not to Disclose. Consultant agrees not to use any Confidential Information (as defined below) disclosed to Consultant by the Company for Consultant’s own use or for any purpose other than to carry out discussions concerning, and the undertaking of, the Services. Consultant agrees to take all reasonable measures to protect the secrecy of, and avoid disclosure or use of, Confidential Information of the Company in order to prevent it from falling into the public domain or the possession of persons other than agents of the Company or persons to whom the Company consents to such disclosure. Upon request by the Company, any materials or documents that have been furnished by the Company to Consultant in connection with the Services shall be promptly returned by Consultant to the Company.
+    //    2. Definition of Confidential Information. “Confidential Information” means any information, technical data or know-how (whether disclosed before or after the date of this Agreement), including, but not limited to, information relating to business and product or service plans, financial projections, customer lists, business forecasts, sales and merchandising, human resources, patents, patent applications, computer object or source code, research, inventions, processes, designs, drawings, engineering, marketing or finance information to be confidential or proprietary or which information would, under the circumstances, appear to a reasonable person to be confidential or proprietary. Confidential Information does not include information, technical data or know-how that, not as a direct or indirect result of any improper inaction or action of Consultant: (i) is in the possession of Consultant at the time of disclosure, as shown by Consultant’s files and records immediately prior to the time of disclosure; or (ii) becomes part of the public knowledge. Notwithstanding the foregoing, Consultant may disclose Confidential Information with the prior written approval of the Company or pursuant to the order or requirement of a court, administrative agency or other governmental body, provided that Consultant use reasonable efforts to limit any such disclosures as permitted by law.
 
-5. Independent Contractor. Consultant’s relationship with the Company will be that of an independent contractor and not that of an employee. Consultant will not be eligible for any employee benefits, nor will the Company make deductions from payments made to Consultant for employment or income taxes, all of which will be Consultant’s responsibility. Consultant will have no authority to enter into contracts that bind the Company or create obligations on the part of the Company without the prior written authorization of the Company.
+    // 7. No Rights Granted. Nothing in this Agreement shall be construed as granting any rights under any patent, copyright or other intellectual property right of the Company, nor shall this Agreement grant Consultant any rights in or to the Company’s Confidential Information, except the limited right to use the Confidential Information in connection with the Services. 
 
-6. Nondisclosure of Confidential Information.
-   1. Agreement Not to Disclose. Consultant agrees not to use any Confidential Information (as defined below) disclosed to Consultant by the Company for Consultant’s own use or for any purpose other than to carry out discussions concerning, and the undertaking of, the Services. Consultant agrees to take all reasonable measures to protect the secrecy of, and avoid disclosure or use of, Confidential Information of the Company in order to prevent it from falling into the public domain or the possession of persons other than agents of the Company or persons to whom the Company consents to such disclosure. Upon request by the Company, any materials or documents that have been furnished by the Company to Consultant in connection with the Services shall be promptly returned by Consultant to the Company.
-   2. Definition of Confidential Information. “Confidential Information” means any information, technical data or know-how (whether disclosed before or after the date of this Agreement), including, but not limited to, information relating to business and product or service plans, financial projections, customer lists, business forecasts, sales and merchandising, human resources, patents, patent applications, computer object or source code, research, inventions, processes, designs, drawings, engineering, marketing or finance information to be confidential or proprietary or which information would, under the circumstances, appear to a reasonable person to be confidential or proprietary. Confidential Information does not include information, technical data or know-how that, not as a direct or indirect result of any improper inaction or action of Consultant: (i) is in the possession of Consultant at the time of disclosure, as shown by Consultant’s files and records immediately prior to the time of disclosure; or (ii) becomes part of the public knowledge. Notwithstanding the foregoing, Consultant may disclose Confidential Information with the prior written approval of the Company or pursuant to the order or requirement of a court, administrative agency or other governmental body, provided that Consultant use reasonable efforts to limit any such disclosures as permitted by law.
+    // 8. Assignment of Intellectual Property. Consultant hereby irrevocably assigns to the Company all right, title and interest in and to any information (including, without limitation, business plans and/or business information), technology, know-how, materials, notes, records, designs, ideas, inventions, improvements, devices, developments, discoveries, compositions, trade secrets, processes, methods and/or techniques, whether or not patentable or copyrightable, that are conceived, reduced to practice or made by Consultant alone or jointly with others in the course of performing the Services or through the use of Confidential Information (collectively, "Inventions"). Consultant agrees that if, in the course of performing the Services, Consultant incorporates into any Invention developed hereunder any invention, improvement, development concept, discovery or other proprietary subject matter owned by Consultant or in which Consultant has an interest ("Item"), Consultant will inform Company in writing thereof, and Company is hereby granted and shall have a non-exclusive, royalty-free, perpetual, irrevocable, worldwide license to make, have made, modify, reproduce, display, use and sell such Item as part of or in connection with the exploitation of such Invention.
 
-7. No Rights Granted. Nothing in this Agreement shall be construed as granting any rights under any patent, copyright or other intellectual property right of the Company, nor shall this Agreement grant Consultant any rights in or to the Company’s Confidential Information, except the limited right to use the Confidential Information in connection with the Services. 
+    // 9. Duty to Assist. Consultant agrees to sign without any further remuneration, but with any out-of-pocket expenses paid by the Company, any and all documents and to perform such acts as may be necessary, useful or convenient for the purposes of perfecting the foregoing assignments and obtaining, enforcing and defending intellectual property rights in any and all countries with respect to Inventions. It is understood and agreed that Company or Company’s designee shall have the sole right, but not the obligation, to prepare, file, prosecute and maintain patent applications and patents worldwide with respect to Inventions. Consultant’s obligation to assist the Company shall continue beyond the termination of Consultant’s relationship with the Company. 
 
-8. Assignment of Intellectual Property. Consultant hereby irrevocably assigns to the Company all right, title and interest in and to any information (including, without limitation, business plans and/or business information), technology, know-how, materials, notes, records, designs, ideas, inventions, improvements, devices, developments, discoveries, compositions, trade secrets, processes, methods and/or techniques, whether or not patentable or copyrightable, that are conceived, reduced to practice or made by Consultant alone or jointly with others in the course of performing the Services or through the use of Confidential Information (collectively, "Inventions"). Consultant agrees that if, in the course of performing the Services, Consultant incorporates into any Invention developed hereunder any invention, improvement, development concept, discovery or other proprietary subject matter owned by Consultant or in which Consultant has an interest ("Item"), Consultant will inform Company in writing thereof, and Company is hereby granted and shall have a non-exclusive, royalty-free, perpetual, irrevocable, worldwide license to make, have made, modify, reproduce, display, use and sell such Item as part of or in connection with the exploitation of such Invention.
+    // 10. Company’s Right to Disclose. During the term of this Agreement, the Company shall have the right to disclose the existence of this Agreement, Consultant’s status as a Consultant, and to include Consultant’s name, image and profile in various promotional materials, including, but not limited to, private placement memos or other offering materials, executive summaries and the Company’s world wide web page.
 
-9. Duty to Assist. Consultant agrees to sign without any further remuneration, but with any out-of-pocket expenses paid by the Company, any and all documents and to perform such acts as may be necessary, useful or convenient for the purposes of perfecting the foregoing assignments and obtaining, enforcing and defending intellectual property rights in any and all countries with respect to Inventions. It is understood and agreed that Company or Company’s designee shall have the sole right, but not the obligation, to prepare, file, prosecute and maintain patent applications and patents worldwide with respect to Inventions. Consultant’s obligation to assist the Company shall continue beyond the termination of Consultant’s relationship with the Company. 
+    // 11. No Conflicts. Consultant represents that Consultant’s compliance with the terms of this Agreement and provision of Services hereunder will not violate any duty which Consultant may have to any other person or entity (such as a present or former employer), and Consultant agrees that Consultant will not do anything in the performance of Services hereunder that would violate any such duty. In addition, Consultant agrees that, during the term of this Agreement, Consultant shall promptly notify the Company in writing of any competitor of the Company which Consultant is also performing services. It is understood that in such an event, the Company will review whether Consultant’s activities are consistent with remaining as a consultant of the Company. 
 
-10. Company’s Right to Disclose. During the term of this Agreement, the Company shall have the right to disclose the existence of this Agreement, Consultant’s status as a Consultant, and to include Consultant’s name, image and profile in various promotional materials, including, but not limited to, private placement memos or other offering materials, executive summaries and the Company’s world wide web page.
+    // 12. Miscellaneous. Any term of this Agreement may be amended or waived only with the written consent of both parties. This Agreement, including any schedules hereto, constitute the sole agreement of the parties and supersedes all oral negotiations and prior writings with respect to the subject matter hereof. The validity, interpretation, construction and performance of this Agreement shall be governed by the laws of the jurisdiction listed on the signature page, without giving effect to the principles of conflict of laws. This Agreement may be executed in counterparts, each of which shall be deemed an original, but all of which together will constitute one and the same instrument.
 
-11. No Conflicts. Consultant represents that Consultant’s compliance with the terms of this Agreement and provision of Services hereunder will not violate any duty which Consultant may have to any other person or entity (such as a present or former employer), and Consultant agrees that Consultant will not do anything in the performance of Services hereunder that would violate any such duty. In addition, Consultant agrees that, during the term of this Agreement, Consultant shall promptly notify the Company in writing of any competitor of the Company which Consultant is also performing services. It is understood that in such an event, the Company will review whether Consultant’s activities are consistent with remaining as a consultant of the Company. 
+    // -----------------------------------------------------------
 
-12. Miscellaneous. Any term of this Agreement may be amended or waived only with the written consent of both parties. This Agreement, including any schedules hereto, constitute the sole agreement of the parties and supersedes all oral negotiations and prior writings with respect to the subject matter hereof. The validity, interpretation, construction and performance of this Agreement shall be governed by the laws of the jurisdiction listed on the signature page, without giving effect to the principles of conflict of laws. This Agreement may be executed in counterparts, each of which shall be deemed an original, but all of which together will constitute one and the same instrument.
+    // SIGNATURE PAGE TO EQUITY AGREEMENT FOR SERVICE
 
------------------------------------------------------------
+    // Effective Date: ${new Date().toLocaleDateString()}
+    // Governing Law: ${signData.govLaw || '__________________________'}
 
-SIGNATURE PAGE TO EQUITY AGREEMENT FOR SERVICE
+    // Description of Services:
+    // - Role A (${founderA.name}): ${founderA.isCEO ? 'CEO/Founder - Strategy, Management, Fundraising' : 'Co-Founder - Product, Operations'}
+    // - Role B (${founderB.name}): ${founderB.isTechnical ? 'CTO/Technical - Engineering, Architecture, Development' : 'Co-Founder - Marketing, Sales'}
 
-Effective Date: ${new Date().toLocaleDateString()}
-Governing Law: ${signData.govLaw || '__________________________'}
+    // Expected Term of Services and Equity Vesting Term:
+    // ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based vesting (to be defined in definitives)'}
 
-Description of Services:
-- Role A (${founderA.name}): ${founderA.isCEO ? 'CEO/Founder - Strategy, Management, Fundraising' : 'Co-Founder - Product, Operations'}
-- Role B (${founderB.name}): ${founderB.isTechnical ? 'CTO/Technical - Engineering, Architecture, Development' : 'Co-Founder - Marketing, Sales'}
+    // Consultant Equity Compensation:
+    // - ${founderA.name}: ${founderAPercent}%
+    // - ${founderB.name}: ${founderBPercent}%
 
-Expected Term of Services and Equity Vesting Term:
-${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based vesting (to be defined in definitives)'}
+    // Total Number of Shares of Common Stock: TBD
+    // Type of Security: Restricted Common Stock
+    // Exercise/Purchase Price: Fair Market Value
 
-Consultant Equity Compensation:
-- ${founderA.name}: ${founderAPercent}%
-- ${founderB.name}: ${founderBPercent}%
+    // Vesting:
+    // [X] Monthly: All shares shall vest on a pro rata basis monthly at the end of each full month of services during the Expected Term of Services.
+    // [ ] Completion: All shares shall vest upon the completion of the Services, subject to written confirmation by the Company.
+    // [ ] Custom Vesting: ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based'}
 
-Total Number of Shares of Common Stock: TBD
-Type of Security: Restricted Common Stock
-Exercise/Purchase Price: Fair Market Value
+    // -----------------------------------------------------------
 
-Vesting:
-[X] Monthly: All shares shall vest on a pro rata basis monthly at the end of each full month of services during the Expected Term of Services.
-[ ] Completion: All shares shall vest upon the completion of the Services, subject to written confirmation by the Company.
-[ ] Custom Vesting: ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff' : 'Milestone-based'}
+    // COMPANY: ${signData.companyName || '________________________'}
+    // Signature: ${signData.founderASign ? `/s/ ${signData.founderASign}` : '________________________'}
+    // Name: ${signData.founderASign || '________________________'}
+    // Title: CEO
+    // Address: ${signData.companyAddress || '________________________'}
 
------------------------------------------------------------
+    // CONSULTANT: ${founderB.name}
+    // Signature: ${signData.founderBSign ? `/s/ ${signData.founderBSign}` : '________________________'}
+    // Name: ${founderB.name}
+    // Title: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
+    // ADDRESS: ${signData.companyAddress || '________________________'}
 
-COMPANY: ${signData.companyName || '________________________'}
-Signature: ${signData.founderASign ? `/s/ ${signData.founderASign}` : '________________________'}
-Name: ${signData.founderASign || '________________________'}
-Title: CEO
-Address: ${signData.companyAddress || '________________________'}
+    // -----------------------------------------------------------
 
-CONSULTANT: ${founderB.name}
-Signature: ${signData.founderBSign ? `/s/ ${signData.founderBSign}` : '________________________'}
-Name: ${founderB.name}
-Title: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
-ADDRESS: ${signData.companyAddress || '________________________'}
+    // EXHIBIT A: CoVibr Equity Audit
+    // Date: ${new Date().toLocaleDateString()}
 
------------------------------------------------------------
+    // 1. FOUNDER CONTRIBUTIONS
 
-EXHIBIT A: CoVibr Equity Audit
-Date: ${new Date().toLocaleDateString()}
+    //    A. ${founderA.name} (${split[0].value}%)
+    //       - Role: ${founderA.isCEO ? 'CEO' : 'Co-Founder'}
+    //       - Cash Contribution: $${founderA.cash.toLocaleString()}
+    //       - Sweat Equity: ${founderA.hours} hrs/week @ $${founderA.salary.toLocaleString()}/yr (Discounted ${founderA.discount}%)
+    //       - Assets: ${founderA.assets.join(', ') || 'None'}
+    //       - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
 
-1. FOUNDER CONTRIBUTIONS
-   
-   A. ${founderA.name} (${split[0].value}%)
-      - Role: ${founderA.isCEO ? 'CEO' : 'Co-Founder'}
-      - Cash Contribution: $${founderA.cash.toLocaleString()}
-      - Sweat Equity: ${founderA.hours} hrs/week @ $${founderA.salary.toLocaleString()}/yr (Discounted ${founderA.discount}%)
-      - Assets: ${founderA.assets.join(', ') || 'None'}
-      - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
+    //    B. ${founderB.name} (${split[1].value}%)
+    //       - Role: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
+    //       - Cash Contribution: $${founderB.cash.toLocaleString()}
+    //       - Sweat Equity: ${founderB.hours} hrs/week @ $${founderB.salary.toLocaleString()}/yr (Discounted ${founderB.discount}%)
+    //       - Assets: ${founderB.assets.join(', ') || 'None'}
+    //       - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
 
-   B. ${founderB.name} (${split[1].value}%)
-      - Role: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
-      - Cash Contribution: $${founderB.cash.toLocaleString()}
-      - Sweat Equity: ${founderB.hours} hrs/week @ $${founderB.salary.toLocaleString()}/yr (Discounted ${founderB.discount}%)
-      - Assets: ${founderB.assets.join(', ') || 'None'}
-      - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
+    // 2. EQUITY SPLIT CALCULATION
+    //    The equity split determined above is based on the relative weight of cash, time, and intellectual property contributions as of the Effective Date.
 
-2. EQUITY SPLIT CALCULATION
-   The equity split determined above is based on the relative weight of cash, time, and intellectual property contributions as of the Effective Date.
-   
-   - Total Valuation Proxy: $${(founderA.cash + founderB.cash + ((founderA.salary * (founderA.discount / 100)) + (founderB.salary * (founderB.discount / 100)))).toLocaleString()} (Estimated Contribution Value)
-   
-3. VESTING SCHEDULE DETAILS
-   ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff.' : 'Milestone-based vesting.'}
-   If the Relationship is terminated before the Cliff Date, all unvested shares shall be forfeited to the Company.
-${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to a 48-Hour Probationary Period. Failure to deliver initial requirements results in immediate nullification.**' : ''}
-`;
-    };
+    //    - Total Valuation Proxy: $${(founderA.cash + founderB.cash + ((founderA.salary * (founderA.discount / 100)) + (founderB.salary * (founderB.discount / 100)))).toLocaleString()} (Estimated Contribution Value)
 
-    const copyToClipboard = () => {
-        navigator.clipboard.writeText(generateEASEAgreement());
-        alert("Summary copied to clipboard!");
-    };
+    // 3. VESTING SCHEDULE DETAILS
+    //    ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff.' : 'Milestone-based vesting.'}
+    //    If the Relationship is terminated before the Cliff Date, all unvested shares shall be forfeited to the Company.
+    // ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to a 48-Hour Probationary Period. Failure to deliver initial requirements results in immediate nullification.**' : ''}
+    // `;
+    // };
+
+    // const copyToClipboard = () => { // Removed
+    //     navigator.clipboard.writeText(generateEASEAgreement());
+    //     alert("Summary copied to clipboard!");
+    // };
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '60px' }} className="equity-calculator-page">
-            {/* Print Styles */}
-            <style>{`
+            {/* Print Styles (Removed) */}
+            {/* <style>{`
                 @media print {
-                    @page { margin: 2cm; size: portrait; } /* Agreements are portrait */
+                    @page { margin: 2cm; size: portrait; } 
                     
-                    /* HIDE EVERYTHING BY DEFAULT */
                     body * {
                         visibility: hidden;
                     }
 
-                    /* SHOW ONLY THE PRINT AREA */
                     #print-area, #print-area * {
                         visibility: visible;
                     }
 
-                    /* POSITION THE PRINT AREA */
                     #print-area {
                         position: absolute;
                         left: 0;
@@ -279,7 +311,6 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                         height: auto !important;
                     } 
 
-                    /* Reset the overlay container */
                     .print-overlay {
                         position: absolute !important;
                         top: 0 !important;
@@ -292,12 +323,10 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                         visibility: visible !important;
                     }
 
-                    /* Hide specific internal elements even if inside print-area */
                     .no-print {
                         display: none !important;
                     }
 
-                    /* Text Formatting */
                     .agreement-text {
                         color: black;
                         font-size: 11pt;
@@ -311,9 +340,9 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                         font-weight: bold;
                     }
                 }
-            `}</style>
+            `}</style> */}
 
-            <header style={{ marginBottom: '40px', textAlign: 'center' }} className="no-print">
+            <header style={{ marginBottom: '40px', textAlign: 'center' }} >
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 850, marginBottom: '8px' }}>Equity Fairness Calculator</h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Replace awkward negotiations with mathematics and risk analysis.</p>
             </header>
@@ -378,7 +407,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                     type="range" min="0" max="20" value={config.ceoPremium}
                                     onChange={(e) => setConfig({ ...config, ceoPremium: parseInt(e.target.value) })}
                                     style={{ width: '100%' }}
-                                    className="no-print"
+                                // className="no-print" // Removed
                                 />
                             </div>
 
@@ -391,7 +420,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                     type="range" min="0" max="20" value={config.techPremium}
                                     onChange={(e) => setConfig({ ...config, techPremium: parseInt(e.target.value) })}
                                     style={{ width: '100%' }}
-                                    className="no-print"
+                                // className="no-print" // Removed
                                 />
                             </div>
 
@@ -405,10 +434,10 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                     checked={config.slicingPie}
                                     onChange={(e) => setConfig({ ...config, slicingPie: e.target.checked })}
                                     style={{ width: '20px', height: '20px', accentColor: 'var(--accent-primary)' }}
-                                    className="no-print"
+                                // className="no-print" // Removed
                                 />
-                                {/* Print fallback */}
-                                <span className="only-print" style={{ display: 'none' }}>{config.slicingPie ? 'Yes' : 'No'}</span>
+                                {/* Print fallback (Removed) */}
+                                {/* <span className="only-print" style={{ display: 'none' }}>{config.slicingPie ? 'Yes' : 'No'}</span> */}
                             </label>
                         </div>
                     </section>
@@ -477,19 +506,24 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                         </p>
                     </section>
 
-                    <div style={{ display: 'flex', gap: '12px' }} className="no-print">
-                        <button className="btn-primary" style={{ flex: 1, height: '54px' }} onClick={() => setShowSummaryModal(true)}>
-                            <FileCheck size={18} /> Generate EASE Agreement
+                    <div style={{ display: 'flex', gap: '12px' }} >
+                        <button
+                            className="btn-primary"
+                            style={{ flex: 1, height: '54px' }}
+                            onClick={handleCreateAgreement}
+                            disabled={creating}
+                        >
+                            <FileCheck size={18} /> {creating ? 'Creating...' : 'Create & Send Agreement'}
                         </button>
-                        <button className="btn-ghost" style={{ width: '54px', height: '54px', padding: 0, justifyContent: 'center' }} onClick={handlePrint} title="Save as PDF">
+                        {/* <button className="btn-ghost" style={{ width: '54px', height: '54px', padding: 0, justifyContent: 'center' }} onClick={handlePrint} title="Save as PDF"> // Removed
                             <Printer size={20} />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
             </div>
 
-            {/* Fast Summary Modal */}
-            <AnimatePresence>
+            {/* Fast Summary Modal (Removed) */}
+            {/* <AnimatePresence>
                 {showSummaryModal && (
                     <div
                         className="print-overlay"
@@ -519,6 +553,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                             transition: 'all 0.2s',
                                             boxShadow: killSwitchActive ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none',
                                             display: 'flex', alignItems: 'center', gap: '8px'
+                                        }}
                                         }}
                                         onClick={() => setKillSwitchActive(!killSwitchActive)}
                                     >
@@ -559,7 +594,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                 }}
                             >
                                 {generateEASEAgreement()}
-                                <div className="page-break" /> {/* Ensure content flow */}
+                                <div className="page-break" /> 
                             </div>
 
                             <div style={{ display: 'flex', gap: '12px' }}>
@@ -571,9 +606,31 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                                 </button>
                             </div>
                         </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+        </div>
+    )
+}
+            </AnimatePresence > */}
+
+            {/* Kill Switch Toggle (Visible in UI now) (Removed) */}
+            {/* < div style = {{ position: 'fixed', bottom: 30, right: 30, zIndex: 50 }}>
+        <button
+            className="btn-secondary"
+            style={{
+                padding: '12px 24px', fontSize: '0.9rem', fontWeight: 700,
+                borderColor: killSwitchActive ? '#EF4444' : 'var(--text-tertiary)',
+                color: killSwitchActive ? 'white' : 'var(--text-secondary)',
+                background: killSwitchActive ? '#EF4444' : 'rgba(255,255,255,0.05)',
+                transition: 'all 0.2s',
+                boxShadow: killSwitchActive ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                backdropFilter: 'blur(12px)'
+            }}
+            onClick={() => setKillSwitchActive(!killSwitchActive)}
+        >
+            <AlertTriangle size={18} />
+            {killSwitchActive ? 'KILL SWITCH: ACTIVE' : 'Arm Kill Switch'}
+        </button>
+            </div > */}
 
         </div >
     );

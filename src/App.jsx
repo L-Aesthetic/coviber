@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SidebarLayout from './components/SidebarLayout';
+import AgreementPage from './pages/AgreementPage';
 import Dashboard from './pages/Dashboard';
 import SearchEngine from './pages/SearchEngine';
 import BriefBuilder from './pages/BriefBuilder';
@@ -32,6 +33,7 @@ function App() {
             <Route path="/landing" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/schedule" element={<Scheduling />} />
+            <Route path="/agreement/:id" element={<AgreementPage />} />
             <Route path="/*" element={
               <SidebarLayout>
                 <Routes>
