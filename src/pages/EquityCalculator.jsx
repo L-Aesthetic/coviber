@@ -113,6 +113,7 @@ export default function EquityCalculator() {
         founderASign: '',
         founderBSign: ''
     });
+    const [killSwitchActive, setKillSwitchActive] = useState(false);
 
     const handleSignChange = (field, value) => {
         setSignData({ ...signData, [field]: value });
@@ -131,6 +132,7 @@ export default function EquityCalculator() {
         return `Equity Agreement for Service (EASE)
 Version 1.0
 
+${killSwitchActive ? '*** CONDITIONAL PROBATIONARY AGREEMENT ***\n*** SUBJECT TO IMMEDIATE TERMINATION (SECTION 4) ***\n' : ''}
 This Equity Agreement for Service (this "Agreement") is entered into as of ${new Date().toLocaleDateString()} by and between the undersigned company (the "Company") and the undersigned service provider (the "Consultant").
 
 The parties agree as follows:
@@ -142,7 +144,7 @@ The parties agree as follows:
 3. Expenses. The Company shall reimburse reasonable travel and related expenses incurred by Consultant in the course of performing services hereunder, provided that Consultant obtains prior written approval of any such expenditures in sufficient detail and indicates a maximum reimbursable amount for each such approval.
 
 4. Term and Termination. The term of this Agreement shall continue until the completion of the Services, provided that this Agreement may be terminated at any time by either party for any reason upon five (5) days prior written notice. Upon termination the Company shall have no further obligation or liability except for the compensation earned by Consultant through the date of termination. The obligations of Consultant in Sections 6 through 9 shall survive the termination of this Agreement.
-   [KILL SWITCH: The Company hereby reserves the right to terminate early if Consultant fails to meet initial deliverables within 48 hours.]
+${killSwitchActive ? '   \n   **[CRITICAL: 48-HOUR KILL SWITCH ACTIVE]**\n   Notwithstanding the foregoing, the Company reserves the absolute right to terminate this Agreement immediately (VOIDING ALL EQUITY) if the Consultant fails to deliver the initial "Proof of Work" within 48 hours of the Effective Date.' : ''}
 
 5. Independent Contractor. Consultant’s relationship with the Company will be that of an independent contractor and not that of an employee. Consultant will not be eligible for any employee benefits, nor will the Company make deductions from payments made to Consultant for employment or income taxes, all of which will be Consultant’s responsibility. Consultant will have no authority to enter into contracts that bind the Company or create obligations on the part of the Company without the prior written authorization of the Company.
 
@@ -232,9 +234,7 @@ Date: ${new Date().toLocaleDateString()}
 3. VESTING SCHEDULE DETAILS
    ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff.' : 'Milestone-based vesting.'}
    If the Relationship is terminated before the Cliff Date, all unvested shares shall be forfeited to the Company.
-
-4. 48-HOUR KILL SWITCH
-   The Company reserves the right to terminate this agreement immediately within the first 30 days if Consultant fails to deliver initial "Proof of Work" as mutually agreed.
+${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to a 48-Hour Probationary Period. Failure to deliver initial requirements results in immediate nullification.**' : ''}
 `;
     };
 
@@ -514,7 +514,7 @@ Date: ${new Date().toLocaleDateString()}
 
                     <div style={{ display: 'flex', gap: '12px' }} className="no-print">
                         <button className="btn-primary" style={{ flex: 1, height: '54px' }} onClick={() => setShowSummaryModal(true)}>
-                            <FileCheck size={18} /> Generate FAST Summary
+                            <FileCheck size={18} /> Generate EASE Agreement
                         </button>
                         <button className="btn-ghost" style={{ width: '54px', height: '54px', padding: 0, justifyContent: 'center' }} onClick={handlePrint} title="Save as PDF">
                             <Printer size={20} />
@@ -541,8 +541,21 @@ Date: ${new Date().toLocaleDateString()}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }} className="no-print">
                                 <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Sign EASE Agreement</h3>
                                 <div style={{ display: 'flex', gap: '12px' }}>
-                                    <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.9rem', borderColor: '#F59E0B', color: '#F59E0B' }} onClick={() => alert("Kill Switch Clause added to Section 4.")}>
-                                        <AlertTriangle size={16} style={{ marginRight: '6px' }} /> Kill Switch Active
+                                    <button
+                                        className="btn-secondary"
+                                        style={{
+                                            padding: '8px 16px', fontSize: '0.85rem', fontWeight: 700,
+                                            borderColor: killSwitchActive ? '#EF4444' : 'var(--text-tertiary)',
+                                            color: killSwitchActive ? 'white' : 'var(--text-secondary)',
+                                            background: killSwitchActive ? '#EF4444' : 'rgba(255,255,255,0.05)',
+                                            transition: 'all 0.2s',
+                                            boxShadow: killSwitchActive ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none',
+                                            display: 'flex', alignItems: 'center', gap: '8px'
+                                        }}
+                                        onClick={() => setKillSwitchActive(!killSwitchActive)}
+                                    >
+                                        <AlertTriangle size={16} />
+                                        {killSwitchActive ? 'KILL SWITCH: ACTIVE' : 'Arm Kill Switch'}
                                     </button>
                                     <button className="btn-ghost" style={{ padding: '8px' }} onClick={() => setShowSummaryModal(false)}>
                                         <X size={20} />
