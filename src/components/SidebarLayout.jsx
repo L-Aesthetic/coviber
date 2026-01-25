@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X } from 'lucide-react';
+import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X, Bell, Mail } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 
 export default function SidebarLayout({ children }) {
+    const { user } = useAuth();
     const location = useLocation();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -296,6 +298,63 @@ export default function SidebarLayout({ children }) {
                             </h3>
 
                             <div style={{ marginBottom: '32px' }}>
+                                {/* Identity Section */}
+                                <div style={{ marginBottom: '24px', paddingBottom: '24px', borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        My Account
+                                    </h4>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <User size={16} color="white" />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{user?.email || 'user@example.com'}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Founder</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Subscription */}
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Subscription
+                                    </h4>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(45deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))', padding: '16px', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.2)' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 700, color: 'white', marginBottom: '4px' }}>Free Plan</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>You are on the basic tier.</div>
+                                        </div>
+                                        <Link
+                                            to="/billing"
+                                            onClick={() => setShowAccountModal(false)} // Close modal on nav
+                                            className="btn-primary"
+                                            style={{ fontSize: '0.8rem', padding: '6px 12px', height: 'auto' }}
+                                        >
+                                            Manage
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                {/* Notifications */}
+                                <div style={{ marginBottom: '24px' }}>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Notifications
+                                    </h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {['Email Digests', 'New Matches', 'Product Updates'].map((item, i) => (
+                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                    {i === 0 ? <Mail size={16} /> : i === 1 ? <Zap size={16} /> : <Bell size={16} />}
+                                                    {item}
+                                                </div>
+                                                <div style={{ width: '36px', height: '20px', background: '#334155', borderRadius: '10px', position: 'relative', cursor: 'pointer' }}>
+                                                    <div style={{ width: '16px', height: '16px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: '2px' }}></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                     Security
                                 </h4>
