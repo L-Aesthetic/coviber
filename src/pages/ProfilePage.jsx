@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 const styles = `
 .avatar-overlay { opacity: 0; }
 .avatar-overlay:hover { opacity: 1; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 `;
 import { useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
@@ -242,9 +244,62 @@ export default function ProfilePage() {
         );
     }
 
+    const fileInputRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+
+    const handleAvatarUpload = async (event) => {
+        try {
+            setUploading(true);
+
+            if (!event.target.files || event.target.files.length === 0) {
+                return; // User cancelled
+            }
+
+            const file = event.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // Upload
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                if (uploadError.message.includes('bucket not found')) {
+                    alert("Storage Bucket 'avatars' not found. Please create a public bucket named 'avatars' in your Supabase dashboard.");
+                } else {
+                    throw uploadError;
+                }
+                return;
+            }
+
+            // Get URL
+            const { data } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            if (data) {
+                setProfile({ ...profile, avatar_url: data.publicUrl });
+            }
+
+        } catch (error) {
+            alert('Error uploading avatar: ' + error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
             <style>{styles}</style>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+            />
             {/* ... Header ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <button
@@ -296,13 +351,13 @@ export default function ProfilePage() {
                                         cursor: 'pointer', opacity: 0, hover: { opacity: 1 }, transition: 'opacity 0.2s'
                                     }}
                                     className="avatar-overlay"
-                                    onClick={() => {
-                                        const url = prompt("Enter Image URL (or leave empty to randomize default):", profile.avatar_url || "");
-                                        if (url === null) return; // Cancelled
-                                        setProfile({ ...profile, avatar_url: url });
-                                    }}
+                                    onClick={() => fileInputRef.current.click()}
                                 >
-                                    <Edit2 size={24} color="white" />
+                                    {uploading ? (
+                                        <RefreshCcw size={24} className="spin" color="white" />
+                                    ) : (
+                                        <Edit2 size={24} color="white" />
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -1018,62 +1073,62 @@ export default function ProfilePage() {
             </AnimatePresence>
 
 
-{/* Verification Modal */ }
-<AnimatePresence>
-    {showVerifyModal && (
-        <div
-            style={{
-                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-            }}
-            onClick={() => setShowVerifyModal(false)}
-        >
-            <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="saas-panel"
-                style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
-                onClick={e => e.stopPropagation()}
-            >
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px' }}>Get Verified</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
-                    Add a verification badge to build trust. Provide your previous company or current affiliation.
-                </p>
-
-                <input
-                    className="glass-input"
-                    placeholder="e.g. Ex-Stripe, YC W24, Serial Founder"
-                    value={verifyCompany}
-                    onChange={e => setVerifyCompany(e.target.value)}
-                    style={{ width: '100%', marginBottom: '24px' }}
-                    autoFocus
-                />
-
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                        className="btn-primary"
-                        style={{ flex: 1, justifyContent: 'center' }}
-                        onClick={() => {
-                            setProfile({ ...profile, verified_at: verifyCompany });
-                            setShowVerifyModal(false);
-                            setVerifyCompany('');
+            {/* Verification Modal */}
+            <AnimatePresence>
+                {showVerifyModal && (
+                    <div
+                        style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
                         }}
-                    >
-                        Verify
-                    </button>
-                    <button
-                        className="btn-ghost"
-                        style={{ flex: 1, justifyContent: 'center' }}
                         onClick={() => setShowVerifyModal(false)}
                     >
-                        Cancel
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    )}
-</AnimatePresence>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="saas-panel"
+                            style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px' }}>Get Verified</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                                Add a verification badge to build trust. Provide your previous company or current affiliation.
+                            </p>
+
+                            <input
+                                className="glass-input"
+                                placeholder="e.g. Ex-Stripe, YC W24, Serial Founder"
+                                value={verifyCompany}
+                                onChange={e => setVerifyCompany(e.target.value)}
+                                style={{ width: '100%', marginBottom: '24px' }}
+                                autoFocus
+                            />
+
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    className="btn-primary"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => {
+                                        setProfile({ ...profile, verified_at: verifyCompany });
+                                        setShowVerifyModal(false);
+                                        setVerifyCompany('');
+                                    }}
+                                >
+                                    Verify
+                                </button>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => setShowVerifyModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div >
     );
 }
