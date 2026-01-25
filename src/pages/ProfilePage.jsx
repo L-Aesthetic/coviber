@@ -30,6 +30,8 @@ export default function ProfilePage() {
     const [initialStatus, setInitialStatus] = useState('ready'); // For setup screen
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [verifyCompany, setVerifyCompany] = useState('');
+    const fileInputRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
 
     // Initial Empty/Skeleton State
     const [profile, setProfile] = useState({
@@ -244,8 +246,7 @@ export default function ProfilePage() {
         );
     }
 
-    const fileInputRef = useRef(null);
-    const [uploading, setUploading] = useState(false);
+
 
     const handleAvatarUpload = async (event) => {
         try {
