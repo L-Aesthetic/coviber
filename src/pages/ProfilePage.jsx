@@ -1,5 +1,10 @@
 import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+// Add basic styles for avatar overlay
+const styles = `
+.avatar-overlay { opacity: 0; }
+.avatar-overlay:hover { opacity: 1; }
+`;
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
@@ -21,6 +26,8 @@ export default function ProfilePage() {
     const [newProject, setNewProject] = useState({ title: '', role: '', desc: '', stack: '' });
     const [newVouch, setNewVouch] = useState({ name: '', role: '', text: '' });
     const [initialStatus, setInitialStatus] = useState('ready'); // For setup screen
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [verifyCompany, setVerifyCompany] = useState('');
 
     // Initial Empty/Skeleton State
     const [profile, setProfile] = useState({
@@ -237,6 +244,7 @@ export default function ProfilePage() {
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
+            <style>{styles}</style>
             {/* ... Header ... */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <button
@@ -275,7 +283,28 @@ export default function ProfilePage() {
                             border: '4px solid rgba(255,255,255,0.1)', flexShrink: 0, overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
                         }}>
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} alt="Avatar" style={{ width: '100%', height: '100%' }} />
+                            <img
+                                src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`}
+                                alt="Avatar"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            {isEditing && (
+                                <div
+                                    style={{
+                                        position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', opacity: 0, hover: { opacity: 1 }, transition: 'opacity 0.2s'
+                                    }}
+                                    className="avatar-overlay"
+                                    onClick={() => {
+                                        const url = prompt("Enter Image URL (or leave empty to randomize default):", profile.avatar_url || "");
+                                        if (url === null) return; // Cancelled
+                                        setProfile({ ...profile, avatar_url: url });
+                                    }}
+                                >
+                                    <Edit2 size={24} color="white" />
+                                </div>
+                            )}
                         </div>
                         {isEditing ? (
                             <div style={{
@@ -335,12 +364,7 @@ export default function ProfilePage() {
                                     <div
                                         className={`tag ${profile.verified_at ? 'tag-green' : 'tag-blur'}`}
                                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', cursor: 'pointer' }}
-                                        onClick={() => {
-                                            const newVal = profile.verified_at ? null : 'Stripe'; // Toggle logic
-                                            const company = newVal ? prompt("Verify with which company/identity?", "Ex-Stripe") : null;
-                                            if (newVal && company) setProfile({ ...profile, verified_at: company });
-                                            else setProfile({ ...profile, verified_at: null });
-                                        }}
+                                        onClick={() => setShowVerifyModal(true)}
                                     >
                                         <ShieldCheck size={18} /> {profile.verified_at ? `Verified: ${profile.verified_at}` : 'Click to Verify'}
                                     </div>
@@ -362,10 +386,39 @@ export default function ProfilePage() {
                                 </h2>
                             )}
 
-                            <div style={{ display: 'flex', gap: '24px', color: 'var(--text-tertiary)', fontSize: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} /> {profile.location}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={18} /> {profile.availability}</div>
-                            </div>
+                            {isEditing ? (
+                                <div style={{ display: 'flex', gap: '12px', fontSize: '1rem', alignItems: 'center' }}>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <MapPin size={18} color="var(--text-tertiary)" />
+                                        <input
+                                            className="glass-input"
+                                            value={profile.location || ''}
+                                            onChange={e => setProfile({ ...profile, location: e.target.value })}
+                                            placeholder="City, Country"
+                                            style={{ width: '100%', padding: '8px' }}
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Clock size={18} color="var(--text-tertiary)" />
+                                        <select
+                                            className="glass-input"
+                                            value={profile.availability || 'Full-time'}
+                                            onChange={e => setProfile({ ...profile, availability: e.target.value })}
+                                            style={{ width: '100%', padding: '8px', cursor: 'pointer' }}
+                                        >
+                                            <option value="Full-time">Full-time</option>
+                                            <option value="Part-time">Part-time</option>
+                                            <option value="Nights & Weekends">Nights & Weekends</option>
+                                            <option value="Advisory">Advisory</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', gap: '24px', color: 'var(--text-tertiary)', fontSize: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} /> {profile.location || 'Remote'}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={18} /> {profile.availability || 'Full-time'}</div>
+                                </div>
+                            )}
                         </div>
 
                         {isEditing ? (
@@ -963,7 +1016,65 @@ export default function ProfilePage() {
                     </div>
                 )}
             </AnimatePresence>
+
+
+{/* Verification Modal */ }
+<AnimatePresence>
+    {showVerifyModal && (
+        <div
+            style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+            }}
+            onClick={() => setShowVerifyModal(false)}
+        >
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="saas-panel"
+                style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px' }}>Get Verified</h3>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                    Add a verification badge to build trust. Provide your previous company or current affiliation.
+                </p>
+
+                <input
+                    className="glass-input"
+                    placeholder="e.g. Ex-Stripe, YC W24, Serial Founder"
+                    value={verifyCompany}
+                    onChange={e => setVerifyCompany(e.target.value)}
+                    style={{ width: '100%', marginBottom: '24px' }}
+                    autoFocus
+                />
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        className="btn-primary"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => {
+                            setProfile({ ...profile, verified_at: verifyCompany });
+                            setShowVerifyModal(false);
+                            setVerifyCompany('');
+                        }}
+                    >
+                        Verify
+                    </button>
+                    <button
+                        className="btn-ghost"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        onClick={() => setShowVerifyModal(false)}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </motion.div>
         </div>
+    )}
+</AnimatePresence>
+        </div >
     );
 }
 
