@@ -1,4 +1,4 @@
-import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw } from 'lucide-react';
+import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -277,24 +277,46 @@ export default function ProfilePage() {
                         }}>
                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.name}`} alt="Avatar" style={{ width: '100%', height: '100%' }} />
                         </div>
-                        <div style={{
-                            position: 'absolute', bottom: '-10px', right: '-10px',
-                            background: profile.status === 'ready' ? '#10B981' : '#F59E0B',
-                            padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800,
-                            color: 'white', border: '4px solid #1c1c24', textTransform: 'uppercase',
-                            cursor: isEditing ? 'pointer' : 'default',
-                            transition: 'all 0.2s',
-                            boxShadow: isEditing ? '0 0 15px rgba(0,0,0,0.3)' : 'none'
-                        }}
-                            onClick={() => {
-                                if (isEditing) {
-                                    setProfile({ ...profile, status: profile.status === 'ready' ? 'exploring' : 'ready' });
-                                }
-                            }}
-                            title={isEditing ? "Click to toggle status" : ""}>
-                            {profile.status === 'ready' ? 'Ready to Build' : 'Exploring'}
-                            {isEditing && <RefreshCcw size={12} style={{ display: 'inline', marginLeft: '6px' }} />}
-                        </div>
+                        {isEditing ? (
+                            <div style={{
+                                position: 'absolute', bottom: '-10px', right: '-10px',
+                                width: '160px' // Ensure enough width for the dropdown
+                            }}>
+                                <select
+                                    value={profile.status}
+                                    onChange={(e) => setProfile({ ...profile, status: e.target.value })}
+                                    className="glass-input" // Use glass-input for consistency but override styles
+                                    style={{
+                                        width: '100%',
+                                        background: profile.status === 'ready' ? '#10B981' : '#F59E0B',
+                                        color: 'white',
+                                        border: '4px solid #1c1c24',
+                                        borderRadius: '20px',
+                                        padding: '6px 32px 6px 16px', // Right padding for arrow
+                                        fontSize: '0.8rem',
+                                        fontWeight: 800,
+                                        textTransform: 'uppercase',
+                                        cursor: 'pointer',
+                                        appearance: 'none', // Hide default arrow
+                                        outline: 'none',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    <option value="ready" style={{ color: 'black' }}>Ready to Build</option>
+                                    <option value="exploring" style={{ color: 'black' }}>Exploring</option>
+                                </select>
+                                <ChevronDown size={14} color="white" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                            </div>
+                        ) : (
+                            <div style={{
+                                position: 'absolute', bottom: '-10px', right: '-10px',
+                                background: profile.status === 'ready' ? '#10B981' : '#F59E0B',
+                                padding: '6px 16px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800,
+                                color: 'white', border: '4px solid #1c1c24', textTransform: 'uppercase'
+                            }}>
+                                {profile.status === 'ready' ? 'Ready to Build' : 'Exploring'}
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ flex: 1 }}>
