@@ -116,6 +116,7 @@ export default function EquityCalculator() {
     // });
     const [killSwitchActive, setKillSwitchActive] = useState(false); // Kept for now, but will be removed from UI
     const [creating, setCreating] = useState(false);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     // EASE Agreement Creation Logic (DB)
     const handleCreateAgreement = async () => {
@@ -123,7 +124,8 @@ export default function EquityCalculator() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
-                alert("Please log in to create an agreement.");
+                setShowAuthModal(true);
+                setCreating(false);
                 return;
             }
 
@@ -606,31 +608,62 @@ export default function EquityCalculator() {
                                 </button>
                             </div>
                         </motion.div>
-        </div>
-    )
-}
-            </AnimatePresence > */}
+                    </div>
+                )}
+            </AnimatePresence> */}
 
-            {/* Kill Switch Toggle (Visible in UI now) (Removed) */}
-            {/* < div style = {{ position: 'fixed', bottom: 30, right: 30, zIndex: 50 }}>
-        <button
-            className="btn-secondary"
-            style={{
-                padding: '12px 24px', fontSize: '0.9rem', fontWeight: 700,
-                borderColor: killSwitchActive ? '#EF4444' : 'var(--text-tertiary)',
-                color: killSwitchActive ? 'white' : 'var(--text-secondary)',
-                background: killSwitchActive ? '#EF4444' : 'rgba(255,255,255,0.05)',
-                transition: 'all 0.2s',
-                boxShadow: killSwitchActive ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none',
-                display: 'flex', alignItems: 'center', gap: '8px',
-                backdropFilter: 'blur(12px)'
-            }}
-            onClick={() => setKillSwitchActive(!killSwitchActive)}
-        >
-            <AlertTriangle size={18} />
-            {killSwitchActive ? 'KILL SWITCH: ACTIVE' : 'Arm Kill Switch'}
-        </button>
-            </div > */}
+            {/* Auth Required Modal */}
+            <AnimatePresence>
+                {showAuthModal && (
+                    <div
+                        style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                        }}
+                        onClick={() => setShowAuthModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="saas-panel"
+                            style={{ width: '400px', padding: '32px', textAlign: 'center', border: '1px solid var(--border-subtle)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ marginBottom: '24px' }}>
+                                <div style={{
+                                    width: '64px', height: '64px', background: 'rgba(99,102,241,0.1)',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 16px', border: '1px solid rgba(99,102,241,0.2)'
+                                }}>
+                                    <Shield size={32} color="var(--accent-primary)" />
+                                </div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '8px' }}>Account Required</h3>
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                    You must be logged in to create legally binding agreements and save them to your secure vault.
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <button
+                                    className="btn-primary"
+                                    style={{ justifyContent: 'center', height: '48px', fontSize: '1rem' }}
+                                    onClick={() => navigate('/login')}
+                                >
+                                    Log In / Sign Up
+                                </button>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ justifyContent: 'center' }}
+                                    onClick={() => setShowAuthModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
         </div >
     );
