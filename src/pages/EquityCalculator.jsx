@@ -248,105 +248,53 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
             {/* Print Styles */}
             <style>{`
                 @media print {
-                    @page { margin: 2cm; size: landscape; }
-                    body { 
-                        background: white !important; 
-                        color: black !important; 
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
+                    @page { margin: 2cm; size: portrait; } /* Agreements are portrait */
+                    
+                    /* HIDE EVERYTHING BY DEFAULT */
+                    body * {
+                        visibility: hidden;
                     }
-                    /* HIDE UI ELEMENTS */
-                    header, .btn-primary, .btn-ghost, .btn-secondary, 
-                    .input-field input[type="range"], .tag button, 
-                    .no-print, .config-toggles {
-                        display: none !important;
+
+                    /* SHOW ONLY THE PRINT AREA */
+                    #print-area, #print-area * {
+                        visibility: visible;
                     }
-                    /* STYLE CONTAINERS FOR PRINT */
-                    .saas-panel {
-                        border: 1px solid #ddd !important;
-                        box-shadow: none !important;
-                        break-inside: avoid;
-                        background: white !important;
-                        margin-bottom: 20px !important;
-                        page-break-inside: avoid;
-                        color: black !important;
-                    }
-                    /* FORCE TEXT COLORS AND FONTS */
-                    h1, h2, h3, h4, p, span, div, label {
-                        color: black !important; 
-                        font-family: 'Times New Roman', serif !important;
-                    }
-                    /* SHOW VALUES INSTEAD OF INPUTS */
-                    input[type="number"], input[type="text"] {
-                        border: none !important;
-                        background: transparent !important;
-                        color: black !important;
-                        font-family: 'Courier New', monospace !important;
-                        font-weight: bold;
-                    }
-                    /* HIDE MODAL CLOSE BUTTON */
-                    button { display: none !important; }
-                    /* Make Modal Content Visible and Full Page */
-                    .saas-panel {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        height: auto !important;
-                        overflow: visible !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        background: white !important;
-                    }
-                    /* Reset body styles */
-                    body, #root {
+
+                    /* POSITION THE PRINT AREA */
+                    #print-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
                         width: 100%;
                         margin: 0;
                         padding: 0;
-                        background: white !important;
-                        overflow: visible !important;
+                        border: none;
+                        box-shadow: none;
+                        background: white;
+                        color: black;
+                        font-family: 'Times New Roman', serif;
                     }
-                    /* Text Container Formatting */
+
+                    /* Hide specific internal elements even if inside print-area */
+                    .no-print {
+                        display: none !important;
+                    }
+
+                    /* Text Formatting */
                     .agreement-text {
-                        font-family: 'Times New Roman', serif !important;
-                        font-size: 11pt !important;
-                        line-height: 1.4 !important;
-                        color: black !important;
+                        color: black;
+                        font-size: 11pt;
+                        line-height: 1.4;
                         white-space: pre-wrap;
-                        padding: 0 !important; /* Remove internal padding */
-                        border: none !important; /* Remove borders */
                     }
-                    /* Page Break for Exhibit A */
-                    .page-break { 
-                        page-break-before: always; 
-                        display: block;
-                        height: 1px;
-                        margin-top: 2rem;
-                    }
-                    /* Layout Adjustments */
-                    .equity-calculator-page {
-                        padding: 0 !important;
-                        max-width: 100% !important;
-                    }
-                    .print-header {
-                        display: block !important;
-                        text-align: center;
-                        margin-bottom: 30px;
-                        border-bottom: 2px solid #eee;
-                        padding-bottom: 20px;
+                    
+                    input {
+                        border: none;
+                        background: transparent;
+                        font-weight: bold;
                     }
                 }
-                .print-header { display: none; }
             `}</style>
-
-            {/* Hidden Header for Print */}
-            <div className="print-header">
-                <h1>CoVibr Equity Split Report</h1>
-                <p>Generated on {new Date().toLocaleDateString()}</p>
-            </div>
 
             <header style={{ marginBottom: '40px', textAlign: 'center' }} className="no-print">
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 850, marginBottom: '8px' }}>Equity Fairness Calculator</h1>
@@ -534,6 +482,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
+                            id="print-area"
                             className="saas-panel"
                             style={{ width: '600px', padding: '32px', border: '1px solid var(--border-subtle)', maxHeight: '90vh', overflowY: 'auto' }}
                             onClick={e => e.stopPropagation()}
@@ -607,7 +556,7 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                 )}
             </AnimatePresence>
 
-        </div>
+        </div >
     );
 }
 
