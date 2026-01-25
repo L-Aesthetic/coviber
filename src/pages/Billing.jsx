@@ -1,27 +1,47 @@
 // ... imports
 import { useState, useEffect } from 'react';
-import { CreditCard, Calendar, Download, AlertCircle, CheckCircle2, Zap, ArrowUpRight } from 'lucide-react';
+import { CreditCard, Calendar, Download, AlertCircle, CheckCircle2, Zap, ArrowUpRight, Crown, Star, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthProvider';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabaseClient'; // Import supabase
-import { useAuth } from '../context/AuthProvider'; // Import auth
 
 export default function Billing() {
     const { user } = useAuth();
-    const [tier, setTier] = useState('founder'); // Default to free
+    const [tier, setTier] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [memberNumber, setMemberNumber] = useState(1);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            setTier('free');
+            setLoading(false);
+            return;
+        }
         const fetchTier = async () => {
             const { data } = await supabase
                 .from('profiles')
-                .select('subscription_tier')
+                .select('subscription_tier, created_at')
                 .eq('id', user.id)
                 .single();
 
             if (data?.subscription_tier) {
                 setTier(data.subscription_tier);
+
+                // Calculate Member Number if Founder
+                if (data.subscription_tier === 'founder' && data.created_at) {
+                    const { count, error } = await supabase
+                        .from('profiles')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('subscription_tier', 'founder')
+                        .lt('created_at', data.created_at);
+
+                    if (!error) {
+                        setMemberNumber((count || 0) + 1);
+                    }
+                }
+            } else {
+                setTier('free');
             }
             setLoading(false);
         };
@@ -66,6 +86,95 @@ export default function Billing() {
     const handleAddPayment = () => {
         alert("Stripe Elements modal would open here to add a new payment method.");
     };
+
+    // FOUNDER'S CLUB (GOLD CARD)
+    if (tier === 'founder') {
+        return (
+            <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+                <header style={{ marginBottom: '32px' }}>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        Membership Status
+                    </h1>
+                </header>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        background: 'linear-gradient(135deg, #FFD700 0%, #FDB931 20%, #9E7D28 50%, #FDB931 80%, #FFD700 100%)',
+                        borderRadius: '24px',
+                        padding: '40px',
+                        boxShadow: '0 20px 50px rgba(253, 185, 49, 0.15)',
+                        color: '#422a03',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255, 215, 0, 0.5)'
+                    }}
+                >
+                    {/* Shine Effect */}
+                    <div style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'linear-gradient(45deg, rgba(255,255,255,0) 40%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 60%)',
+                        pointerEvents: 'none'
+                    }}></div>
+
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ padding: '10px', background: 'rgba(66, 42, 3, 0.1)', borderRadius: '12px' }}>
+                                    <Crown size={32} color="#422a03" strokeWidth={2.5} />
+                                </div>
+                                <div>
+                                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#422a03' }}>
+                                        Founder's Club
+                                    </h2>
+                                    <p style={{ fontWeight: 600, opacity: 0.8 }}>Lifetime Member</p>
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>
+                                    Member Since
+                                </div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>2024</div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
+                            {[
+                                { icon: Star, label: "VIP Access", desc: "Priority matching & events" },
+                                { icon: ShieldCheck, label: "Verified Status", desc: "Gold verification badge" },
+                                { icon: Zap, label: "Full Suite", desc: "All current & future features" }
+                            ].map((item, i) => (
+                                <div key={i} style={{ background: 'rgba(255,255,255,0.2)', padding: '20px', borderRadius: '16px', backdropFilter: 'blur(5px)' }}>
+                                    <item.icon size={24} color="#422a03" style={{ marginBottom: '12px' }} />
+                                    <div style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '4px' }}>{item.label}</div>
+                                    <div style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: 1.3 }}>{item.desc}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <div>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', opacity: 0.7 }}>
+                                    Authorized Holder
+                                </div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '0.05em' }}>
+                                    {user?.email || 'LOUIS L.'}
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '2rem', fontWeight: 800, opacity: 0.2 }}>
+                                #{String(memberNumber).padStart(4, '0')}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <div style={{ marginTop: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <p>Thank you for being one of our first believers. You have full access forever.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -135,12 +244,11 @@ export default function Billing() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                         {!isPro && (
-                            <Link to="/upgrade" style={{ textDecoration: 'none', flex: 1 }}>
-                                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                                    <Zap size={16} />
-                                    Upgrade to Certified
+                            <Link to="/upgrade" style={{ width: '100%', maxWidth: '400px', textDecoration: 'none' }}>
+                                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '1.1rem', padding: '16px' }}>
+                                    Unlock Pro Membership - $49/mo
                                 </button>
                             </Link>
                         )}

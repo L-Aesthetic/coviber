@@ -265,7 +265,7 @@ const InteractiveQuiz = () => {
     const totalQuestions = quizQuestions.length;
 
     const handleOptionClick = (type, optionId) => {
-        console.log(`Option clicked: ${optionId} (${type})`);
+
 
         // 0. Prevent double clicks
         if (selectedOpt) return;
@@ -275,16 +275,14 @@ const InteractiveQuiz = () => {
 
         // 2. Wait and Advance
         setTimeout(() => {
-            console.log('Advancing step...');
+
             setAnswers(prev => {
                 const newAnswers = { ...prev, [step]: type };
-                console.log('Answers updated:', newAnswers);
                 return newAnswers;
             });
 
             setStep(prevStep => {
                 const nextStep = prevStep + 1;
-                console.log(`Moving from ${prevStep} to ${nextStep} (Total: ${totalQuestions})`);
                 if (prevStep < totalQuestions) {
                     return nextStep;
                 } else {

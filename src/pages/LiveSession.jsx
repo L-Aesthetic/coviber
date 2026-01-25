@@ -129,7 +129,7 @@ export default function LiveSession() {
         const channel = supabase
             .channel('room-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `team_id=eq.${teamId}` }, (payload) => {
-                console.log('Task Change:', payload);
+
                 fetchData(); // Simple re-fetch for now to handle joins
             })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs', filter: `team_id=eq.${teamId}` }, (payload) => {

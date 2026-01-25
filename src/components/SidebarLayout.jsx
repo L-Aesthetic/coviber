@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X, Bell, Mail } from 'lucide-react';
+import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X, Bell, Mail, ShieldCheck, Rocket } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
@@ -17,18 +17,54 @@ export default function SidebarLayout({ children }) {
     const profileMenuRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
-            const fetchProfileData = async () => {
+        const fetchProfileData = async () => {
+            if (!user) return;
+
+            try {
                 const { data } = await supabase
                     .from('profiles')
                     .select('subscription_tier, notification_prefs')
                     .eq('id', user.id)
                     .single();
-                if (data) setProfileData(data);
-            };
+
+                if (data) {
+                    setProfileData(data);
+                }
+            } catch (e) {
+                console.error("Profile fetch error:", e);
+            }
+        };
+
+        if (user) {
             fetchProfileData();
+            window.addEventListener('tier-change', fetchProfileData);
+
+            // Realtime Subscription
+            const channel = supabase
+                .channel('profile_changes')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        setProfileData(prev => ({
+                            ...prev,
+                            ...payload.new
+                        }));
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                window.removeEventListener('tier-change', fetchProfileData);
+                supabase.removeChannel(channel);
+            };
         }
-    }, [user, showAccountModal]); // Refetch when modal opens
+    }, [user, showAccountModal, location.pathname]);
 
     const handleToggleNotif = async (key) => {
         if (!profileData) return;
@@ -119,15 +155,61 @@ export default function SidebarLayout({ children }) {
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, padding: '0 12px 8px', letterSpacing: '0.05em' }}>
                         WORKSPACE
                     </div>
-                    <Link to="/billing" style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
-                        borderRadius: '8px', textDecoration: 'none',
-                        color: location.pathname === '/upgrade' ? 'var(--accent-secondary)' : 'var(--text-secondary)',
-                        background: location.pathname === '/upgrade' ? 'rgba(236, 72, 153, 0.05)' : 'transparent',
-                        fontWeight: location.pathname === '/upgrade' ? 600 : 500, fontSize: '0.9rem'
-                    }}>
-                        <Zap size={18} color={location.pathname === '/upgrade' ? 'var(--accent-secondary)' : 'var(--text-tertiary)'} /> Unlock Pro
-                    </Link>
+                    {/* Dynamic Pro Link */}
+                    {(profileData?.subscription_tier || '').toLowerCase() === 'founder' ? (
+                        <Link to="/billing" style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            borderRadius: '8px', textDecoration: 'none',
+                            color: '#F59E0B', // Gold/Amber
+                            background: 'rgba(245, 158, 11, 0.1)',
+                            fontWeight: 600, fontSize: '0.9rem',
+                            border: '1px solid rgba(245, 158, 11, 0.2)'
+                        }}>
+                            <Sparkles size={18} color="#F59E0B" fill="#F59E0B" fillOpacity={0.2} /> Founder's Club
+                        </Link>
+                    ) : (profileData?.subscription_tier || '').toLowerCase() === 'pro' ? (
+                        <Link to="/billing" style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            borderRadius: '8px', textDecoration: 'none',
+                            color: 'var(--accent-primary)',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            fontWeight: 600, fontSize: '0.9rem'
+                        }}>
+                            <Zap size={18} fill="currentColor" fillOpacity={0.2} /> Pro Member
+                        </Link>
+                    ) : (profileData?.subscription_tier || '').toLowerCase() === 'certified' ? (
+                        <Link to="/billing" style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            borderRadius: '8px', textDecoration: 'none',
+                            color: '#0D9488', // Teal
+                            background: 'rgba(13, 148, 136, 0.1)',
+                            fontWeight: 600, fontSize: '0.9rem',
+                            border: '1px solid rgba(13, 148, 136, 0.2)'
+                        }}>
+                            <ShieldCheck size={18} color="#0D9488" fill="#0D9488" fillOpacity={0.2} /> Certified Pair
+                        </Link>
+                    ) : (profileData?.subscription_tier || '').toLowerCase() === 'accelerator' ? (
+                        <Link to="/billing" style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            borderRadius: '8px', textDecoration: 'none',
+                            color: '#7C3AED', // Violet
+                            background: 'rgba(124, 58, 237, 0.1)',
+                            fontWeight: 600, fontSize: '0.9rem',
+                            border: '1px solid rgba(124, 58, 237, 0.2)'
+                        }}>
+                            <Rocket size={18} color="#7C3AED" fill="#7C3AED" fillOpacity={0.2} /> Accelerator
+                        </Link>
+                    ) : (
+                        <Link to="/upgrade" style={{
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px',
+                            borderRadius: '8px', textDecoration: 'none',
+                            color: location.pathname === '/upgrade' ? 'var(--accent-secondary)' : 'var(--text-secondary)',
+                            background: location.pathname === '/upgrade' ? 'rgba(236, 72, 153, 0.05)' : 'transparent',
+                            fontWeight: location.pathname === '/upgrade' ? 600 : 500, fontSize: '0.9rem'
+                        }}>
+                            <Zap size={18} color={location.pathname === '/upgrade' ? 'var(--accent-secondary)' : 'var(--text-tertiary)'} /> Unlock Pro
+                        </Link>
+                    )}
                 </nav>
 
                 {/* User Profile Snippet with Dropdown */}
@@ -184,38 +266,37 @@ export default function SidebarLayout({ children }) {
                                 zIndex: 1000
                             }}
                         >
-                            <button
-                                onClick={() => {
-                                    setShowAccountModal(true);
-                                    setShowProfileMenu(false);
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '10px 12px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: 'var(--text-secondary)',
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    width: '100%',
-                                    textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
-                                    e.currentTarget.style.color = 'var(--accent-primary)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = 'var(--text-secondary)';
-                                }}
-                            >
-                                <Settings size={16} />
-                                Account Settings
-                            </button>
+                            <Link to="/settings" style={{ textDecoration: 'none' }}>
+                                <button
+                                    onClick={() => setShowProfileMenu(false)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        width: '100%',
+                                        textAlign: 'left'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
+                                        e.currentTarget.style.color = 'var(--accent-primary)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                        e.currentTarget.style.color = 'var(--text-secondary)';
+                                    }}
+                                >
+                                    <Settings size={16} />
+                                    Account Settings
+                                </button>
+                            </Link>
                             <Link to="/billing" style={{
                                 display: 'flex',
                                 alignItems: 'center',

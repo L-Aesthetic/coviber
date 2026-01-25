@@ -247,7 +247,7 @@ function ResultsView({ answers }) {
             });
 
             if (error) throw error;
-            navigate('/profile/me');
+            navigate('/dashboard');
         } catch (err) {
             console.error(err);
             alert("Failed to sync profile.");

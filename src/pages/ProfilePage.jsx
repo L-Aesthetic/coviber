@@ -1,4 +1,4 @@
-import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown } from 'lucide-react';
+import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown, Twitter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // Add basic styles for avatar overlay
 const styles = `
@@ -51,7 +51,8 @@ export default function ProfilePage() {
         antiPitch: [],
         vouches: [],
         vibe_data: [],
-        media_gallery: []
+        media_gallery: [],
+        social_links: { linkedin: '', twitter: '', github: '', website: '' }
     });
 
     const isOwner = isSelf || (user && user.id === id);
@@ -92,6 +93,7 @@ export default function ProfilePage() {
                         availability: data.avail_status || "Full-time",
                         commStyle: data.comm_style || "",
                         media_gallery: data.media_gallery || [],
+                        social_links: data.social_links || { linkedin: '', twitter: '', github: '', website: '' },
                         vibe_data: data.vibe_data || [
                             { subject: 'Risk', A: 120, fullMark: 150 },
                             { subject: 'Pace', A: 98, fullMark: 150 },
@@ -141,7 +143,8 @@ export default function ProfilePage() {
                 vibe_data: profile.vibe_data,
                 media_gallery: profile.media_gallery,
                 avail_status: profile.availability,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                social_links: profile.social_links
             };
 
             const { error } = await supabase
@@ -443,36 +446,85 @@ export default function ProfilePage() {
                             )}
 
                             {isEditing ? (
-                                <div style={{ display: 'flex', gap: '12px', fontSize: '1rem', alignItems: 'center' }}>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <MapPin size={18} color="var(--text-tertiary)" />
-                                        <input
-                                            className="glass-input"
-                                            value={profile.location || ''}
-                                            onChange={e => setProfile({ ...profile, location: e.target.value })}
-                                            placeholder="City, Country"
-                                            style={{ width: '100%', padding: '8px' }}
-                                        />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {/* Location & Availability */}
+                                    <div style={{ display: 'flex', gap: '12px', fontSize: '1rem', alignItems: 'center' }}>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <MapPin size={18} color="var(--text-tertiary)" />
+                                            <input
+                                                className="glass-input"
+                                                value={profile.location || ''}
+                                                onChange={e => setProfile({ ...profile, location: e.target.value })}
+                                                placeholder="City, Country"
+                                                style={{ width: '100%', padding: '8px' }}
+                                            />
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Clock size={18} color="var(--text-tertiary)" />
+                                            <select
+                                                className="glass-input"
+                                                value={profile.availability || 'Full-time'}
+                                                onChange={e => setProfile({ ...profile, availability: e.target.value })}
+                                                style={{ width: '100%', padding: '8px', cursor: 'pointer' }}
+                                            >
+                                                <option value="Full-time">Full-time</option>
+                                                <option value="Part-time">Part-time</option>
+                                                <option value="Nights & Weekends">Nights & Weekends</option>
+                                                <option value="Advisory">Advisory</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Clock size={18} color="var(--text-tertiary)" />
-                                        <select
-                                            className="glass-input"
-                                            value={profile.availability || 'Full-time'}
-                                            onChange={e => setProfile({ ...profile, availability: e.target.value })}
-                                            style={{ width: '100%', padding: '8px', cursor: 'pointer' }}
-                                        >
-                                            <option value="Full-time">Full-time</option>
-                                            <option value="Part-time">Part-time</option>
-                                            <option value="Nights & Weekends">Nights & Weekends</option>
-                                            <option value="Advisory">Advisory</option>
-                                        </select>
+
+                                    {/* Social Links Editing */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div style={{ display: 'flex', items: 'center', gap: '8px' }}>
+                                            <Linkedin size={16} color="var(--text-tertiary)" style={{ marginTop: '8px' }} />
+                                            <input className="glass-input" placeholder="LinkedIn URL" value={profile.social_links?.linkedin || ''} onChange={e => setProfile({ ...profile, social_links: { ...profile.social_links, linkedin: e.target.value } })} style={{ width: '100%', fontSize: '0.85rem' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', items: 'center', gap: '8px' }}>
+                                            <Twitter size={16} color="var(--text-tertiary)" style={{ marginTop: '8px' }} />
+                                            <input className="glass-input" placeholder="X (Twitter) URL" value={profile.social_links?.twitter || ''} onChange={e => setProfile({ ...profile, social_links: { ...profile.social_links, twitter: e.target.value } })} style={{ width: '100%', fontSize: '0.85rem' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', items: 'center', gap: '8px' }}>
+                                            <Github size={16} color="var(--text-tertiary)" style={{ marginTop: '8px' }} />
+                                            <input className="glass-input" placeholder="GitHub URL" value={profile.social_links?.github || ''} onChange={e => setProfile({ ...profile, social_links: { ...profile.social_links, github: e.target.value } })} style={{ width: '100%', fontSize: '0.85rem' }} />
+                                        </div>
+                                        <div style={{ display: 'flex', items: 'center', gap: '8px' }}>
+                                            <Globe size={16} color="var(--text-tertiary)" style={{ marginTop: '8px' }} />
+                                            <input className="glass-input" placeholder="Personal Website" value={profile.social_links?.website || ''} onChange={e => setProfile({ ...profile, social_links: { ...profile.social_links, website: e.target.value } })} style={{ width: '100%', fontSize: '0.85rem' }} />
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', gap: '24px', color: 'var(--text-tertiary)', fontSize: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} /> {profile.location || 'Remote'}</div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={18} /> {profile.availability || 'Full-time'}</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ display: 'flex', gap: '24px', color: 'var(--text-tertiary)', fontSize: '1rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} /> {profile.location || 'Remote'}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={18} /> {profile.availability || 'Full-time'}</div>
+                                    </div>
+
+                                    {/* Social Links Display */}
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        {profile.social_links?.linkedin && (
+                                            <a href={profile.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ padding: '8px' }} title="LinkedIn">
+                                                <Linkedin size={18} />
+                                            </a>
+                                        )}
+                                        {profile.social_links?.twitter && (
+                                            <a href={profile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ padding: '8px' }} title="X (Twitter)">
+                                                <Twitter size={18} />
+                                            </a>
+                                        )}
+                                        {profile.social_links?.github && (
+                                            <a href={profile.social_links.github} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ padding: '8px' }} title="GitHub">
+                                                <Github size={18} />
+                                            </a>
+                                        )}
+                                        {profile.social_links?.website && (
+                                            <a href={profile.social_links.website} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ padding: '8px' }} title="Website">
+                                                <Globe size={18} />
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

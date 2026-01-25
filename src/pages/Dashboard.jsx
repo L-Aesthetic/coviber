@@ -24,12 +24,10 @@ export default function Dashboard() {
         totalLegalDocs: 0
     });
 
-    // Mock Milestones Data (In real app, fetch from 'milestones' table)
-    const [milestones, setMilestones] = useState([
-        { id: 1, icon: CheckCircle2, label: "FlowState 1-year cliff", date: "In 2 months", color: "#10B981" },
-        { id: 2, icon: Calendar, label: "DevTool X vesting", date: "In 9 months", color: "var(--accent-primary)" },
-        { id: 3, icon: AlertCircle, label: "83(b) deadline", date: "In 12 days", color: "#F59E0B" }
-    ]);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+
+    // Milestones Data
+    const [milestones, setMilestones] = useState([]);
 
     useEffect(() => {
         if (!user) return;
@@ -74,6 +72,19 @@ export default function Dashboard() {
                 });
 
                 setTeams(formattedTeams);
+
+                // Check for Onboarding (Archetype Presence)
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('headline')
+                    .eq('id', user.id)
+                    .single();
+
+                if (!profile?.headline) {
+                    setShowOnboarding(true);
+                    setLoading(false); // Stop loading main dash since we'll show overlay
+                    return; // Stop fetching other dash data
+                }
 
                 // 2. Fetch Pipeline Count (Open Matches)
                 const { count: matchesCount } = await supabase
@@ -125,50 +136,102 @@ export default function Dashboard() {
                         legalDocsSigned: signedDocs,
                         totalLegalDocs: totalDocs
                     });
+                }
 
-                    // 4. Fetch Recent Activity (from activity logs that ARE being populated)
-                    const { data: recentActivity } = await supabase
+                // 4. Fetch Agreements (for Upcoming Milestones)
+                const { data: agreements } = await supabase
+                    .from('agreements')
+                    .select('*')
+                    .eq('founder_a_id', user.id); // Simplify query for now to owner
+
+                const futureMilestones = [];
+                if (agreements && agreements.length > 0) {
+                    agreements.forEach(agg => {
+                        const createdAt = new Date(agg.created_at);
+                        const now = new Date();
+
+                        // 83(b) Deadline (30 days)
+                        const deadline83b = new Date(createdAt);
+                        deadline83b.setDate(deadline83b.getDate() + 30);
+
+                        if (deadline83b > now) {
+                            const daysLeft = Math.ceil((deadline83b - now) / (1000 * 60 * 60 * 24));
+                            futureMilestones.push({
+                                id: `83b-${agg.id}`,
+                                icon: AlertCircle,
+                                label: "83(b) Election Deadline",
+                                date: `Due in ${daysLeft} days`,
+                                color: "#F59E0B"
+                            });
+                        }
+
+                        // 1-Year Cliff
+                        const cliffDate = new Date(createdAt);
+                        cliffDate.setFullYear(cliffDate.getFullYear() + 1);
+
+                        if (cliffDate > now) {
+                            const monthsLeft = Math.ceil((cliffDate - now) / (1000 * 60 * 60 * 24 * 30));
+                            futureMilestones.push({
+                                id: `cliff-${agg.id}`,
+                                icon: Crown, // Using Crown or similar for Cliff
+                                label: "Equity Cliff Vesting",
+                                date: `Vests in ~${monthsLeft} months`,
+                                color: "#10B981"
+                            });
+                        }
+                    });
+                }
+
+                // 5. Fetch Recent Activity (Past)
+                let recentActivity = [];
+                if (teamIds.length > 0) {
+                    const { data: logs } = await supabase
                         .from('activity_logs')
                         .select('*')
                         .in('team_id', teamIds)
                         .order('created_at', { ascending: false })
                         .limit(5);
+                    recentActivity = logs || [];
+                }
 
-                    if (recentActivity && recentActivity.length > 0) {
-                        const getRelativeTime = (date) => {
-                            const now = new Date();
-                            const past = new Date(date);
-                            const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
-                            const diffDays = Math.floor(diffHours / 24);
-                            if (diffHours < 1) return 'Just now';
-                            if (diffHours < 24) return `${diffHours}h ago`;
-                            if (diffDays < 30) return `${diffDays}d ago`;
-                            return past.toLocaleDateString();
-                        };
+                // Process Activity Logs
+                const getRelativeTime = (date) => {
+                    const now = new Date();
+                    const past = new Date(date);
+                    const diffHours = Math.floor((now - past) / (1000 * 60 * 60));
+                    const diffDays = Math.floor(diffHours / 24);
+                    if (diffHours < 1) return 'Just now';
+                    if (diffHours < 24) return `${diffHours}h ago`;
+                    if (diffDays < 30) return `${diffDays}d ago`;
+                    return past.toLocaleDateString();
+                };
 
-                        const getActivityIcon = (actionType) => {
-                            const icons = {
-                                'legal_doc_added': CheckCircle2,
-                                'contribution_logged': TrendingUp,
-                                'task_created': Calendar,
-                                'team_created': Users
-                            };
-                            return icons[actionType] || AlertCircle;
-                        };
+                const getActivityIcon = (actionType) => {
+                    const icons = {
+                        'legal_doc_added': CheckCircle2,
+                        'contribution_logged': TrendingUp,
+                        'task_created': Calendar,
+                        'team_created': Users
+                    };
+                    return icons[actionType] || AlertCircle;
+                };
 
-                        setMilestones(recentActivity.map(a => ({
-                            id: a.id,
-                            icon: getActivityIcon(a.action_type),
-                            label: a.description,
-                            date: getRelativeTime(a.created_at),
-                            color: 'var(--accent-primary)'
-                        })));
-                    } else {
-                        // Show placeholder
-                        setMilestones([
-                            { id: 1, icon: AlertCircle, label: "No recent activity", date: "Activity will appear here", color: "#6B7280" }
-                        ]);
-                    }
+                const pastMilestones = recentActivity.map(a => ({
+                    id: a.id,
+                    icon: getActivityIcon(a.action_type),
+                    label: a.description,
+                    date: getRelativeTime(a.created_at),
+                    color: 'var(--accent-primary)' // Standard color for past logs
+                }));
+
+                const finalFeed = [...futureMilestones, ...pastMilestones];
+
+                if (finalFeed.length > 0) {
+                    setMilestones(finalFeed);
+                } else {
+                    setMilestones([
+                        { id: 'empty', icon: Calendar, label: "No recent activity", date: "Create a team to get started", color: "#6B7280" }
+                    ]);
                 }
 
             } catch (error) {
@@ -185,6 +248,52 @@ export default function Dashboard() {
     const activeSessions = teams.length > 0 ? [
         { team: teams[0].name, participants: ['You', 'Partner'], started: 'Now', type: 'coding' }
     ] : [];
+
+    if (showOnboarding) {
+        return (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(15, 17, 26, 0.95)',
+                backdropFilter: 'blur(10px)',
+                zIndex: 9999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column',
+                padding: '40px'
+            }}>
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="saas-panel"
+                    style={{ maxWidth: '600px', width: '100%', padding: '48px', textAlign: 'center', borderColor: 'var(--accent-primary)' }}
+                >
+                    <div style={{ fontSize: '4rem', marginBottom: '24px' }}>🧬</div>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '16px' }}>Protocol Required</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '40px' }}>
+                        You cannot access the Workspace until you complete the <strong>Founder Compatibility Diagnostic</strong>.
+                    </p>
+                    <div style={{ display: 'grid', gap: '16px', textAlign: 'left', marginBottom: '40px' }}>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <CheckCircle2 color="var(--accent-primary)" />
+                            <span>Determine your Founder Archetype</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <CheckCircle2 color="var(--accent-primary)" />
+                            <span>Generate your psychometric risk profile</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <CheckCircle2 color="var(--accent-primary)" />
+                            <span>Unlock algorithmic co-founder matching</span>
+                        </div>
+                    </div>
+                    <Link to="/quiz" style={{ textDecoration: 'none' }}>
+                        <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '20px', fontSize: '1.2rem' }}>
+                            Initiate Protocol <ArrowRight size={20} style={{ marginLeft: '12px' }} />
+                        </button>
+                    </Link>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div>

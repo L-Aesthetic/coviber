@@ -1,11 +1,11 @@
 // ... imports
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient'; // Import supabase
 import { useAuth } from '../context/AuthProvider'; // Import auth
 import {
     Check, Zap, Shield, Rocket, Lock,
     CreditCard, Info, Star, ChevronRight,
-    X, Sparkles, Globe, Heart, Layout
+    X, Sparkles, Globe, Heart, Layout, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,7 +17,7 @@ export default function UpgradePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
-    const [selectedPlan, setSelectedPlan] = useState('certified');
+    const [selectedPlan, setSelectedPlan] = useState('pro');
     const [isSuccess, setIsSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     // Removed mock cardData
@@ -44,9 +44,43 @@ export default function UpgradePage() {
         accelerator: { name: 'Accelerator', price: 'Custom', features: ['Cohort Dashboard', 'Batch Analytics', 'Risk Heatmaps', 'Dedicated Support'] }
     };
 
+    const [errorMsg, setErrorMsg] = useState(null);
+
     const handleUpgrade = async (planKey) => {
-        if (!user) return alert("Please log in to upgrade.");
         setLoading(true);
+        setErrorMsg(null);
+
+        // Special handling for Founder plan (Free switch)
+        if (planKey === 'founder') {
+            if (!user) {
+                setErrorMsg("Please log in to join the Founder's Club.");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const { error } = await supabase.from('profiles').update({ subscription_tier: 'founder' }).eq('id', user.id);
+                if (error) throw error;
+
+                // Notify app of tier change
+                window.dispatchEvent(new Event('tier-change'));
+
+                // Success
+                navigate('/billing');
+                return;
+            } catch (err) {
+                console.error(err);
+                setErrorMsg("Failed to switch plan: " + err.message);
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (!user) {
+            setErrorMsg("Please log in to purchase a subscription.");
+            setLoading(false);
+            return;
+        }
 
         try {
             const stripe = await stripePromise;
@@ -66,7 +100,7 @@ export default function UpgradePage() {
             const { sessionId, error } = await response.json();
 
             if (error) {
-                alert("Payment Error: " + error);
+                setErrorMsg("Payment Error: " + error);
                 setLoading(false);
                 return;
             }
@@ -74,13 +108,13 @@ export default function UpgradePage() {
             // Redirect
             const result = await stripe.redirectToCheckout({ sessionId });
             if (result.error) {
-                alert(result.error.message);
+                setErrorMsg(result.error.message);
                 setLoading(false);
             }
 
         } catch (err) {
             console.error(err);
-            alert("Unepected error: " + err.message);
+            setErrorMsg("Unexpected error: " + err.message);
             setLoading(false);
         }
     };
@@ -88,6 +122,28 @@ export default function UpgradePage() {
     if (isSuccess) {
         return <SuccessView onFinish={() => navigate('/chemistry')} user={user} />;
     }
+
+    // Determine current plan locally for button logic (mock or rely on profile check if we had it in context)
+    // For now assuming passed 'user' context doesn't have live tier update without refresh, 
+    // but the button text logic requested was "current plan but its the free plan... should say switch plan"
+    // We'll trust the button click handler to do the right thing.
+
+    const [founderCount, setFounderCount] = useState(0);
+    const isSoldOut = founderCount >= 100;
+
+    useEffect(() => {
+        const fetchCount = async () => {
+            const { count, error } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('subscription_tier', 'founder');
+
+            if (!error && count !== null) {
+                setFounderCount(count);
+            }
+        };
+        fetchCount();
+    }, []);
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -131,7 +187,7 @@ export default function UpgradePage() {
 
                     <div style={{ marginBottom: '40px' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '20px', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 700, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                            <Zap size={14} fill="var(--accent-primary)" /> B2B Due Diligence Platform
+                            <Zap size={14} fill="var(--accent-primary)" /> Co-Founder Compatibility Platform
                         </div>
                         <h1 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: '16px', lineHeight: 1.1 }}>Validate Your<br />Partnership.</h1>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1.5 }}>Generate an empirical Compatibility Report for investors. Prove you can ship together.</p>
@@ -141,12 +197,13 @@ export default function UpgradePage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <PlanCard
                             active={selectedPlan === 'founder'}
-                            onClick={() => setSelectedPlan('founder')}
+                            onClick={() => !isSoldOut && setSelectedPlan('founder')}
                             title="Founder's Club"
                             price="$0"
                             originalPrice="$49/mo"
-                            description="First 100 Users Only. Full Access."
+                            description={isSoldOut ? "Sold Out. Waiting list only." : "First 100 Users Only. Full Access."}
                             limited
+                            soldOut={isSoldOut}
                         />
                         <PlanCard
                             active={selectedPlan === 'pro'}
@@ -188,7 +245,8 @@ export default function UpgradePage() {
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                                 {selectedPlan === 'pro' ? 'Billed Monthly. Cancel anytime.' :
                                     selectedPlan === 'certified' ? 'One-time payment for full report.' :
-                                        selectedPlan === 'accelerator' ? 'Contact us for enterprise pricing.' : 'Free tier.'}
+                                        selectedPlan === 'accelerator' ? 'Contact us for enterprise pricing.' :
+                                            selectedPlan === 'founder' && isSoldOut ? 'Plan Unavailable.' : 'Free tier.'}
                             </div>
 
                             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '16px 0' }}></div>
@@ -199,6 +257,24 @@ export default function UpgradePage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Error Message Display */}
+                    {errorMsg && (
+                        <div style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            color: '#EF4444',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <AlertCircle size={16} /> {errorMsg}
+                        </div>
+                    )}
 
                     {/* Trust Signals */}
                     <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -218,19 +294,22 @@ export default function UpgradePage() {
                             }
                         }}
                         className="btn-primary"
-                        disabled={loading || plans[selectedPlan].price === 0}
+                        disabled={loading || (selectedPlan === 'founder' && isSoldOut)}
                         style={{
                             width: '100%',
                             height: '56px',
                             fontSize: '1.1rem',
                             justifyContent: 'center',
                             boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)',
-                            marginBottom: '16px'
+                            marginBottom: '16px',
+                            opacity: loading || (selectedPlan === 'founder' && isSoldOut) ? 0.7 : 1,
+                            cursor: loading || (selectedPlan === 'founder' && isSoldOut) ? 'not-allowed' : 'pointer'
                         }}
                     >
-                        {loading ? 'Redirecting to Stripe...' :
+                        {loading ? 'Processing...' :
                             plans[selectedPlan].price === 'Custom' ? 'Contact Sales' :
-                                plans[selectedPlan].price === 0 ? 'Current Plan' : 'Proceed to Payment'}
+                                selectedPlan === 'founder' && isSoldOut ? 'Founders Sold Out!' :
+                                    selectedPlan === 'founder' ? 'Switch to Founder Plan' : 'Proceed to Payment'}
                     </button>
 
                     {/* Trust Signals */}
@@ -251,22 +330,23 @@ export default function UpgradePage() {
     );
 }
 
-function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, description, popular, limited, isOneTime, muted }) {
+function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, description, popular, limited, isOneTime, muted, soldOut }) {
     return (
         <motion.div
-            whileHover={{ y: -4 }}
-            onClick={onClick}
+            whileHover={!soldOut ? { y: -4 } : {}}
+            onClick={!soldOut ? onClick : undefined}
             style={{
                 padding: '20px',
                 borderRadius: '16px',
                 border: active ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.1)',
-                background: active ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.02)',
-                cursor: 'pointer',
+                background: active ? 'rgba(99, 102, 241, 0.08)' : soldOut ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.02)',
+                cursor: soldOut ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s',
-                opacity: muted ? 0.6 : 1,
+                opacity: muted || soldOut ? 0.6 : 1,
                 position: 'relative',
                 paddingTop: popular || limited || isOneTime ? '36px' : '20px',
-                minHeight: '140px'
+                minHeight: '140px',
+                filter: soldOut ? 'grayscale(1)' : 'none'
             }}
         >
             {popular && (
@@ -276,12 +356,20 @@ function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, 
                     padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap'
                 }}>Most Popular</div>
             )}
-            {limited && (
+            {limited && !soldOut && (
                 <div style={{
                     position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)',
                     background: '#EF4444', color: 'white', fontSize: '0.6rem', fontWeight: 900,
                     padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap'
                 }}>First 100 Only</div>
+            )}
+            {soldOut && (
+                <div style={{
+                    position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%)',
+                    background: '#334155', color: '#94a3b8', fontSize: '0.6rem', fontWeight: 900,
+                    padding: '3px 10px', borderRadius: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                    border: '1px solid #475569'
+                }}>Sold Out</div>
             )}
             {isOneTime && (
                 <div style={{
