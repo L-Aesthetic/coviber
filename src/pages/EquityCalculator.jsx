@@ -1,6 +1,6 @@
 // ... imports
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../lib/supabaseClient';
 import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
