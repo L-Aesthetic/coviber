@@ -9,7 +9,7 @@ import {
     Download, FileText, HelpCircle, ChevronLeft,
     DollarSign, Clock, Zap, Shield, TrendingUp,
     Briefcase, AlertCircle, FileCheck, RefreshCcw,
-    Users, Award, Printer, X, Copy
+    Users, Award, Printer, X, Copy, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -292,16 +292,39 @@ Date: ${new Date().toLocaleDateString()}
                         top: 0 !important;
                         left: 0 !important;
                         width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
                         height: auto !important;
                         overflow: visible !important;
                         border: none !important;
+                        box-shadow: none !important;
+                        background: white !important;
+                    }
+                    /* Reset body styles */
+                    body, #root {
+                        width: 100%;
+                        margin: 0;
+                        padding: 0;
+                        background: white !important;
+                        overflow: visible !important;
+                    }
+                    /* Text Container Formatting */
+                    .agreement-text {
+                        font-family: 'Times New Roman', serif !important;
+                        font-size: 11pt !important;
+                        line-height: 1.4 !important;
+                        color: black !important;
+                        white-space: pre-wrap;
+                        padding: 0 !important; /* Remove internal padding */
+                        border: none !important; /* Remove borders */
                     }
                     /* Page Break for Exhibit A */
                     .page-break { 
                         page-break-before: always; 
+                        display: block;
+                        height: 1px;
                         margin-top: 2rem;
-                        border-top: 1px solid #ccc;
-                        padding-top: 2rem;
                     }
                     /* Layout Adjustments */
                     .equity-calculator-page {
@@ -546,12 +569,16 @@ Date: ${new Date().toLocaleDateString()}
                                 </div>
                             </div>
 
-                            <div style={{
-                                background: 'white', color: 'black', borderRadius: '4px', padding: '40px',
-                                fontFamily: 'Times New Roman, serif', fontSize: '0.85rem', lineHeight: 1.4, whiteSpace: 'pre-wrap',
-                                marginBottom: '24px', border: '1px solid #ccc', maxHeight: '400px', overflowY: 'auto'
-                            }}>
+                            <div
+                                className="agreement-text"
+                                style={{
+                                    background: 'white', color: 'black', borderRadius: '4px', padding: '40px',
+                                    fontFamily: 'Times New Roman, serif', fontSize: '0.85rem', lineHeight: 1.4, whiteSpace: 'pre-wrap',
+                                    marginBottom: '24px', border: '1px solid #ccc', maxHeight: '400px', overflowY: 'auto'
+                                }}
+                            >
                                 {generateEASEAgreement()}
+                                <div className="page-break" /> {/* Ensure content flow */}
                             </div>
 
                             <div style={{ display: 'flex', gap: '12px' }}>
