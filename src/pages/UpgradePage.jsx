@@ -8,16 +8,34 @@ import {
     X, Sparkles, Globe, Heart, Layout
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export default function UpgradePage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const [selectedPlan, setSelectedPlan] = useState('certified');
     const [isSuccess, setIsSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [cardData, setCardData] = useState({ number: '', exp: '', cvc: '', name: 'Louis Lubin' });
+    // Removed mock cardData
     const billingCycle = 'yearly';
+
+    useEffect(() => {
+        const checkSuccess = async () => {
+            if (searchParams.get('success') === 'true' && user) {
+                const tier = searchParams.get('tier');
+                if (tier) {
+                    // Verify/Update profile (Ideally verify via API, but client-side for MVP)
+                    await supabase.from('profiles').update({ subscription_tier: tier }).eq('id', user.id);
+                    setIsSuccess(true);
+                }
+            }
+        };
+        checkSuccess();
+    }, [searchParams, user]);
 
     const plans = {
         founder: { name: 'Founder (Limited)', price: 0, originalPrice: 49, features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats', 'Early Access Badge'] },
@@ -29,29 +47,46 @@ export default function UpgradePage() {
     const handleUpgrade = async (planKey) => {
         if (!user) return alert("Please log in to upgrade.");
         setLoading(true);
-        setSelectedPlan(planKey);
-
-        // Mocking Stripe latency
-        await new Promise(r => setTimeout(r, 1500));
 
         try {
-            // Update profile with new tier
-            const { error } = await supabase
-                .from('profiles')
-                .update({ subscription_tier: planKey })
-                .eq('id', user.id);
+            const stripe = await stripePromise;
 
-            setIsSuccess(true);
+            // Call API to create session
+            const response = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tier: planKey,
+                    userId: user.id,
+                    email: user.email,
+                    returnUrl: window.location.origin + '/upgrade' // Return to this page
+                })
+            });
+
+            const { sessionId, error } = await response.json();
+
+            if (error) {
+                alert("Payment Error: " + error);
+                setLoading(false);
+                return;
+            }
+
+            // Redirect
+            const result = await stripe.redirectToCheckout({ sessionId });
+            if (result.error) {
+                alert(result.error.message);
+                setLoading(false);
+            }
+
         } catch (err) {
             console.error(err);
-            setIsSuccess(true);
-        } finally {
+            alert("Unepected error: " + err.message);
             setLoading(false);
         }
     };
 
     if (isSuccess) {
-        return <SuccessView onFinish={() => navigate('/chemistry')} />;
+        return <SuccessView onFinish={() => navigate('/chemistry')} user={user} />;
     }
 
     return (
@@ -140,114 +175,62 @@ export default function UpgradePage() {
                     </div>
                 </div>
 
-                {/* Right Column: Checkout */}
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '48px', borderLeft: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column' }}>
+                {/* Right Column: Order Summary */}
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '48px', borderLeft: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <div style={{ marginBottom: '32px' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '20px' }}>Secure Checkout</h3>
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px' }}>Order Summary</h3>
 
-                        {/* 3D Glass Card */}
-                        <motion.div
-                            style={{
-                                width: '100%',
-                                height: '210px',
-                                perspective: '1000px',
-                                marginBottom: '32px'
-                            }}
-                        >
-                            <div style={{
-                                position: 'relative',
-                                width: '100%',
-                                height: '100%',
-                                borderRadius: '16px',
-                                background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
-                                backdropFilter: 'blur(20px)',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                padding: '30px',
-                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                color: 'white'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <div style={{ width: '45px', height: '35px', borderRadius: '6px', background: 'linear-gradient(135deg, #ffd700, #daa520)', opacity: 0.8 }}></div>
-                                    <Globe size={24} style={{ opacity: 0.4 }} />
-                                    {billingCycle === 'yearly' && (
-                                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10B981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <Sparkles size={14} /> Save 20%
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{ fontSize: '1.4rem', fontWeight: 600, letterSpacing: '2px', fontVariantNumeric: 'tabular-nums' }}>
-                                    {cardData.number || '•••• •••• •••• ••••'}
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.6rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '4px' }}>Card Holder</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{cardData.name}</div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: '0.6rem', opacity: 0.5, textTransform: 'uppercase', marginBottom: '4px' }}>Expires</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{cardData.exp || 'MM/YY'}</div>
-                                    </div>
-                                </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-subtle)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '16px', fontWeight: 600 }}>
+                                <span>{plans[selectedPlan].name}</span>
+                                <span>${plans[selectedPlan].price === 'Custom' ? 'Custom' : plans[selectedPlan].price}</span>
                             </div>
-                        </motion.div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Card Number</label>
-                                <input
-                                    className="saas-input"
-                                    placeholder="4242 4242 4242 4242"
-                                    maxLength={19}
-                                    onChange={(e) => setCardData({ ...cardData, number: e.target.value })}
-                                />
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                                {selectedPlan === 'pro' ? 'Billed Monthly. Cancel anytime.' :
+                                    selectedPlan === 'certified' ? 'One-time payment for full report.' :
+                                        selectedPlan === 'accelerator' ? 'Contact us for enterprise pricing.' : 'Free tier.'}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Expiry</label>
-                                    <input className="saas-input" placeholder="MM/YY" onChange={(e) => setCardData({ ...cardData, exp: e.target.value })} />
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>CVC</label>
-                                    <input className="saas-input" placeholder="•••" maxLength={3} />
-                                </div>
+
+                            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '16px 0' }}></div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 800 }}>
+                                <span>Total Due</span>
+                                <span>${plans[selectedPlan].price === 'Custom' ? 'Custom' : plans[selectedPlan].price}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Summary */}
-                    <div style={{ marginBottom: '24px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px' }}>
-                            <span style={{ color: 'var(--text-secondary)' }}>{plans[selectedPlan].name} Plan</span>
-                            <span>${plans[selectedPlan].price}.00</span>
-                        </div>
-                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '16px 0' }}></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 800 }}>
-                            <span>Total Due Today</span>
-                            <span>${plans[selectedPlan].price}.00</span>
+                    {/* Trust Signals */}
+                    <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <Shield size={16} color="#10B981" />
+                            <span>Payments secured by <strong>Stripe</strong></span>
                         </div>
                     </div>
 
-                    {/* CTA */}
                     {/* CTA */}
                     <button
-                        onClick={() => handleUpgrade(selectedPlan)}
+                        onClick={() => {
+                            if (plans[selectedPlan].price === 'Custom') {
+                                window.location.href = "mailto:sales@covibr.com?subject=Accelerator Plan Inquiry";
+                            } else {
+                                handleUpgrade(selectedPlan);
+                            }
+                        }}
                         className="btn-primary"
-                        disabled={loading}
+                        disabled={loading || plans[selectedPlan].price === 0}
                         style={{
                             width: '100%',
                             height: '56px',
                             fontSize: '1.1rem',
                             justifyContent: 'center',
                             boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)',
-                            marginBottom: '24px'
+                            marginBottom: '16px'
                         }}
                     >
-                        {loading ? 'Processing...' : `Unlock ${plans[selectedPlan].name}`}
+                        {loading ? 'Redirecting to Stripe...' :
+                            plans[selectedPlan].price === 'Custom' ? 'Contact Sales' :
+                                plans[selectedPlan].price === 0 ? 'Current Plan' : 'Proceed to Payment'}
                     </button>
 
                     {/* Trust Signals */}
@@ -322,7 +305,7 @@ function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, 
     );
 }
 
-function SuccessView({ onFinish }) {
+function SuccessView({ onFinish, user }) {
     return (
         <div style={{
             minHeight: '100vh',
@@ -348,7 +331,7 @@ function SuccessView({ onFinish }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
             >
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '16px' }}>You're in, Louis.</h1>
+                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '16px' }}>You're in, {user?.name?.split(' ')[0] || 'Founder'}.</h1>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '48px', maxWidth: '500px' }}>
                     Your account is now **Verified**. You've unlocked the full chemistry test engine and deep vibe analytics.
                 </p>
