@@ -1,10 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabaseClient';
 
 export default function SidebarLayout({ children }) {
     const location = useLocation();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+    const [showAccountModal, setShowAccountModal] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [passLoading, setPassLoading] = useState(false);
     const profileMenuRef = useRef(null);
 
     useEffect(() => {
@@ -150,40 +156,26 @@ export default function SidebarLayout({ children }) {
                                 zIndex: 1000
                             }}
                         >
-                            <Link to="/profile" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '10px 12px',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s'
-                            }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
-                                    e.currentTarget.style.color = 'var(--accent-primary)';
+                            <button
+                                onClick={() => {
+                                    setShowAccountModal(true);
+                                    setShowProfileMenu(false);
                                 }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = 'var(--text-secondary)';
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.9rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    width: '100%',
+                                    textAlign: 'left'
                                 }}
-                            >
-                                <User size={16} />
-                                My Profile
-                            </Link>
-                            <Link to="/profile" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '10px 12px',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s'
-                            }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
                                     e.currentTarget.style.color = 'var(--accent-primary)';
@@ -195,7 +187,7 @@ export default function SidebarLayout({ children }) {
                             >
                                 <Settings size={16} />
                                 Account Settings
-                            </Link>
+                            </button>
                             <Link to="/billing" style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -274,6 +266,106 @@ export default function SidebarLayout({ children }) {
             }}>
                 {children}
             </main>
+            {/* Account Settings Modal */}
+            <AnimatePresence>
+                {showAccountModal && (
+                    <div
+                        style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                        }}
+                        onClick={() => setShowAccountModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="saas-panel"
+                            style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)', position: 'relative' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                onClick={() => setShowAccountModal(false)}
+                                style={{ position: 'absolute', top: '24px', right: '24px', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Settings size={22} color="var(--accent-primary)" /> Account Settings
+                            </h3>
+
+                            <div style={{ marginBottom: '32px' }}>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Security
+                                </h4>
+                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <Lock size={18} color="var(--text-primary)" />
+                                        <span style={{ fontWeight: 600 }}>Update Password</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <input
+                                            type="password"
+                                            placeholder="New Password"
+                                            className="glass-input"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            style={{ flex: 1, padding: '8px 12px', fontSize: '0.9rem' }}
+                                        />
+                                        <button
+                                            className="btn-secondary"
+                                            disabled={!newPassword || passLoading}
+                                            onClick={async () => {
+                                                setPassLoading(true);
+                                                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                                                if (error) alert(error.message);
+                                                else {
+                                                    alert("Password updated successfully!");
+                                                    setNewPassword('');
+                                                }
+                                                setPassLoading(false);
+                                            }}
+                                            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                                        >
+                                            {passLoading ? '...' : 'Update'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#EF4444', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Danger Zone
+                                </h4>
+                                <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <Trash2 size={18} color="#EF4444" />
+                                            <span style={{ fontWeight: 600, color: '#EF4444' }}>Delete Account</span>
+                                        </div>
+                                        <button
+                                            className="btn-ghost"
+                                            style={{ color: '#EF4444', borderColor: 'rgba(239,68,68,0.3)' }}
+                                            onClick={() => {
+                                                if (confirm("Deleting your account is permanent. Contact support to proceed?")) {
+                                                    window.location.href = "mailto:support@covibr.com?subject=Delete Account Request";
+                                                }
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: '8px', lineHeight: 1.4 }}>
+                                        Permanently remove your profile, equity agreements, and all data.
+                                    </p>
+                                </div>
+                            </div>
+
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
