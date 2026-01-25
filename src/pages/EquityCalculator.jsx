@@ -272,7 +272,24 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
                         box-shadow: none;
                         background: white;
                         color: black;
+                        color: black;
                         font-family: 'Times New Roman', serif;
+                        max-height: none !important;
+                        overflow: visible !important;
+                        height: auto !important;
+                    } 
+
+                    /* Reset the overlay container */
+                    .print-overlay {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        background: white !important;
+                        display: block !important;
+                        z-index: 9999 !important;
+                        visibility: visible !important;
                     }
 
                     /* Hide specific internal elements even if inside print-area */
@@ -474,10 +491,12 @@ ${killSwitchActive ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to
             {/* Fast Summary Modal */}
             <AnimatePresence>
                 {showSummaryModal && (
-                    <div style={{
-                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
-                    }} onClick={() => setShowSummaryModal(false)}>
+                    <div
+                        className="print-overlay"
+                        style={{
+                            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+                        }} onClick={() => setShowSummaryModal(false)}>
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
