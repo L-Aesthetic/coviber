@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 import { FileCheck, Download, AlertTriangle, ArrowLeft, PenTool, CheckCircle, Copy, Printer } from 'lucide-react';
 import JSConfetti from 'js-confetti';
