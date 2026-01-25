@@ -137,11 +137,12 @@ The parties agree as follows:
 
 1. Services. Consultant agrees to act as a consultant to the Company and provide services to the Company as further described on the signature page hereto or as otherwise mutually agreed to by the parties (collectively, the "Services").
 
-2. Compensation. For the provision of the Services, Consultant shall be entitled to receive the compensation as detailed on the signature page hereto. The Company will take the requisite actions to authorize any equity compensation within 30 days from the date of this Agreement. 
+2. Compensation. Calculated based on the contributions detailed in Exhibit A. The Company will take the requisite actions to authorize any equity compensation within 30 days from the date of this Agreement. 
 
 3. Expenses. The Company shall reimburse reasonable travel and related expenses incurred by Consultant in the course of performing services hereunder, provided that Consultant obtains prior written approval of any such expenditures in sufficient detail and indicates a maximum reimbursable amount for each such approval.
 
 4. Term and Termination. The term of this Agreement shall continue until the completion of the Services, provided that this Agreement may be terminated at any time by either party for any reason upon five (5) days prior written notice. Upon termination the Company shall have no further obligation or liability except for the compensation earned by Consultant through the date of termination. The obligations of Consultant in Sections 6 through 9 shall survive the termination of this Agreement.
+   [KILL SWITCH: The Company hereby reserves the right to terminate early if Consultant fails to meet initial deliverables within 48 hours.]
 
 5. Independent Contractor. Consultant’s relationship with the Company will be that of an independent contractor and not that of an employee. Consultant will not be eligible for any employee benefits, nor will the Company make deductions from payments made to Consultant for employment or income taxes, all of which will be Consultant’s responsibility. Consultant will have no authority to enter into contracts that bind the Company or create obligations on the part of the Company without the prior written authorization of the Company.
 
@@ -200,7 +201,40 @@ CONSULTANT: ${founderB.name}
 Signature: ${signData.founderBSign ? `/s/ ${signData.founderBSign}` : '________________________'}
 Name: ${founderB.name}
 Title: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
-Address: ${signData.companyAddress || '________________________'}
+ADDRESS: ${signData.companyAddress || '________________________'}
+
+-----------------------------------------------------------
+
+EXHIBIT A: CoVibr Equity Audit
+Date: ${new Date().toLocaleDateString()}
+
+1. FOUNDER CONTRIBUTIONS
+   
+   A. ${founderA.name} (${split[0].value}%)
+      - Role: ${founderA.isCEO ? 'CEO' : 'Co-Founder'}
+      - Cash Contribution: $${founderA.cash.toLocaleString()}
+      - Sweat Equity: ${founderA.hours} hrs/week @ $${founderA.salary.toLocaleString()}/yr (Discounted ${founderA.discount}%)
+      - Assets: ${founderA.assets.join(', ') || 'None'}
+      - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
+
+   B. ${founderB.name} (${split[1].value}%)
+      - Role: ${founderB.isTechnical ? 'CTO' : 'Co-Founder'}
+      - Cash Contribution: $${founderB.cash.toLocaleString()}
+      - Sweat Equity: ${founderB.hours} hrs/week @ $${founderB.salary.toLocaleString()}/yr (Discounted ${founderB.discount}%)
+      - Assets: ${founderB.assets.join(', ') || 'None'}
+      - Risk Factor: ${config.slicingPie ? 'High (Slicing Pie Model)' : 'Standard'}
+
+2. EQUITY SPLIT CALCULATION
+   The equity split determined above is based on the relative weight of cash, time, and intellectual property contributions as of the Effective Date.
+   
+   - Total Valuation Proxy: $${(founderA.cash + founderB.cash + ((founderA.salary * (founderA.discount / 100)) + (founderB.salary * (founderB.discount / 100)))).toLocaleString()} (Estimated Contribution Value)
+   
+3. VESTING SCHEDULE DETAILS
+   ${config.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff.' : 'Milestone-based vesting.'}
+   If the Relationship is terminated before the Cliff Date, all unvested shares shall be forfeited to the Company.
+
+4. 48-HOUR KILL SWITCH
+   The Company reserves the right to terminate this agreement immediately within the first 30 days if Consultant fails to deliver initial "Proof of Work" as mutually agreed.
 `;
     };
 
@@ -237,15 +271,37 @@ Address: ${signData.companyAddress || '________________________'}
                         page-break-inside: avoid;
                         color: black !important;
                     }
-                    /* FORCE TEXT COLORS */
+                    /* FORCE TEXT COLORS AND FONTS */
                     h1, h2, h3, h4, p, span, div, label {
                         color: black !important; 
+                        font-family: 'Times New Roman', serif !important;
                     }
                     /* SHOW VALUES INSTEAD OF INPUTS */
                     input[type="number"], input[type="text"] {
                         border: none !important;
                         background: transparent !important;
                         color: black !important;
+                        font-family: 'Courier New', monospace !important;
+                        font-weight: bold;
+                    }
+                    /* HIDE MODAL CLOSE BUTTON */
+                    button { display: none !important; }
+                    /* Make Modal Content Visible and Full Page */
+                    .saas-panel {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        overflow: visible !important;
+                        border: none !important;
+                    }
+                    /* Page Break for Exhibit A */
+                    .page-break { 
+                        page-break-before: always; 
+                        margin-top: 2rem;
+                        border-top: 1px solid #ccc;
+                        padding-top: 2rem;
                     }
                     /* Layout Adjustments */
                     .equity-calculator-page {
@@ -459,14 +515,19 @@ Address: ${signData.companyAddress || '________________________'}
                             style={{ width: '600px', padding: '32px', border: '1px solid var(--border-subtle)', maxHeight: '90vh', overflowY: 'auto' }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }} className="no-print">
                                 <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Sign EASE Agreement</h3>
-                                <button className="btn-ghost" style={{ padding: '8px' }} onClick={() => setShowSummaryModal(false)}>
-                                    <X size={20} />
-                                </button>
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.9rem', borderColor: '#F59E0B', color: '#F59E0B' }} onClick={() => alert("Kill Switch Clause added to Section 4.")}>
+                                        <AlertTriangle size={16} style={{ marginRight: '6px' }} /> Kill Switch Active
+                                    </button>
+                                    <button className="btn-ghost" style={{ padding: '8px' }} onClick={() => setShowSummaryModal(false)}>
+                                        <X size={20} />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }} className="no-print">
                                 <div style={{ gridColumn: '1 / -1' }}>
                                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Company Legal Name</label>
                                     <input className="glass-input" style={{ width: '100%' }} placeholder="e.g. Acme Corp Inc." value={signData.companyName} onChange={e => handleSignChange('companyName', e.target.value)} />
