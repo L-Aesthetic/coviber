@@ -13,7 +13,33 @@ export default function SidebarLayout({ children }) {
     const [showAccountModal, setShowAccountModal] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [passLoading, setPassLoading] = useState(false);
+    const [profileData, setProfileData] = useState(null);
     const profileMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (user) {
+            const fetchProfileData = async () => {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('subscription_tier, notification_prefs')
+                    .eq('id', user.id)
+                    .single();
+                if (data) setProfileData(data);
+            };
+            fetchProfileData();
+        }
+    }, [user, showAccountModal]); // Refetch when modal opens
+
+    const handleToggleNotif = async (key) => {
+        if (!profileData) return;
+        const currentPrefs = profileData.notification_prefs || { email_digest: true, new_matches: true, product_updates: true };
+        const newPrefs = { ...currentPrefs, [key]: !currentPrefs[key] };
+
+        // Optimistic update
+        setProfileData({ ...profileData, notification_prefs: newPrefs });
+
+        await supabase.from('profiles').update({ notification_prefs: newPrefs }).eq('id', user.id);
+    };
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -309,7 +335,10 @@ export default function SidebarLayout({ children }) {
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{user?.email || 'user@example.com'}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Founder</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                {profileData?.subscription_tier === 'founder' ? 'Founding Member' :
+                                                    profileData?.subscription_tier === 'pro' ? 'Pro Member' : 'Free User'}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -321,8 +350,12 @@ export default function SidebarLayout({ children }) {
                                     </h4>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(45deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))', padding: '16px', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.2)' }}>
                                         <div>
-                                            <div style={{ fontWeight: 700, color: 'white', marginBottom: '4px' }}>Free Plan</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>You are on the basic tier.</div>
+                                            <div style={{ fontWeight: 700, color: 'white', marginBottom: '4px', textTransform: 'capitalize' }}>
+                                                {profileData?.subscription_tier || 'Free'} Plan
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {profileData?.subscription_tier === 'pro' ? 'You have full access.' : 'Upgrade to unlock features.'}
+                                            </div>
                                         </div>
                                         <Link
                                             to="/billing"
@@ -341,17 +374,27 @@ export default function SidebarLayout({ children }) {
                                         Notifications
                                     </h4>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        {['Email Digests', 'New Matches', 'Product Updates'].map((item, i) => (
-                                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                                    {i === 0 ? <Mail size={16} /> : i === 1 ? <Zap size={16} /> : <Bell size={16} />}
-                                                    {item}
+                                        {[
+                                            { key: 'email_digest', label: 'Email Digests', icon: Mail },
+                                            { key: 'new_matches', label: 'New Matches', icon: Zap },
+                                            { key: 'product_updates', label: 'Product Updates', icon: Bell }
+                                        ].map((item, i) => {
+                                            const isActive = profileData?.notification_prefs ? profileData.notification_prefs[item.key] : true;
+                                            return (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                        <item.icon size={16} />
+                                                        {item.label}
+                                                    </div>
+                                                    <div
+                                                        onClick={() => handleToggleNotif(item.key)}
+                                                        style={{ width: '36px', height: '20px', background: isActive ? '#10B981' : '#334155', borderRadius: '10px', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}
+                                                    >
+                                                        <div style={{ width: '16px', height: '16px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: isActive ? '18px' : '2px', transition: 'left 0.2s' }}></div>
+                                                    </div>
                                                 </div>
-                                                <div style={{ width: '36px', height: '20px', background: '#334155', borderRadius: '10px', position: 'relative', cursor: 'pointer' }}>
-                                                    <div style={{ width: '16px', height: '16px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: '2px' }}></div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
