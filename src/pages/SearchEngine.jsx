@@ -32,21 +32,32 @@ export default function SearchEngine() {
 
                 if (error) throw error;
 
-                // 3. Score them
                 const formattedCandidates = data.map(profile => {
-                    const theirArchetype = profile.headline ? getArchetypeDetails(profile.headline).name : null;
+                    const theirDetails = getArchetypeDetails(profile.headline);
+                    const theirArchetype = theirDetails.name;
+                    const theirMatchName = theirDetails.match.name;
 
                     // BASE SCORE: 50
                     let score = 50;
+                    let matchReason = [];
 
-                    // ARCHETYPE COMPATIBILITY (+30)
-                    // If my "match" description contains their archetype name (e.g. "THE OPERATOR" contains "Operator")
-                    // OR if their "match" description contains my archetype name.
-                    let isPerfectMatch = false;
-
+                    // ARCHETYPE COMPATIBILITY
+                    // 1. Do they fit what I need?
                     if (myMatchName && theirArchetype && myMatchName.toUpperCase().includes(theirArchetype.toUpperCase())) {
-                        isPerfectMatch = true;
-                        score += 30; // 80 base
+                        score += 25;
+                        matchReason.push("They are your ideal match");
+                    }
+
+                    // 2. Do I fit what they need? (Bi-directional bonus)
+                    if (theirMatchName && myArchetype && theirMatchName.toUpperCase().includes(myArchetype.toUpperCase())) {
+                        score += 20;
+                        matchReason.push("You are their ideal match");
+                    }
+
+                    // 3. Same Archetype Penalty (Clones are bad co-founders usually)
+                    if (myArchetype === theirArchetype) {
+                        score -= 10;
+                        matchReason.push("Too similar (Risk of conflict)");
                     }
 
                     // PROFILE COMPLETENESS (+15)
@@ -61,14 +72,16 @@ export default function SearchEngine() {
                         name: profile.name || 'Founder',
                         role: profile.role || 'Builder',
                         location: profile.location || 'Remote',
-                        match: Math.min(99, score),
+                        match: Math.min(99, Math.max(10, score)), // Clamp between 10 and 99
                         skills: profile.skills || [],
                         isVerified: profile.subscription_tier !== 'free',
                         hasShipped: profile.has_shipped || false,
                         isExFounder: profile.is_ex_founder || false,
                         bio: profile.bio || 'No bio available',
                         avatar_url: profile.avatar_url,
-                        headline: profile.headline // Useful to see
+                        headline: profile.headline || theirDetails.headline, // Use default if empty
+                        archetype: theirArchetype,
+                        matchReason: matchReason
                     };
                 });
 
@@ -287,7 +300,9 @@ export default function SearchEngine() {
 }
 
 
-function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio, avatar_url }) {
+function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio, avatar_url, archetype, matchReason }) {
+    // Reconstruct candidate object for child components if needed
+    const candidate = { id, name, role, archetype, matchReason };
     return (
         <Link to={`/profile/${id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <motion.div
@@ -328,9 +343,26 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
                 </div>
 
                 <div style={{ borderLeft: '1px solid var(--border-subtle)', paddingLeft: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                    <div style={{ position: 'relative', marginBottom: '16px' }}>
-                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-primary)' }}>{match}%</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>Match Score</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-primary)' }}>{match}%</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>{candidate.archetype || 'Match'}</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {candidate.matchReason && candidate.matchReason.map((reason, i) => (
+                        <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                            {reason}
+                        </span>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {candidate.matchReason && candidate.matchReason.map((reason, i) => (
+                            <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                                {reason}
+                            </span>
+                        ))}
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
@@ -344,7 +376,7 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
                     </div>
                 </div>
             </motion.div>
-        </Link>
+        </Link >
     )
 }
 
