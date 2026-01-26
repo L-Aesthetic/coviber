@@ -55,10 +55,10 @@ export default function VibeQuiz() {
                     description: data.bio,
                     radarData: data.vibe_data,
                     insights: {
-                        stress: data.comm_style, // mapped back
-                        power: richDetails.powerDynamics, // Default from rich data
+                        stress: data.comm_style || richDetails.commStyle, // Fallback to archetype default
+                        power: richDetails.powerDynamics,
                         risk: data.superpower,
-                        dialect: richDetails.workDialect // Default from rich data
+                        dialect: richDetails.workDialect
                     },
                     isExisting: true
                 });
