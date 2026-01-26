@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, User, ArrowRight, Activity, Copy, Check } from 'lucide-react';
+import { Users, User, ArrowRight, Activity, Copy, Check, Search } from 'lucide-react';
 import { ALIGNMENT_QUESTIONS } from '../lib/alignment_questions';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
@@ -21,6 +21,46 @@ export default function AlignmentAudit() {
     const [answersA, setAnswersA] = useState({});
     const [answersB, setAnswersB] = useState({});
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+    // Search State
+    const [useSearch, setUseSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [founderBId, setFounderBId] = useState(null);
+    const [founderBData, setFounderBData] = useState(null); // Full profile data for B
+    const [showResults, setShowResults] = useState(false);
+
+    const handleSearch = async (query) => {
+        setSearchQuery(query);
+        if (query.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, name, headline, avatar_url')
+                .ilike('name', `%${query}%`)
+                .limit(5);
+
+            if (data) setSearchResults(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const selectFounderB = (profile) => {
+        setFounderB(profile.name);
+        setFounderBId(profile.id);
+        setFounderBData(profile);
+        setSearchQuery(profile.name);
+        setShowResults(false);
+    };
 
     // Invitee State
     const inviteRef = searchParams.get('ref');
@@ -166,7 +206,8 @@ export default function AlignmentAudit() {
                         state: {
                             founderA,
                             founderB: founderB || 'Partner',
-                            answersA: mode === 'remote' ? answersA : answersA, // Ensure consistent access
+                            founderBData, // Pass full profile data
+                            answersA: mode === 'remote' ? answersA : answersA,
                             answersB: newAnswers
                         }
                     });
@@ -272,27 +313,6 @@ export default function AlignmentAudit() {
                                 }}
                             />
                         </div>
-                        {mode === 'local' && (
-                            <div className="input-field">
-                                <label className="input-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>Founder 2 (Partner)</label>
-                                <input
-                                    className="saas-input glass-input"
-                                    placeholder="Enter Name"
-                                    value={founderB}
-                                    onChange={e => setFounderB(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        padding: '12px 16px',
-                                        borderRadius: '12px',
-                                        color: 'white',
-                                        fontSize: '1rem',
-                                        outline: 'none'
-                                    }}
-                                />
-                            </div>
-                        )}
                         {mode === 'remote' && (
                             <div className="input-field" style={{ opacity: 0.5 }}>
                                 <label className="input-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>Founder 2</label>
@@ -302,6 +322,100 @@ export default function AlignmentAudit() {
                                 }}>
                                     Will join via link...
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Founder 2 Search for Local Mode */}
+                        {mode === 'local' && (
+                            <div className="input-field" style={{ position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label className="input-label" style={{ display: 'block', color: 'var(--text-secondary)' }}>Founder 2 (Partner)</label>
+                                    <button
+                                        onClick={() => { setUseSearch(!useSearch); setFounderB(''); setFounderBId(null); }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                                    >
+                                        {useSearch ? "Enter Name Manually" : "Find Existing User"}
+                                    </button>
+                                </div>
+
+                                {useSearch ? (
+                                    <>
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                className="saas-input glass-input"
+                                                placeholder="Search by name..."
+                                                value={searchQuery}
+                                                onChange={e => handleSearch(e.target.value)}
+                                                onFocus={() => setShowResults(true)}
+                                                style={{
+                                                    width: '100%',
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                    padding: '12px 16px',
+                                                    paddingRight: '40px',
+                                                    borderRadius: '12px',
+                                                    color: 'white',
+                                                    fontSize: '1rem',
+                                                    outline: 'none'
+                                                }}
+                                            />
+                                            {isSearching ? (
+                                                <Activity size={16} className="animate-spin" style={{ position: 'absolute', right: '12px', top: '14px', color: 'var(--text-tertiary)' }} />
+                                            ) : (
+                                                <Search size={16} style={{ position: 'absolute', right: '12px', top: '14px', color: 'var(--text-tertiary)' }} />
+                                            )}
+                                        </div>
+
+                                        {/* Dropdown Results */}
+                                        {showResults && searchResults.length > 0 && (
+                                            <div style={{
+                                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                                                background: '#18181b', border: '1px solid var(--border-subtle)',
+                                                borderRadius: '12px', marginTop: '8px', maxHeight: '200px', overflowY: 'auto',
+                                                boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
+                                            }}>
+                                                {searchResults.map(p => (
+                                                    <div
+                                                        key={p.id}
+                                                        onClick={() => selectFounderB(p)}
+                                                        style={{
+                                                            padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
+                                                            background: 'transparent', transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                    >
+                                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>
+                                                            {p.name.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{p.name}</div>
+                                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{p.headline || 'No headline'}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <input
+                                        className="saas-input glass-input"
+                                        placeholder="Enter Name"
+                                        value={founderB}
+                                        onChange={e => setFounderB(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            padding: '12px 16px',
+                                            borderRadius: '12px',
+                                            color: 'white',
+                                            fontSize: '1rem',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                )}
                             </div>
                         )}
                     </div>

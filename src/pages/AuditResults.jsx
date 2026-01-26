@@ -8,7 +8,7 @@ export default function AuditResults() {
 
     if (!state) return <div style={{ padding: 40 }}>No data found. Please take the audit first.</div>;
 
-    const { founderA, founderB, answersA, answersB } = state;
+    const { founderA, founderB, answersA, answersB, founderBData } = state;
 
     // Calculate Alignment Score
     let matches = 0;
@@ -33,9 +33,34 @@ export default function AuditResults() {
                     {alignmentScore}% Match
                 </div>
                 <h1 style={{ fontSize: '2rem', color: 'var(--text-primary)' }}>Co-Founder Compatibility Report</h1>
-                <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
-                    {founderA} & {founderB}
-                </p>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginTop: '24px' }}>
+                    {/* Founder A (Usually Self - we could fetch their avatar too, but for now stick to text or placeholder) */}
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '1.5rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.1)' }}>
+                            {founderA.charAt(0)}
+                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{founderA}</div>
+                    </div>
+
+                    <div style={{ fontSize: '1.5rem', color: 'var(--text-tertiary)' }}>&</div>
+
+                    {/* Founder B */}
+                    <div style={{ textAlign: 'center' }}>
+                        {founderBData?.avatar_url ? (
+                            <img
+                                src={founderBData.avatar_url}
+                                alt={founderB}
+                                style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 12px', border: '2px solid rgba(255,255,255,0.1)' }}
+                            />
+                        ) : (
+                            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '1.5rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.1)' }}>
+                                {founderB.charAt(0)}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{founderB}</div>
+                    </div>
+                </div>
             </div>
 
             {/* Red Flags / Misalignments Section */}
