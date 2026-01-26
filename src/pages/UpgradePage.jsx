@@ -194,39 +194,28 @@ export default function UpgradePage() {
                     </div>
 
                     {/* Plan Cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <PlanCard
                             active={selectedPlan === 'founder'}
                             onClick={() => !isSoldOut && setSelectedPlan('founder')}
-                            title="Founder's Club"
-                            price="$0"
+                            title="Founding Member (Gold Card)"
+                            price="$49"
+                            billingCycle="one-time"
                             originalPrice="$49/mo"
-                            description={isSoldOut ? "Sold Out. Waiting list only." : "First 100 Users Only. Full Access."}
+                            description={isSoldOut ? "Sold Out. Waiting list only." : "Lifetime Access. First 100 Users Only."}
                             limited
                             soldOut={isSoldOut}
+                            isGold
                         />
+                        <div style={{ textAlign: 'center', margin: '8px 0', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                            Or
+                        </div>
                         <PlanCard
-                            active={selectedPlan === 'pro'}
-                            onClick={() => setSelectedPlan('pro')}
-                            title="Pro Member"
-                            price="$49"
-                            billingCycle="/mo"
-                            description="Standard monthly subscription."
-                        />
-                        <PlanCard
-                            active={selectedPlan === 'certified'}
-                            onClick={() => setSelectedPlan('certified')}
-                            title="Certified Pair"
-                            price="$399"
-                            description="One-time validation + Report."
-                            isOneTime
-                        />
-                        <PlanCard
-                            active={selectedPlan === 'accelerator'}
-                            onClick={() => setSelectedPlan('accelerator')}
-                            title="Accelerator"
-                            price="Custom"
-                            description="Cohort analytics."
+                            active={selectedPlan === 'expert'}
+                            onClick={() => setSelectedPlan('expert')}
+                            title="Expert Review"
+                            price="$499"
+                            description="Have a real human expert review your partnership agreement."
                             muted
                         />
                     </div>
@@ -330,23 +319,24 @@ export default function UpgradePage() {
     );
 }
 
-function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, description, popular, limited, isOneTime, muted, soldOut }) {
+function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, description, popular, limited, isOneTime, muted, soldOut, isGold }) {
     return (
         <motion.div
             whileHover={!soldOut ? { y: -4 } : {}}
             onClick={!soldOut ? onClick : undefined}
             style={{
-                padding: '20px',
+                padding: '24px',
                 borderRadius: '16px',
-                border: active ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.1)',
-                background: active ? 'rgba(99, 102, 241, 0.08)' : soldOut ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.02)',
+                border: isGold ? '1px solid #F59E0B' : (active ? '2px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.1)'),
+                background: isGold ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.05))' : (active ? 'rgba(99, 102, 241, 0.08)' : soldOut ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.02)'),
                 cursor: soldOut ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s',
                 opacity: muted || soldOut ? 0.6 : 1,
                 position: 'relative',
-                paddingTop: popular || limited || isOneTime ? '36px' : '20px',
-                minHeight: '140px',
-                filter: soldOut ? 'grayscale(1)' : 'none'
+                paddingTop: popular || limited || isOneTime ? '36px' : '24px',
+                minHeight: '120px',
+                filter: soldOut ? 'grayscale(1)' : 'none',
+                boxShadow: isGold ? '0 0 30px rgba(245, 158, 11, 0.1)' : 'none'
             }}
         >
             {popular && (

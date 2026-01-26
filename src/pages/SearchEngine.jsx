@@ -11,6 +11,7 @@ export default function SearchEngine() {
     const [searchQuery, setSearchQuery] = useState('');
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isPremium, setIsPremium] = useState(false);
 
     // Fetch candidates from Supabase
     useEffect(() => {
@@ -23,6 +24,11 @@ export default function SearchEngine() {
                 const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 const myArchetype = myProfile?.headline ? getArchetypeDetails(myProfile.headline).name : null;
                 const myMatchName = myProfile?.headline ? getArchetypeDetails(myProfile.headline).match.name : null; // e.g. "THE OPERATOR 🎯"
+
+                // Check premium status
+                const premiumTiers = ['founder', 'pro', 'certified', 'accelerator'];
+                const hasPremium = premiumTiers.includes(myProfile?.subscription_tier);
+                setIsPremium(hasPremium);
 
                 // 2. Get CANDIDATES
                 const { data, error } = await supabase
@@ -282,12 +288,31 @@ export default function SearchEngine() {
                             Loading candidates...
                         </div>
                     ) : filteredCandidates.length > 0 ? (
-                        filteredCandidates.map(c => (
-                            <CandidateCard
-                                key={c.id}
-                                {...c}
-                            />
-                        ))
+                        <>
+                            {/* Free Tier Limit: Show only 3 */}
+                            {filteredCandidates.slice(0, isPremium ? undefined : 3).map(c => (
+                                <CandidateCard
+                                    key={c.id}
+                                    {...c}
+                                />
+                            ))}
+
+                            {/* Paywall Card */}
+                            {!isPremium && filteredCandidates.length > 3 && (
+                                <div className="saas-panel" style={{ padding: '40px', textAlign: 'center', border: '1px solid var(--accent-primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
+                                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                                        <div style={{ fontWeight: 800, fontSize: '1.5rem' }}>+{filteredCandidates.length - 3}</div>
+                                    </div>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px' }}>Unlock {filteredCandidates.length - 3} More Candidates</h3>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
+                                        Join the Founding 100 to access the full database and see verified matches.
+                                    </p>
+                                    <Link to="/upgrade?tier=founder" className="btn-primary" style={{ display: 'inline-flex' }}>
+                                        Unlock Full Access ($49)
+                                    </Link>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                             No candidates found {searchQuery && `matching "${searchQuery}"`}
