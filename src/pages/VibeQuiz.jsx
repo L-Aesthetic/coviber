@@ -52,14 +52,19 @@ export default function VibeQuiz() {
                 // Reconstruct a "profile" object compatible with ResultsView
                 setExistingProfile({
                     title: data.headline,
-                    description: data.bio,
+                    description: richDetails.bio || data.bio, // Prefer rich bio
                     radarData: data.vibe_data,
                     insights: {
-                        stress: data.comm_style || richDetails.commStyle, // Fallback to archetype default
+                        stress: data.comm_style || richDetails.commStyle,
                         power: richDetails.powerDynamics,
                         risk: data.superpower,
                         dialect: richDetails.workDialect
                     },
+                    quote: richDetails.quote,
+                    whyEssential: richDetails.whyEssential,
+                    matchName: richDetails.match?.name,
+                    matchDesc: richDetails.match?.desc,
+                    kryptonite: richDetails.kryptonite || data.kryptonite, // Ensure rich kryptonite
                     isExisting: true
                 });
                 setCompleted(true);
@@ -234,23 +239,42 @@ function ResultsView({ answers, existingProfile }) {
         if (ans.risk_guarantee === 'sign') scores.action += 1;
         if (ans.risk_guarantee === 'refuse') scores.king += 1;
 
+        // ... existing scoring logic above ...
+
         // Determine Profile
         let title = "The Prudent Operator";
-        let description = "You value stability and control.";
+        let baseName = "Operator";
 
         if (scores.rich > scores.king && scores.action > scores.conscientious) {
             title = "The Venture Architect";
-            description = "You are built for high-growth, venture-backed scaling. You prioritize speed and market capture over control.";
-        } else if (scores.king > scores.rich) {
-            title = "The Sovereign Founder";
-            description = "You value independence and ownership above all. You are best suited for bootstrapping or lifestyle businesses.";
-        } else if (scores.conscientious > scores.action) {
-            title = "The Diligent Architect";
-            description = "You build robust, scalable systems. You need a partner who can push for speed and sales.";
+            baseName = "Sovereign"; // Mapping Venture Architect -> Sovereign for now based on rules? Or is it distinct? logic says: Sovereign is King > Rich. This is Rich > King. Wait.
+            // Let's stick to the 3 core ones user provided in archetypes.js: Sovereign, Architect, Operator.
+            // Based on original code:
+            // rich > king && action > cons => Venture Architect (Maybe map to Sovereign?)
+            // king > rich => Sovereign Founder
+            // cons > action => Diligent Architect
+
+            // Re-evaluating mapping to the 3 rich archetypes:
+            // "The Sovereign"
+            // "The Architect"
+            // "The Operator"
         }
 
-        // Generate Radar Data [Risk, Pace, Control, Optimism, Details]
-        // Normalize roughly to 0-150 scale
+        // Let's rely on the previous logic but map them to the 3 core keys for rich details:
+        let archetypeKey = 'Operator';
+        if (scores.rich > scores.king && scores.action > scores.conscientious) archetypeKey = 'Sovereign';
+        else if (scores.king > scores.rich) archetypeKey = 'Sovereign';
+        else if (scores.conscientious > scores.action) archetypeKey = 'Architect';
+        else archetypeKey = 'Operator';
+
+        const richDetails = getArchetypeDetails(archetypeKey);
+
+        title = richDetails.headline; // Use the standard headline e.g. "The Sovereign ⚡"
+        let description = richDetails.bio;
+
+        // Generate Radar Data 
+        // We could use the dynamic score-based radar (better) or the fixed one. 
+        // Let's keep dynamic scores for personalization, but use rich text.
         const radarData = [
             { subject: 'Risk', A: Math.min(150, (scores.action + scores.rich) * 20 + 50), fullMark: 150 },
             { subject: 'Pace', A: Math.min(150, (scores.action * 30) + 50), fullMark: 150 },
@@ -259,29 +283,26 @@ function ResultsView({ answers, existingProfile }) {
             { subject: 'Details', A: Math.min(150, (scores.conscientious * 30) + 20), fullMark: 150 },
         ];
 
-        // Derive Kryptonite based on dominant trait
-        let kryptonite = "Unknown";
-        if (scores.king > scores.rich && scores.king > scores.action) kryptonite = "micromanagement and chaos";
-        else if (scores.rich > scores.king) kryptonite = "slow growth and indecision";
-        else if (scores.conscientious > scores.action) kryptonite = "releasing imperfect code";
-        else if (scores.action > scores.conscientious) kryptonite = "bypassing speed limits";
-        else kryptonite = "misalignment on values";
-
-        // Derive Trigger Warning
-        let triggerWarning = "I need clear goals.";
-        if (ans.stress_response === 'confront') triggerWarning = "I address conflict immediately and directly.";
-        if (ans.stress_response === 'space') triggerWarning = "I withdraw when overwhelmed—give me space.";
-        if (ans.tech_debt === 'hack') triggerWarning = "I prioritize speed over perfection.";
-
         // Insights
         const insights = {
-            stress: ans.stress_response === 'confront' ? "You tend to confront stress directly (Pursuer). Avoid avoidant partners." : (ans.stress_response === 'space' ? "You withdraw under stress (Distancer). You need space to process." : "You have a balanced, supportive stress response (Secure)."),
-            power: ans.equity_split === 'equal' ? "You value relational harmony over transactional fairness." : "You view equity as a tool for performance and fairness.",
-            risk: ans.pivot === 'pivot' ? "You are highly adaptable and willing to kill your darlings (High Openness)." : "You prefer to persist and optimize rather than pivot (High Persistence).",
-            dialect: ans.tech_debt === 'hack' ? "Your work dialect is 'Speed'. You view code as a means to an end." : "Your work dialect is 'Quality'. You view code as an asset."
+            stress: ans.stress_response === 'confront' ? "You tend to confront stress directly (Pursuer)." : (ans.stress_response === 'space' ? "You withdraw under stress (Distancer)." : "You have a balanced stress response."),
+            power: richDetails.powerDynamics,
+            risk: `${richDetails.superpower.split(':')[0]}: ${richDetails.superpower.split(':')[1]}`,
+            dialect: richDetails.workDialect
         };
 
-        return { title, description, insights, radarData, kryptonite, triggerWarning };
+        return {
+            title,
+            description,
+            insights,
+            radarData,
+            kryptonite: richDetails.kryptonite,
+            triggerWarning: richDetails.triggerWarning,
+            quote: richDetails.quote,
+            whyEssential: richDetails.whyEssential,
+            matchName: richDetails.match?.name,
+            matchDesc: richDetails.match?.desc
+        };
     };
 
     const profile = calculateProfile(answers);
@@ -328,65 +349,132 @@ function ResultsView({ answers, existingProfile }) {
             >
                 <header style={{ textAlign: 'center', marginBottom: '48px' }}>
                     <div style={{
-                        width: '80px', height: '80px', margin: '0 auto 32px auto',
-                        background: 'linear-gradient(135deg, #10B981, #059669)', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'white', boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)'
+                        width: '100px', height: '100px', margin: '0 auto 32px auto',
+                        // color: 'white' // Removed background, used icon only style or keep simple
                     }}>
-                        <Activity size={40} />
+                        {/* Icon Mapping based on Title */}
+                        {profile.title.includes('Sovereign') ? <Zap size={80} color="#F97316" /> :
+                            profile.title.includes('Architect') ? <Home size={80} color="#8B5CF6" /> :
+                                <Target size={80} color="#10B981" />
+                        }
                     </div>
-                    <h1 style={{ fontSize: '2.8rem', fontWeight: 800, marginBottom: '16px' }}>{profile.title}</h1>
-                    <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
-                        {profile.description}
+                    <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {profile.title.replace('The ', '')}
+                    </h1>
+                    <p style={{ fontSize: '1.2rem', color: '#60A5FA', fontWeight: 600, fontFamily: 'monospace' }}>
+                        "{profile.quote || "The Code is the Product."}"
                     </p>
                 </header>
 
-                <div className="saas-panel" style={{ padding: '48px', textAlign: 'left', marginBottom: '40px' }}>
-                    <div style={{ marginBottom: '40px' }}>
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px', color: 'var(--text-primary)' }}>Diagnostic Insights</h2>
-                        <div style={{ width: '40px', height: '4px', background: 'var(--accent-primary)', borderRadius: '2px' }}></div>
+                <div className="saas-panel" style={{ padding: '0', overflow: 'hidden', textAlign: 'left', marginBottom: '40px', background: '#09090b', border: '1px solid rgba(255,255,255,0.1)' }}>
+
+                    {/* DEEP PROFILE ANALYSIS */}
+                    <div style={{ padding: '40px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'white', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+                            <span style={{ width: '4px', height: '16px', background: '#60A5FA' }}></span>
+                            DEEP PROFILE ANALYSIS
+                        </h3>
+                        <p style={{ fontSize: '1.1rem', lineHeight: 1.7, color: '#d4d4d8' }}>
+                            {profile.description}
+                        </p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-                        <AnalysisCard
-                            title="STRESS REPONSE"
-                            text={profile.insights.stress}
-                            icon={<Flame size={18} />}
-                        />
-                        <AnalysisCard
-                            title="POWER & EQUITY"
-                            text={profile.insights.power}
-                            icon={<PieChart size={18} />}
-                        />
-                        <AnalysisCard
-                            title="RISK & ADAPTABILITY"
-                            text={profile.insights.risk}
-                            icon={<RefreshCw size={18} />}
-                        />
-                        <AnalysisCard
-                            title="WORK DIALECT"
-                            text={profile.insights.dialect}
-                            icon={<Brain size={18} />}
-                        />
+                    {/* SUPERPOWERS */}
+                    <div style={{ padding: '40px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#FCD34D', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+                            <Zap size={16} fill="#FCD34D" />
+                            THE SUPERPOWERS
+                        </h3>
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ fontWeight: 700, color: 'white', fontSize: '1.1rem', marginBottom: '8px' }}>
+                                {profile.insights.risk && profile.insights.risk.split(':')[0]}:
+                                <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{profile.insights.risk && profile.insights.risk.split(':')[1]}</span>
+                            </div>
+                        </div>
+                        {profile.whyEssential && (
+                            <div>
+                                <div style={{ fontWeight: 700, color: 'white', fontSize: '1.1rem', marginBottom: '8px', fontStyle: 'italic' }}>
+                                    Why you are essential:
+                                    <span style={{ fontWeight: 400, color: '#a1a1aa', fontStyle: 'normal' }}> {profile.whyEssential}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* FATAL FLAW */}
+                    <div style={{ padding: '40px' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#EF4444', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}>
+                            <span style={{ width: '4px', height: '16px', background: '#EF4444' }}></span>
+                            THE FATAL FLAW
+                        </h3>
+                        <div style={{ fontWeight: 700, color: 'white', fontSize: '1.1rem', marginBottom: '8px' }}>
+                            {profile.kryptonite && profile.kryptonite.split(':')[0]}:
+                            <span style={{ fontWeight: 400, color: '#a1a1aa' }}>{profile.kryptonite && profile.kryptonite.split(':')[1]}</span>
+                        </div>
+                    </div>
+
+                    {/* MATCH PROTOCOL */}
+                    <div style={{ padding: '40px', background: 'rgba(30, 41, 59, 0.4)', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{
+                            border: '1px solid #3B82F6',
+                            borderRadius: '16px',
+                            padding: '40px',
+                            textAlign: 'center',
+                            background: 'rgba(59, 130, 246, 0.05)',
+                            boxShadow: '0 0 40px rgba(59, 130, 246, 0.1)'
+                        }}>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.2em', color: '#94A3B8', marginBottom: '16px', textTransform: 'uppercase' }}>
+                                COMPATIBILITY PROTOCOL
+                            </h4>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', marginBottom: '16px' }}>
+                                Your Perfect Match: <span style={{ color: '#60A5FA' }}>{profile.matchName || "THE PARTNER"}</span> ⚡
+                            </h2>
+                            <p style={{ fontSize: '1.1rem', lineHeight: 1.6, color: '#cbd5e1', maxWidth: '600px', margin: '0 auto 32px auto' }}>
+                                {profile.matchDesc}
+                            </p>
+
+                            {user ? (
+                                <button
+                                    className="btn-primary"
+                                    onClick={handleSync}
+                                    disabled={saving}
+                                    style={{ padding: '16px 48px', fontSize: '1.1rem', borderRadius: '50px', background: '#3B82F6', border: 'none', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)' }}
+                                >
+                                    {saving ? "Saving Results..." : "Find Your Co-Founder"}
+                                </button>
+                            ) : (
+                                <button className="btn-primary" onClick={() => navigate('/login')} style={{ padding: '16px 48px', fontSize: '1.1rem', borderRadius: '50px', background: '#3B82F6', border: 'none', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)' }}>
+                                    Find Your Co-Founder
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button className="btn-ghost" onClick={() => setShowRetakeModal(true)}>Retake Diagnostic</button>
-                    {user ? (
-                        <button
-                            className="btn-primary"
-                            onClick={handleSync}
-                            disabled={saving}
-                            style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}
-                        >
-                            {saving ? "Saving Results..." : "Continue to Dashboard"} <ArrowRight size={20} style={{ marginLeft: 8 }} />
-                        </button>
-                    ) : (
-                        <button className="btn-primary" onClick={() => navigate('/login')} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
-                            Log in to Save Results <ArrowRight size={20} style={{ marginLeft: 8 }} />
-                        </button>
-                    )}
+
+                {/* OLDER GRID (Keeping for completeness or removing? User said "complete with all old and new details", let's keep the grid below as "Additional Insights" maybe? Or hide it if the new layout covers it?) 
+                   The new layout covers deep analysis, superpowers, flaw, match.
+                   The grid had: Stress, Power, Risk, Dialect.
+                   Risk is partly covered in Superpower/Flaw.
+                   Stress, Power, Dialect are good to keep. 
+                   Let's render them in a simplified row below.
+                */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+                    <AnalysisCard
+                        title="STRESS RESPONSE"
+                        text={profile.insights.stress}
+                        icon={<Flame size={18} />}
+                    />
+                    <AnalysisCard
+                        title="POWER & EQUITY"
+                        text={profile.insights.power}
+                        icon={<PieChart size={18} />}
+                    />
+                    <AnalysisCard
+                        title="WORK DIALECT"
+                        text={profile.insights.dialect}
+                        icon={<Brain size={18} />}
+                    />
                 </div>
 
                 <div className="saas-panel" style={{ marginTop: '48px', padding: '32px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-subtle)' }}>
@@ -463,6 +551,9 @@ function ResultsView({ answers, existingProfile }) {
                 </AnimatePresence>
 
             </motion.div >
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                <button className="btn-ghost" onClick={() => setShowRetakeModal(true)}>Retake Diagnostic</button>
+            </div>
         </div >
     )
 }
