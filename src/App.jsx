@@ -22,6 +22,7 @@ import AlignmentAudit from './pages/AlignmentAudit';
 import AuditResults from './pages/AuditResults';
 import LandingPage from './pages/LandingPage';
 import Messages from './pages/Messages';
+import FullReport from './pages/FullReport';
 import { AuthProvider } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
 
