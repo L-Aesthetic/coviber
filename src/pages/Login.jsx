@@ -1,21 +1,52 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
 export default function Login() {
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
-    const { signIn } = useAuth();
+    const [sentMessage, setSentMessage] = useState({ title: 'Check your email', sub: '' });
+    const [mode, setMode] = useState('password'); // 'magic', 'password', 'signup'
+    const { signIn, signInWithPassword, signUp, user } = useAuth();
+
+    // Redirect when user state confirms login (fixes race condition)
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await signIn(email);
-            setSent(true);
+            if (mode === 'magic') {
+                await signIn(email);
+                setSentMessage({ title: 'Check your email', sub: `We sent a magic link to ${email}` });
+                setSent(true);
+            } else if (mode === 'password') {
+                await signInWithPassword(email, password);
+                // Session update handled by AuthProvider -> triggers useEffect -> redirects
+            } else if (mode === 'signup') {
+                await signUp(email, password, {
+                    full_name: email.split('@')[0] // Default name
+                });
+                setSentMessage({ title: 'Account Created', sub: `Please check ${email} to verify your account.` });
+                setSent(true);
+            }
         } catch (error) {
-            alert('Error logging in: ' + error.message);
+            console.error("Login error:", error);
+            if (error.message.includes('Email not confirmed')) {
+                alert('Your email is not confirmed. Please check your inbox (and spam) for the confirmation link.');
+            } else if (error.message.includes('Invalid login credentials')) {
+                alert('Invalid email or password. Please try again.');
+            } else {
+                alert('Error: ' + error.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -49,42 +80,95 @@ export default function Login() {
                         }}>
                             <ArrowRight size={32} />
                         </div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '8px' }}>Check your email</h3>
-                        <p style={{ color: 'var(--text-secondary)' }}>We sent a magic link to <b>{email}</b></p>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '8px' }}>{sentMessage.title}</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>{sentMessage.sub}</p>
                     </div>
                 ) : (
-                    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Email</label>
-                            <input
-                                type="email"
-                                style={{
-                                    background: 'rgba(255, 255, 255, 0.05)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    padding: '14px',
-                                    borderRadius: '12px',
-                                    color: 'white',
-                                    fontSize: '1rem',
-                                    outline: 'none',
-                                    transition: 'all 0.2s'
-                                }}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
-                                onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
-                                placeholder="founder@startup.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                            />
+                    <div>
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '12px' }}>
+                            {['password', 'signup', 'magic'].map((m) => (
+                                <button
+                                    key={m}
+                                    onClick={() => setMode(m)}
+                                    style={{
+                                        flex: 1,
+                                        background: mode === m ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        border: 'none',
+                                        color: mode === m ? 'white' : 'var(--text-tertiary)',
+                                        padding: '8px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        textTransform: 'capitalize',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {m === 'magic' ? 'Magic Link' : m === 'password' ? 'Log In' : 'Sign Up'}
+                                </button>
+                            ))}
                         </div>
 
-                        <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }} disabled={loading}>
-                            {loading ? <Loader2 className="animate-spin" size={20} /> : 'Send Magic Link'}
-                        </button>
+                        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Email</label>
+                                <input
+                                    type="email"
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        padding: '14px',
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                                    onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                                    placeholder="founder@startup.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
 
-                        <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                            Powered by Supabase Auth
-                        </p>
-                    </form>
+                            {mode !== 'magic' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Password</label>
+                                    <input
+                                        type="password"
+                                        style={{
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                                            padding: '14px',
+                                            borderRadius: '12px',
+                                            color: 'white',
+                                            fontSize: '1rem',
+                                            outline: 'none',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onFocus={(e) => e.target.style.borderColor = 'var(--accent-primary)'}
+                                        onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        minLength={6}
+                                    />
+                                </div>
+                            )}
+
+                            <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }} disabled={loading}>
+                                {loading && <Loader2 className="animate-spin" size={20} style={{ marginRight: '8px' }} />}
+                                {mode === 'magic' ? 'Send Magic Link' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+                            </button>
+
+                            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                {mode === 'signup' ? 'By signing up, you agree to the Protocol.' : 'Secured by Supabase Auth'}
+                            </p>
+                        </form>
+                    </div>
                 )}
             </div>
         </div>

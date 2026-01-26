@@ -11,6 +11,7 @@ export default function Teams() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('my-teams');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); // { teamId, teamName }
 
     // Pro Tier check
     const [tier, setTier] = useState('founder');
@@ -223,6 +224,45 @@ export default function Teams() {
         }
     };
 
+    const handleDeleteTeam = async (teamId) => {
+        try {
+            console.log('Starting deletion for team:', teamId);
+
+            // Delete in order: activity_logs, tasks, team_members, then team
+            const { error: activityError } = await supabase.from('activity_logs').delete().eq('team_id', teamId);
+            if (activityError) {
+                console.error('Failed to delete activity logs:', activityError);
+                throw new Error(`Activity logs: ${activityError.message}`);
+            }
+
+            const { error: tasksError } = await supabase.from('tasks').delete().eq('team_id', teamId);
+            if (tasksError) {
+                console.error('Failed to delete tasks:', tasksError);
+                throw new Error(`Tasks: ${tasksError.message}`);
+            }
+
+            const { error: membersError } = await supabase.from('team_members').delete().eq('team_id', teamId);
+            if (membersError) {
+                console.error('Failed to delete team members:', membersError);
+                throw new Error(`Members: ${membersError.message}`);
+            }
+
+            const { error } = await supabase.from('teams').delete().eq('id', teamId);
+            if (error) {
+                console.error('Failed to delete team:', error);
+                throw new Error(`Team: ${error.message}`);
+            }
+
+            console.log('✅ Team deleted successfully!');
+            setMyTeams(myTeams.filter(t => t.id !== teamId));
+            setDeleteConfirmModal(null);
+        } catch (error) {
+            console.error('❌ Error deleting team:', error);
+            alert(`Failed to delete team: ${error.message}\n\nCheck browser console for details.`);
+            setDeleteConfirmModal(null);
+        }
+    };
+
     return (
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <header style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -276,7 +316,13 @@ export default function Teams() {
                             onAction={handleCreateTeam}
                         />
                     ) : (
-                        myTeams.map(team => <TeamCard key={team.id} team={team} />)
+                        myTeams.map(team => (
+                            <TeamCard
+                                key={team.id}
+                                team={team}
+                                onDelete={() => setDeleteConfirmModal({ teamId: team.id, teamName: team.name })}
+                            />
+                        ))
                     )}
                 </div>
             )}
@@ -390,6 +436,62 @@ export default function Teams() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteConfirmModal && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200
+                    }} onClick={() => setDeleteConfirmModal(null)}>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ width: '450px', padding: '32px', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                                <div style={{
+                                    width: '60px', height: '60px', borderRadius: '50%',
+                                    background: 'rgba(239, 68, 68, 0.1)', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 16px'
+                                }}>
+                                    <Trash2 size={28} color="#EF4444" />
+                                </div>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                                    Delete Team?
+                                </h3>
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '8px' }}>
+                                    You're about to permanently delete <strong>{deleteConfirmModal.teamName}</strong>.
+                                </p>
+                                <p style={{ color: '#EF4444', fontSize: '0.9rem', fontWeight: 600 }}>
+                                    This action cannot be undone.
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => setDeleteConfirmModal(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn-primary"
+                                    style={{ flex: 1, justifyContent: 'center', background: '#EF4444', borderColor: '#EF4444' }}
+                                    onClick={() => handleDeleteTeam(deleteConfirmModal.teamId)}
+                                >
+                                    <Trash2 size={16} />
+                                    Delete Team
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -427,95 +529,121 @@ function TabButton({ active, onClick, label, count }) {
     );
 }
 
-function TeamCard({ team }) {
+function TeamCard({ team, onDelete }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleCardClick = () => {
+        navigate(`/studio/${team.id}`);
+    };
 
     return (
-        <Link to={`/studio/${team.id}`} style={{ textDecoration: 'none' }}>
-            <motion.div
-                className="saas-panel hover-glass"
-                style={{ padding: '24px', cursor: 'pointer', position: 'relative' }}
-                whileHover={{ x: 4 }}
-            >
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                    {/* Team Avatar */}
-                    <div style={{
-                        fontSize: '3rem',
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '16px',
-                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid rgba(99, 102, 241, 0.2)'
-                    }}>
-                        {team.avatar}
-                    </div>
+        <motion.div
+            className="saas-panel hover-glass"
+            style={{
+                padding: '24px',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'visible',
+                zIndex: isSettingsOpen ? 100 : 1
+            }}
+            whileHover={{ x: 4 }}
+            onClick={handleCardClick}
+        >
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                {/* Team Avatar */}
+                <div style={{
+                    fontSize: '3rem',
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid rgba(99, 102, 241, 0.2)'
+                }}>
+                    {team.avatar}
+                </div>
 
-                    {/* Team Info */}
-                    <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                            <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                {team.name}
-                            </h3>
-                            {team.status === 'active' && (
-                                <span style={{
-                                    background: 'rgba(16, 185, 129, 0.1)',
-                                    color: '#10B981',
-                                    padding: '4px 12px',
-                                    borderRadius: '12px',
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase'
-                                }}>
-                                    Active
-                                </span>
-                            )}
-                        </div>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
-                            {team.description}
-                        </p>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <Crown size={14} color="var(--accent-primary)" />
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{team.role}</span>
-                            <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                            <Users size={14} color="var(--text-tertiary)" />
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{team.members} members</span>
-                            <span style={{ color: 'var(--text-tertiary)' }}>•</span>
-                            <Calendar size={14} color="var(--text-tertiary)" />
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Active {team.lastActive}</span>
-                        </div>
-
-                        {/* Vesting Progress */}
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-                                    VESTING PROGRESS
-                                </span>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                                    {team.vesting}%
-                                </span>
-                            </div>
-                            <div style={{
-                                height: '6px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                borderRadius: '3px',
-                                overflow: 'hidden'
+                {/* Team Info */}
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {team.name}
+                        </h3>
+                        {team.status === 'active' && (
+                            <span style={{
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#10B981',
+                                padding: '4px 12px',
+                                borderRadius: '12px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase'
                             }}>
-                                <div style={{
-                                    width: `${team.vesting}%`,
-                                    height: '100%',
-                                    background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
-                                    transition: 'width 0.3s ease'
-                                }} />
-                            </div>
-                        </div>
+                                Active
+                            </span>
+                        )}
+                    </div>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
+                        {team.description}
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <Crown size={14} color="var(--accent-primary)" />
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{team.role}</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>•</span>
+                        <Users size={14} color="var(--text-tertiary)" />
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{team.members} members</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>•</span>
+                        <Calendar size={14} color="var(--text-tertiary)" />
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Active {team.lastActive}</span>
                     </div>
 
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Vesting Progress */}
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                                VESTING PROGRESS
+                            </span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                                {team.vesting}%
+                            </span>
+                        </div>
+                        <div style={{
+                            height: '6px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '3px',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{
+                                width: `${team.vesting}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
+                                transition: 'width 0.3s ease'
+                            }} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                    {/* Special Loop for Chemistry Teams */}
+                    {team.description?.startsWith('Chemistry-Session:') ? (
+                        <>
+                            <Link to={`/chemistry/${team.description.split('Chemistry-Session:')[1]}`}>
+                                <button className="btn-secondary" style={{ padding: '10px 16px', height: '40px', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}>
+                                    <Zap size={16} /> Protocol
+                                </button>
+                            </Link>
+                            <Link to={`/session/${team.id}`}>
+                                <button className="btn-primary" style={{ padding: '10px 16px', height: '40px' }}>
+                                    <Users size={16} /> War Room
+                                </button>
+                            </Link>
+                        </>
+                    ) : (
                         <Link to={`/studio/${team.id}`}>
                             <button
                                 className="btn-primary"
@@ -525,60 +653,70 @@ function TeamCard({ team }) {
                                 Studio
                             </button>
                         </Link>
+                    )}
 
-                        {/* Settings Menu Trigger */}
-                        <div style={{ position: 'relative' }} onClick={e => e.preventDefault()}>
-                            <button
-                                className="btn-ghost"
-                                style={{ padding: '10px 12px', height: '40px' }}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setIsSettingsOpen(!isSettingsOpen);
-                                }}
-                            >
-                                <SettingsIcon size={16} />
-                            </button>
+                    {/* Settings Menu Trigger */}
+                    <div style={{ position: 'relative' }} onClick={e => e.preventDefault()}>
+                        <button
+                            className="btn-ghost"
+                            style={{ padding: '10px 12px', height: '40px' }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsSettingsOpen(!isSettingsOpen);
+                            }}
+                        >
+                            <SettingsIcon size={16} />
+                        </button>
 
-                            {/* Dropdown */}
-                            <AnimatePresence>
-                                {isSettingsOpen && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            right: 0,
-                                            marginTop: '8px',
-                                            background: '#1c1c24',
-                                            border: '1px solid var(--border-subtle)',
-                                            borderRadius: '12px',
-                                            width: '180px',
-                                            zIndex: 50,
-                                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                                            overflow: 'hidden'
+                        {/* Dropdown */}
+                        <AnimatePresence>
+                            {isSettingsOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        right: 0,
+                                        marginTop: '8px',
+                                        background: '#1c1c24',
+                                        border: '1px solid var(--border-subtle)',
+                                        borderRadius: '12px',
+                                        width: '180px',
+                                        zIndex: 1000,
+                                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                                        overflow: 'hidden'
+                                    }}
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <Edit3 size={14} /> Rename
+                                    </div>
+                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <Users size={14} /> Manage Members
+                                    </div>
+                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444' }}>
+                                        <LogOut size={14} /> Leave Team
+                                    </div>
+                                    <div
+                                        className="menu-item"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDelete();
                                         }}
-                                        onClick={e => e.stopPropagation()}
+                                        style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444', borderTop: '1px solid rgba(255,255,255,0.05)' }}
                                     >
-                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <Edit3 size={14} /> Rename
-                                        </div>
-                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <Users size={14} /> Manage Members
-                                        </div>
-                                        <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444' }}>
-                                            <LogOut size={14} /> Leave Team
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                                        <Trash2 size={14} /> Delete Team
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
-            </motion.div>
-        </Link>
+            </div>
+        </motion.div>
     );
 }
 

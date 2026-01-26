@@ -18,24 +18,39 @@ import { useNavigate } from 'react-router-dom';
 export default function EquityCalculator() {
     const navigate = useNavigate();
     const [founderA, setFounderA] = useState({
-        name: 'Louis',
-        cash: 50000,
-        salary: 150000,
+        name: 'You',
+        cash: 5000,
+        salary: 100000,
         hours: 40,
-        discount: 100, // % of salary sacrificed
-        assets: ['MVP Codebase', 'Domain Expertise'],
+        discount: 20, // % of salary sacrificed
+        assets: ['Idea', 'Initial Code'],
         isCEO: true
     });
 
     const [founderB, setFounderB] = useState({
-        name: 'Alex',
+        name: 'Co-Founder',
         cash: 0,
-        salary: 200000,
-        hours: 20,
-        discount: 50,
-        assets: ['Network/Access'],
+        salary: 100000,
+        hours: 40,
+        discount: 20,
+        assets: [],
         isTechnical: true
     });
+
+    const [partnerEmail, setPartnerEmail] = useState('');
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Try to get profile name
+                const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+                const realName = profile?.name || user.email?.split('@')[0] || 'You';
+                setFounderA(prev => ({ ...prev, name: realName }));
+            }
+        };
+        loadUser();
+    }, []);
 
     const [config, setConfig] = useState({
         vesting: 'standard', // standard, milestone
@@ -45,8 +60,8 @@ export default function EquityCalculator() {
     });
 
     const [split, setSplit] = useState([
-        { name: 'Louis', value: 65, color: '#6366F1' },
-        { name: 'Alex', value: 35, color: '#10B981' }
+        { name: 'You', value: 65, color: '#6366F1' },
+        { name: 'Co-Founder', value: 35, color: '#10B981' }
     ]);
 
     const [showSummaryModal, setShowSummaryModal] = useState(false);
@@ -88,18 +103,19 @@ export default function EquityCalculator() {
     };
 
     // ... Mock data ...
+    // Dynamic Data for Charts
     const capTableData = [
-        { name: 'Today', Louis: 65, Alex: 35, Investors: 0, Pool: 0 },
-        { name: 'Seed', Louis: 45, Alex: 25, Investors: 20, Pool: 10 },
-        { name: 'Series A', Louis: 35, Alex: 18, Investors: 35, Pool: 12 },
+        { name: 'Today', founderA: split[0].value, founderB: split[1].value, Investors: 0, Pool: 0 },
+        { name: 'Seed', founderA: Math.round(split[0].value * 0.7), founderB: Math.round(split[1].value * 0.7), Investors: 20, Pool: 10 },
+        { name: 'Series A', founderA: Math.round(split[0].value * 0.55), founderB: Math.round(split[1].value * 0.55), Investors: 35, Pool: 10 },
     ];
 
     const breakupData = [
-        { month: 0, Louis: 0, Alex: 0 },
-        { month: 12, Louis: 16.25, Alex: 8.75 }, // Cliff hit
-        { month: 24, Louis: 32.5, Alex: 17.5 },
-        { month: 36, Louis: 48.75, Alex: 26.25 },
-        { month: 48, Louis: 65, Alex: 35 },
+        { month: 0, founderA: 0, founderB: 0 },
+        { month: 12, founderA: Math.round(split[0].value * 0.25), founderB: Math.round(split[1].value * 0.25) },
+        { month: 24, founderA: Math.round(split[0].value * 0.5), founderB: Math.round(split[1].value * 0.5) },
+        { month: 36, founderA: Math.round(split[0].value * 0.75), founderB: Math.round(split[1].value * 0.75) },
+        { month: 48, founderA: split[0].value, founderB: split[1].value },
     ];
 
     // const handlePrint = () => { // Removed
@@ -133,7 +149,7 @@ export default function EquityCalculator() {
                 .from('agreements')
                 .insert({
                     founder_a_id: user.id,
-                    founder_b_email: 'founder_b@example.com', // In real app, prompt for email or use founderB state if relevant
+                    founder_b_email: partnerEmail || null,
                     status: 'draft',
                     // kill_switch_active: killSwitchActive, // Removed
                     content_data: {
@@ -370,7 +386,18 @@ export default function EquityCalculator() {
                             setFounder={setFounderB}
                             color="#10B981"
                             title="Founder 2 (Partner)"
-                        />
+                        >
+                            <div className="input-field" style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Partner Email (for Invite)</label>
+                                <input
+                                    className="glass-input"
+                                    placeholder="partner@example.com"
+                                    value={partnerEmail}
+                                    onChange={e => setPartnerEmail(e.target.value)}
+                                    style={{ width: '100%', marginTop: '8px', fontSize: '0.9rem' }}
+                                />
+                            </div>
+                        </ContributionCard>
                     </div>
                 </div>
 
@@ -476,8 +503,8 @@ export default function EquityCalculator() {
                                     <YAxis tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }} />
                                     <Tooltip contentStyle={{ background: '#1c1c24', border: 'none', borderRadius: '8px' }} />
                                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                                    <Bar dataKey="Louis" stackId="a" fill="#6366F1" />
-                                    <Bar dataKey="Alex" stackId="a" fill="#10B981" />
+                                    <Bar dataKey="founderA" name={founderA.name} stackId="a" fill="#6366F1" />
+                                    <Bar dataKey="founderB" name={founderB.name} stackId="a" fill="#10B981" />
                                     <Bar dataKey="Investors" stackId="a" fill="#F59E0B" />
                                     <Bar dataKey="Pool" stackId="a" fill="#94A3B8" />
                                 </BarChart>
@@ -498,13 +525,13 @@ export default function EquityCalculator() {
                                     <XAxis dataKey="month" tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }} label={{ value: 'Months', position: 'insideBottom', offset: -5, fill: 'var(--text-tertiary)', fontSize: 10 }} />
                                     <YAxis tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }} />
                                     <Tooltip contentStyle={{ background: '#1c1c24', border: 'none', borderRadius: '8px' }} />
-                                    <Line type="monotone" dataKey="Louis" stroke="#6366F1" strokeWidth={3} dot={false} />
-                                    <Line type="monotone" dataKey="Alex" stroke="#10B981" strokeWidth={3} dot={false} />
+                                    <Line type="monotone" dataKey="founderA" name={founderA.name} stroke="#6366F1" strokeWidth={3} dot={false} />
+                                    <Line type="monotone" dataKey="founderB" name={founderB.name} stroke="#10B981" strokeWidth={3} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
                         <p style={{ marginTop: '16px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            If Alex leaves after 18 months, he keeps <strong>9.3%</strong> (of his 35%) due to vesting.
+                            If {founderB.name} leaves after 18 months, they keep <strong>{(split[1].value * 0.375).toFixed(1)}%</strong> (of their {split[1].value}%) due to vesting.
                         </p>
                     </section>
 
@@ -669,7 +696,7 @@ export default function EquityCalculator() {
     );
 }
 
-function ContributionCard({ founder, setFounder, color, title }) {
+function ContributionCard({ founder, setFounder, color, title, children }) {
     return (
         <div style={{
             padding: '20px',
@@ -685,6 +712,16 @@ function ContributionCard({ founder, setFounder, color, title }) {
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="input-field">
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Name / Role</label>
+                    <input
+                        className="glass-input"
+                        value={founder.name}
+                        onChange={e => setFounder({ ...founder, name: e.target.value })}
+                        style={{ width: '100%', marginTop: '8px', fontSize: '1rem', fontWeight: 700 }}
+                    />
+                </div>
+
                 <div className="input-field">
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Cash Contribution ($)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -746,6 +783,8 @@ function ContributionCard({ founder, setFounder, color, title }) {
                         + Add Asset
                     </button>
                 </div>
+
+                {children}
             </div>
         </div>
     )

@@ -8,6 +8,7 @@ export default function AccountSettings() {
     const { user, loading: authLoading } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -27,6 +28,7 @@ export default function AccountSettings() {
 
     // Preferences State
     const [showPassword, setShowPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
     const [email, setEmail] = useState('');
     const [profileVisibility, setProfileVisibility] = useState('public');
     const [twoFactor, setTwoFactor] = useState(false);
@@ -49,20 +51,30 @@ export default function AccountSettings() {
         }
 
         const fetchData = async () => {
-            setEmail(user.email);
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('notification_prefs, headline')
-                .eq('id', user.id)
-                .single();
+            try {
+                setEmail(user.email);
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('notification_prefs, headline')
+                    .eq('id', user.id)
+                    .maybeSingle(); // Use maybeSingle to avoid 406/JSON error if no row
 
-            if (data) {
-                setHeadline(data.headline || '');
-                if (data.notification_prefs) {
-                    setNotifications(data.notification_prefs);
+                if (error) {
+                    console.error("Error fetching profile settings:", error);
+                    // Don't throw, just allow render with defaults to avoid stuck loading
                 }
+
+                if (data) {
+                    setHeadline(data.headline || '');
+                    if (data.notification_prefs) {
+                        setNotifications(data.notification_prefs);
+                    }
+                }
+            } catch (err) {
+                console.error("Unexpected error in settings:", err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchData();
     }, [user, authLoading]);
@@ -120,17 +132,49 @@ export default function AccountSettings() {
                 .from('profiles')
                 .update({
                     notification_prefs: notifications,
+                    headline: headline, // Also save headline changes if any
                     updated_at: new Date()
                 })
                 .eq('id', user.id);
 
             if (error) throw error;
+
+            if (newPassword) {
+                const { error: pwdError } = await supabase.auth.updateUser({ password: newPassword });
+                if (pwdError) throw pwdError;
+                setNewPassword(''); // Clear after save
+            }
+
             alert('Settings updated successfully.');
         } catch (error) {
             console.error('Error updating settings:', error);
             alert('Failed to update settings.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        setLoading(true);
+        try {
+            // Delete Profile (RLS should allow users to delete their own profile)
+            // This will automatically adjust dynamic founder numbering for others
+            const { error } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            // Sign out
+            await supabase.auth.signOut();
+            window.location.href = '/landing';
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            alert('Error deleting account. Please contact support if the issue persists.');
+            setLoading(false);
+        } finally {
+            setShowDeleteModal(false);
         }
     };
 
@@ -180,6 +224,8 @@ export default function AccountSettings() {
                                 className="glass-input"
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter new password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
                                 style={{ width: '100%', paddingRight: '48px' }}
                             />
                             <button
@@ -255,6 +301,35 @@ export default function AccountSettings() {
                     </div>
                 </div>
 
+                {/* Danger Zone */}
+                <div className="saas-panel" style={{ padding: '32px', borderColor: 'rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <Shield size={20} color="#EF4444" />
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#EF4444' }}>Danger Zone</h2>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Delete Account</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                Permanently remove your account and all data.
+                                {headline ? <span style={{ display: 'block', marginTop: '4px', color: '#F59E0B' }}>Warning: You will lose your Founder Status.</span> : null}
+                            </div>
+                        </div>
+                        <button
+                            className="btn-ghost"
+                            onClick={() => setShowDeleteModal(true)}
+                            style={{
+                                color: '#EF4444',
+                                borderColor: 'rgba(239, 68, 68, 0.3)',
+                                padding: '10px 20px'
+                            }}
+                        >
+                            Delete Account
+                        </button>
+                    </div>
+                </div>
+
                 {/* Save Button */}
                 <motion.button
                     className="btn-primary"
@@ -274,6 +349,74 @@ export default function AccountSettings() {
                     <Save size={20} />
                     {saving ? 'Saving...' : 'Save Changes'}
                 </motion.button>
+                {/* Delete Confirmation Modal */}
+                {showDeleteModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.8)', zIndex: 1000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '20px', backdropFilter: 'blur(5px)'
+                    }}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '500px', width: '100%', padding: '40px', borderColor: '#EF4444', boxShadow: '0 0 50px rgba(239, 68, 68, 0.1)' }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '32px' }}>
+                                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
+                                    <Shield size={32} color="#EF4444" />
+                                </div>
+                                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '12px' }}>Delete Account?</h2>
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                    This action is <strong>permanent</strong> and cannot be undone. All your data, including matches and messaging history, will be erased.
+                                </p>
+                                {headline && (
+                                    <div style={{ marginTop: '16px', padding: '12px 20px', background: 'rgba(255, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid rgba(255, 158, 11, 0.2)', color: '#F59E0B', fontSize: '0.9rem', fontWeight: 600 }}>
+                                        ⚠️ You will forfeit your Founder Status and Number.
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginBottom: '32px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Type <strong>DELETE</strong> to confirm:</label>
+                                <input
+                                    className="glass-input"
+                                    placeholder="DELETE"
+                                    style={{ width: '100%', borderColor: '#EF4444' }}
+                                    onChange={(e) => {
+                                        if (e.target.value === 'DELETE') {
+                                            document.getElementById('confirm-delete-btn').disabled = false;
+                                            document.getElementById('confirm-delete-btn').style.opacity = 1;
+                                        } else {
+                                            document.getElementById('confirm-delete-btn').disabled = true;
+                                            document.getElementById('confirm-delete-btn').style.opacity = 0.5;
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '16px' }}>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ flex: 1, justifyContent: 'center' }}
+                                    onClick={() => setShowDeleteModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    id="confirm-delete-btn"
+                                    className="btn-primary"
+                                    style={{ flex: 1, justifyContent: 'center', background: '#EF4444', borderColor: '#EF4444', opacity: 0.5 }}
+                                    disabled={true}
+                                    onClick={handleConfirmDelete}
+                                >
+                                    {loading ? 'Deleting...' : 'Confirm Delete'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
             </div>
         </div>
     );

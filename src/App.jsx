@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SidebarLayout from './components/SidebarLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 import AgreementPage from './pages/AgreementPage';
 import Dashboard from './pages/Dashboard';
 import SearchEngine from './pages/SearchEngine';
@@ -35,29 +36,31 @@ function App() {
             <Route path="/schedule" element={<Scheduling />} />
             <Route path="/agreement/:id" element={<AgreementPage />} />
             <Route path="/*" element={
-              <SidebarLayout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/search" element={<SearchEngine />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/profile/:id" element={<ProfilePage />} />
-                  <Route path="/briefs" element={<BriefBuilder />} />
-                  <Route path="/pipeline" element={<Pipeline />} />
-                  <Route path="/session/:teamId" element={<LiveSession />} />
-                  <Route path="/teams" element={<Teams />} />
-                  <Route path="/studio/:teamId" element={<Studio />} />
-                  <Route path="/chemistry/:sessionId" element={<ChemistryRoom />} />
-                  <Route path="/quiz" element={<VibeQuiz />} />
-                  <Route path="/equity" element={<EquityCalculator />} />
-                  <Route path="/upgrade" element={<UpgradePage />} />
-                  <Route path="/messages/:conversationId" element={<Messages />} />
-                  <Route path="/settings" element={<AccountSettings />} />
-                  <Route path="/billing" element={<Billing />} />
-                  <Route path="/audit" element={<AlignmentAudit />} />
-                  <Route path="/audit-results" element={<AuditResults />} />
-                </Routes>
-              </SidebarLayout>
+              <ProtectedRoute>
+                <SidebarLayout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/search" element={<SearchEngine />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/profile/:id" element={<ProfilePage />} />
+                    <Route path="/briefs" element={<BriefBuilder />} />
+                    <Route path="/pipeline" element={<Pipeline />} />
+                    <Route path="/session/:teamId" element={<LiveSession />} />
+                    <Route path="/teams" element={<Teams />} />
+                    <Route path="/studio/:teamId" element={<Studio />} />
+                    <Route path="/chemistry/:sessionId" element={<ChemistryRoom />} />
+                    <Route path="/quiz" element={<VibeQuiz />} />
+                    <Route path="/equity" element={<EquityCalculator />} />
+                    <Route path="/upgrade" element={<UpgradePage />} />
+                    <Route path="/messages/:conversationId" element={<Messages />} />
+                    <Route path="/settings" element={<AccountSettings />} />
+                    <Route path="/billing" element={<Billing />} />
+                    <Route path="/audit" element={<AlignmentAudit />} />
+                    <Route path="/audit-results" element={<AuditResults />} />
+                  </Routes>
+                </SidebarLayout>
+              </ProtectedRoute>
             } />
           </Routes>
         </Router>

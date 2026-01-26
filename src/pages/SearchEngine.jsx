@@ -20,13 +20,13 @@ export default function SearchEngine() {
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
-                    .neq('id', user?.id || '');
+                    .neq('id', user?.id || '00000000-0000-0000-0000-000000000000');
 
                 if (error) throw error;
 
                 const formattedCandidates = data.map(profile => ({
                     id: profile.id,
-                    name: profile.name || 'Anonymous',
+                    name: profile.name || 'Founder',
                     role: profile.role || 'Builder',
                     location: profile.location || 'Remote',
                     match: Math.min(100, 50 + (profile.bio ? 10 : 0) + ((profile.skills?.length || 0) * 5)),
@@ -34,7 +34,8 @@ export default function SearchEngine() {
                     isVerified: profile.subscription_tier !== 'free',
                     hasShipped: profile.has_shipped || false,
                     isExFounder: profile.is_ex_founder || false,
-                    bio: profile.bio || 'No bio available'
+                    bio: profile.bio || 'No bio available',
+                    avatar_url: profile.avatar_url
                 }));
 
                 setCandidates(formattedCandidates);
@@ -251,7 +252,7 @@ export default function SearchEngine() {
 }
 
 
-function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio }) {
+function CandidateCard({ id, name, role, location, match, skills, isVerified, hasShipped, isExFounder, bio, avatar_url }) {
     return (
         <Link to={`/profile/${id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <motion.div
@@ -263,8 +264,12 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
             >
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #6366F1, #A855F7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800 }}>
-                            {name[0]}
+                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', background: 'linear-gradient(135deg, #6366F1, #A855F7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800 }}>
+                            {avatar_url ? (
+                                <img src={avatar_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                name[0]
+                            )}
                         </div>
                         <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

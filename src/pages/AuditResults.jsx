@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PROTOCOL_QUESTIONS } from '../lib/protocol_questions';
+import { ALIGNMENT_QUESTIONS } from '../lib/alignment_questions';
 import { CheckCircle, AlertTriangle, MessageSquare, ArrowRight } from 'lucide-react';
 
 export default function AuditResults() {
@@ -12,9 +12,9 @@ export default function AuditResults() {
 
     // Calculate Alignment Score
     let matches = 0;
-    const total = PROTOCOL_QUESTIONS.length;
+    const total = ALIGNMENT_QUESTIONS.length;
 
-    PROTOCOL_QUESTIONS.forEach(q => {
+    ALIGNMENT_QUESTIONS.forEach(q => {
         if (answersA[q.id] === answersB[q.id]) matches++;
     });
 
@@ -46,7 +46,7 @@ export default function AuditResults() {
                 </div>
 
                 <div style={{ display: 'grid', gap: '20px' }}>
-                    {PROTOCOL_QUESTIONS.map(q => {
+                    {ALIGNMENT_QUESTIONS.map(q => {
                         const ansA = q.options.find(opt => opt.id === answersA[q.id]);
                         const ansB = q.options.find(opt => opt.id === answersB[q.id]);
                         const isMatch = answersA[q.id] === answersB[q.id];
@@ -55,31 +55,43 @@ export default function AuditResults() {
 
                         return (
                             <div key={q.id} className="saas-panel" style={{ padding: '24px', borderLeft: '4px solid #EF4444' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{q.question}</h3>
-                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{q.module}</span>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '24px', position: 'relative' }}>
-                                    {/* Divider */}
-                                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '100%' }}></div>
-
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'flex-start', gap: '16px' }}>
                                     <div>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>{founderA} said:</div>
-                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '4px' }}>{ansA?.label}</div>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>"{ansA?.desc}"</div>
+                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '4px', lineHeight: 1.4 }}>{q.question}</h3>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{q.module}</div>
+                                    </div>
+                                    {/* <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{q.module}</span> */}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', position: 'relative', marginBottom: '24px' }}>
+                                    {/* Divider Line */}
+                                    <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.1)', transform: 'translateX(-50%)' }}></div>
+
+                                    <div style={{ paddingRight: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>A</div>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderA} said:</div>
+                                        </div>
+                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansA?.label}</div>
+                                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansA?.desc}"</div>
                                     </div>
 
-                                    <div>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)', marginBottom: '8px' }}>{founderB} said:</div>
-                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '4px' }}>{ansB?.label}</div>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>"{ansB?.desc}"</div>
+                                    <div style={{ paddingLeft: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>B</div>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderB} said:</div>
+                                        </div>
+                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansB?.label}</div>
+                                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansB?.desc}"</div>
                                     </div>
                                 </div>
-                                <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                    <MessageSquare size={16} color="var(--accent-primary)" style={{ marginTop: '4px', flexShrink: 0 }} />
-                                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                        <strong>Discussion Point:</strong> {q.subtext}
-                                    </p>
+                                <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                    <MessageSquare size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                    <div>
+                                        <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px', fontSize: '0.95rem' }}>Discussion Point</strong>
+                                        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                            {q.subtext}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -95,7 +107,7 @@ export default function AuditResults() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-                    {PROTOCOL_QUESTIONS.map(q => {
+                    {ALIGNMENT_QUESTIONS.map(q => {
                         const ansA = q.options.find(opt => opt.id === answersA[q.id]);
                         const isMatch = answersA[q.id] === answersB[q.id];
 
@@ -103,7 +115,7 @@ export default function AuditResults() {
 
                         return (
                             <div key={q.id} className="saas-panel" style={{ padding: '20px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.02)' }}>
-                                <div style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase' }}>Allowed</div>
+                                <div style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase' }}>Aligned</div>
                                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>{q.question}</h3>
                                 <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                                     Both agreed: <strong>{ansA?.label}</strong>

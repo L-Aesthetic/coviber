@@ -1,5 +1,5 @@
 // ... imports
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
@@ -20,7 +20,8 @@ import {
     MessageSquare,
     Home,
     Activity,
-    Save
+    Save,
+    AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -29,9 +30,41 @@ import { PROTOCOL_QUESTIONS } from '../lib/protocol_questions';
 const QUESTIONS = PROTOCOL_QUESTIONS;
 
 export default function VibeQuiz() {
+    const { user } = useAuth();
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState({});
     const [completed, setCompleted] = useState(false);
+    const [existingProfile, setExistingProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+        const checkProfile = async () => {
+            const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            if (data?.vibe_data?.length > 0 && data?.headline) {
+                // Determine if we have enough data to show results
+                // Reconstruct a "profile" object compatible with ResultsView
+                setExistingProfile({
+                    title: data.headline,
+                    description: data.bio,
+                    radarData: data.vibe_data,
+                    insights: {
+                        stress: data.comm_style, // mapped back
+                        power: "View full profile for details", // We might lose some granularity if not stored JSON, but deemed acceptable for "Results View"
+                        risk: data.superpower,
+                        dialect: "View full profile"
+                    },
+                    isExisting: true
+                });
+                setCompleted(true);
+            }
+            setLoading(false);
+        };
+        checkProfile();
+    }, [user]);
 
     const handleSelect = (optionId) => {
         setAnswers({ ...answers, [QUESTIONS[step].id]: optionId });
@@ -42,8 +75,10 @@ export default function VibeQuiz() {
         }
     };
 
+    if (loading) return <div style={{ padding: 50, textAlign: 'center' }}>Loading diagnostic...</div>;
+
     if (completed) {
-        return <ResultsView answers={answers} />;
+        return <ResultsView answers={answers} existingProfile={existingProfile} />;
     }
 
     const currentQ = QUESTIONS[step];
@@ -145,13 +180,17 @@ export default function VibeQuiz() {
     );
 }
 
-function ResultsView({ answers }) {
+function ResultsView({ answers, existingProfile }) {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [saving, setSaving] = useState(false);
+    const [autoSaved, setAutoSaved] = useState(false);
+    const [showRetakeModal, setShowRetakeModal] = useState(false);
 
     // Scoring Logic based on the user's detailed framework
     const calculateProfile = (ans) => {
+        if (existingProfile) return existingProfile; // Use existing if available
+
         let scores = {
             rich: 0,
             king: 0,
@@ -217,6 +256,20 @@ function ResultsView({ answers }) {
             { subject: 'Details', A: Math.min(150, (scores.conscientious * 30) + 20), fullMark: 150 },
         ];
 
+        // Derive Kryptonite based on dominant trait
+        let kryptonite = "Unknown";
+        if (scores.king > scores.rich && scores.king > scores.action) kryptonite = "micromanagement and chaos";
+        else if (scores.rich > scores.king) kryptonite = "slow growth and indecision";
+        else if (scores.conscientious > scores.action) kryptonite = "releasing imperfect code";
+        else if (scores.action > scores.conscientious) kryptonite = "bypassing speed limits";
+        else kryptonite = "misalignment on values";
+
+        // Derive Trigger Warning
+        let triggerWarning = "I need clear goals.";
+        if (ans.stress_response === 'confront') triggerWarning = "I address conflict immediately and directly.";
+        if (ans.stress_response === 'space') triggerWarning = "I withdraw when overwhelmed—give me space.";
+        if (ans.tech_debt === 'hack') triggerWarning = "I prioritize speed over perfection.";
+
         // Insights
         const insights = {
             stress: ans.stress_response === 'confront' ? "You tend to confront stress directly (Pursuer). Avoid avoidant partners." : (ans.stress_response === 'space' ? "You withdraw under stress (Distancer). You need space to process." : "You have a balanced, supportive stress response (Secure)."),
@@ -225,35 +278,42 @@ function ResultsView({ answers }) {
             dialect: ans.tech_debt === 'hack' ? "Your work dialect is 'Speed'. You view code as a means to an end." : "Your work dialect is 'Quality'. You view code as an asset."
         };
 
-        return { title, description, insights, radarData };
+        return { title, description, insights, radarData, kryptonite, triggerWarning };
     };
 
     const profile = calculateProfile(answers);
 
-    const handleSync = async () => {
-        if (!user) return alert("Please log in to save your detailed profile.");
-        setSaving(true);
-        try {
-            const { error } = await supabase.from('profiles').upsert({
-                id: user.id,
-                // We map these to the closest available columns or reuse flexible ones
-                headline: profile.title,
-                bio: profile.description,
-                vibe_data: profile.radarData,
-                superpower: profile.insights.risk, // Mapping 'risk' insight to superpower for now
-                kryptonite: profile.insights.period, // Just an example, need actual mapping if user cares
-                comm_style: profile.insights.stress,
-                updated_at: new Date()
-            });
+    // Auto-Save Effect
+    useEffect(() => {
+        if (!user || existingProfile || autoSaved) return;
 
-            if (error) throw error;
-            navigate('/dashboard');
-        } catch (err) {
-            console.error(err);
-            alert("Failed to sync profile.");
-        } finally {
-            setSaving(false);
-        }
+        const syncProfile = async () => {
+            setSaving(true);
+            try {
+                const { error } = await supabase.from('profiles').upsert({
+                    id: user.id,
+                    headline: profile.title,
+                    bio: profile.description,
+                    vibe_data: profile.radarData,
+                    superpower: profile.insights.risk, // Mapping 'risk' insight to superpower
+                    kryptonite: profile.kryptonite,
+                    trigger_warning: profile.triggerWarning,
+                    comm_style: profile.insights.stress,
+                    updated_at: new Date()
+                });
+                if (error) throw error;
+                setAutoSaved(true);
+            } catch (err) {
+                console.error("Auto-save failed:", err);
+            } finally {
+                setSaving(false);
+            }
+        };
+        syncProfile();
+    }, [user, existingProfile, autoSaved, profile]);
+
+    const handleSync = () => {
+        navigate('/dashboard');
     };
 
     return (
@@ -309,10 +369,15 @@ function ResultsView({ answers }) {
                 </div>
 
                 <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button className="btn-ghost" onClick={() => window.location.reload()}>Retake Diagnostic</button>
+                    <button className="btn-ghost" onClick={() => setShowRetakeModal(true)}>Retake Diagnostic</button>
                     {user ? (
-                        <button className="btn-primary" onClick={handleSync} disabled={saving} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
-                            {saving ? "Syncing..." : "Sync Profile to Search"} <ArrowRight size={20} style={{ marginLeft: 8 }} />
+                        <button
+                            className="btn-primary"
+                            onClick={handleSync}
+                            disabled={saving}
+                            style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}
+                        >
+                            {saving ? "Saving Results..." : "Continue to Dashboard"} <ArrowRight size={20} style={{ marginLeft: 8 }} />
                         </button>
                     ) : (
                         <button className="btn-primary" onClick={() => navigate('/login')} style={{ padding: '0 32px', height: '56px', fontSize: '1.1rem' }}>
@@ -335,6 +400,65 @@ function ResultsView({ answers }) {
                         </button>
                     </div>
                 </div>
+                {/* Warning Modal */}
+                <AnimatePresence>
+                    {showRetakeModal && (
+                        <div
+                            style={{
+                                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
+                            }}
+                            onClick={() => setShowRetakeModal(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                                className="saas-panel"
+                                style={{
+                                    width: '400px', padding: '32px', textAlign: 'center',
+                                    border: '1px solid var(--border-subtle)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                                    background: '#1c1c24' // Ensure opacity
+                                }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div style={{
+                                    width: '64px', height: '64px', background: 'rgba(239, 68, 68, 0.1)',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    margin: '0 auto 24px', border: '1px solid rgba(239, 68, 68, 0.2)'
+                                }}>
+                                    <AlertTriangle size={32} color="#ef4444" />
+                                </div>
+
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '12px' }}>Overwrite Profile?</h3>
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '32px' }}>
+                                    Retaking the diagnostic will <span style={{ color: '#ef4444', fontWeight: 700 }}>permanently overwrite</span> your existing Vibe Signature and insights.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <button
+                                        className="btn-primary"
+                                        style={{
+                                            justifyContent: 'center', height: '48px', fontSize: '1rem',
+                                            background: '#ef4444', borderColor: '#ef4444'
+                                        }}
+                                        onClick={() => window.location.reload()}
+                                    >
+                                        Yes, Overwrite & Retake
+                                    </button>
+                                    <button
+                                        className="btn-ghost"
+                                        style={{ justifyContent: 'center' }}
+                                        onClick={() => setShowRetakeModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
             </motion.div >
         </div >
     )

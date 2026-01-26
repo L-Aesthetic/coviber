@@ -233,8 +233,13 @@ export default function SidebarLayout({ children }) {
                     >
                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366F1, #EC4899)' }}></div>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Louis L.</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Builder Plan</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                                {profileData?.full_name || user?.email || 'User'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                {profileData?.subscription_tier === 'founder' ? 'Founding Member' :
+                                    profileData?.subscription_tier === 'pro' ? 'Pro Member' : 'Builder Plan'}
+                            </div>
                         </div>
                         <ChevronUp size={16} style={{
                             color: 'var(--text-tertiary)',

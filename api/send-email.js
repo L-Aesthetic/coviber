@@ -14,6 +14,14 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: 'Missing email or archetype' });
     }
 
+    // DEBUG: Check if Key is loaded
+    if (!process.env.RESEND_API_KEY) {
+        console.error("CRITICAL: RESEND_API_KEY is missing in process.env!");
+        return response.status(500).json({ error: "Server Configuration Error: Missing API Key" });
+    } else {
+        console.log("RESEND_API_KEY is loaded. Attempting to send...");
+    }
+
     try {
         const htmlContent = getArchetypeEmail(archetype);
 

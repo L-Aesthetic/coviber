@@ -27,18 +27,41 @@ export default function AgreementPage() {
 
     const fetchAgreement = async () => {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch Agreement Raw Data
+            const { data: agreementData, error: agreementError } = await supabase
                 .from('agreements')
-                .select(`
-                    *,
-                    founder_a:founder_a_id(name, email),
-                    founder_b:founder_b_id(name, email)
-                `)
+                .select('*')
                 .eq('id', id)
                 .single();
 
-            if (error) throw error;
-            setAgreement(data);
+            if (agreementError) throw agreementError;
+
+            // 2. Fetch Profiles for Founders
+            const userIds = [agreementData.founder_a_id, agreementData.founder_b_id].filter(Boolean);
+
+            let profilesMap = {};
+            if (userIds.length > 0) {
+                const { data: profiles, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('id, name, email') // Assuming email might be in profile or we rely on auth fallback
+                    .in('id', userIds);
+
+                if (!profileError && profiles) {
+                    profiles.forEach(p => profilesMap[p.id] = p);
+                }
+            }
+
+            // 3. Attach Profile Data
+            const fullAgreement = {
+                ...agreementData,
+                founder_a: profilesMap[agreementData.founder_a_id] || { name: 'Unknown', email: '' },
+                founder_b: profilesMap[agreementData.founder_b_id] || {
+                    name: agreementData.content_data?.founderB?.name || 'Waiting for Partner',
+                    email: agreementData.founder_b_email || ''
+                }
+            };
+
+            setAgreement(fullAgreement);
         } catch (err) {
             console.error('Error fetching agreement:', err);
             setError('Agreement not found or access denied.');
@@ -184,6 +207,11 @@ Date: ${new Date(created_at).toLocaleDateString()}
 
 2. VESTING SCHEDULE
    ${config?.vesting === 'standard' ? 'Standard 4-year vesting with 1-year cliff.' : 'Milestone-based vesting.'}
+
+3. VALUATION CONFIGURATION
+   - Methodology: ${config?.slicingPie ? 'Dynamic (Slicing Pie - "Nights & Weekends" Model)' : 'Standard Fixed Split'}
+   - CEO Premium: ${config?.ceoPremium}%
+   - Technical Premium: ${config?.techPremium}%
    
 ${kill_switch_active ? '\n4. SPECIAL CONDITIONS\n   **This Agreement is subject to a 48-Hour Probationary Period.**' : ''}
 `;

@@ -48,7 +48,7 @@ export const getArchetypeEmail = (archetype) => {
                     <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 20px;">Your Perfect Match: <span style="color: ${data.color};">${data.match}</span></h3>
                     <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px; color: #a1a1aa;">${data.matchWhy}</p>
                     
-                    <a href="https://coviber.vercel.app/landing" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">Find Your Co-Founder</a>
+                    <a href="https://coviber.vercel.app/dashboard" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">Access your Dashboard</a>
                 </div>
 
             </div>

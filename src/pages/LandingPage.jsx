@@ -260,6 +260,7 @@ const InteractiveQuiz = () => {
     const [result, setResult] = useState(null);
     const [answers, setAnswers] = useState({});
     const [email, setEmail] = useState("");
+    const [name, setName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     const totalQuestions = quizQuestions.length;
@@ -294,46 +295,55 @@ const InteractiveQuiz = () => {
         }, 600);
     };
 
-    const handleEmailSubmit = async (e) => {
+    const handleEmailSubmit = (e) => {
         e.preventDefault();
+        if (isLoading) return;
         setIsLoading(true);
 
-        // Calculate result
-        const archetype = determineArchetype(answers);
+        // 1. Calculate Result (Synchronous)
+        let archetype;
+        try {
+            archetype = determineArchetype(answers);
+        } catch (err) {
+            console.error("Archetype calculation error, using fallback:", err);
+            // Fallback to prevent crash
+            archetype = { name: 'Sovereign', desc: 'High Risk • High Vision • Empire Builder' };
+        }
         setResult(archetype);
 
-        try {
-            // 1. Insert into Supabase (Data Persistence)
-            const { error: dbError } = await supabase
-                .from('leads')
-                .insert([
-                    { email: email, archetype: archetype.name }
-                ]);
+        // 2. Fire-and-Forget Backend Operations (Don't await these for UI)
+        (async () => {
+            try {
+                // Save to LocalStorage for robust carry-over to Auth
+                localStorage.setItem('covibr_archetype', archetype.name);
+                if (name) localStorage.setItem('covibr_name', name);
 
-            if (dbError) {
-                console.error('Error saving lead:', dbError);
+                console.log("Saving lead in background...");
+                // Save to DB
+                const { error: dbError } = await supabase
+                    .from('leads')
+                    .upsert([
+                        { email: email, archetype: archetype.name, name: name }
+                    ], { onConflict: 'email' });
+
+                if (dbError) console.error("Background DB Save Error:", dbError);
+
+                // Send Email
+                const emailResponse = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, archetype: archetype.name }),
+                });
+                if (!emailResponse.ok) console.warn("Background Email failed (likely Sandbox)");
+
+            } catch (bgError) {
+                console.error("Background task error:", bgError);
             }
+        })();
 
-            // 2. Send Email via Vercel Function (Resend)
-            // Note: This fetch will assume the app is hosted or proxying /api correctly.
-            // In local Vite dev (without Vercel CLI), this might 404 unless proxy is set up, 
-            // but will work on Vercel deployment.
-            await fetch('/api/send-email', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: email,
-                    archetype: archetype.name
-                }),
-            });
-
-        } catch (err) {
-            console.error('Unexpected error:', err);
-        }
-
+        // 3. Simulated Delay for "Analysis" Effect -> Then Show Result safely
         setTimeout(() => {
+            console.log("Analysis complete. Showing result.");
             setIsLoading(false);
             setStep(100);
         }, 1500);
@@ -453,8 +463,17 @@ const InteractiveQuiz = () => {
                         <div style={{ marginBottom: '32px' }}>
                             <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🔒</div>
                             <h3 style={{ fontSize: '1.8rem', marginBottom: '12px', fontFamily: 'Outfit' }}>Analysis Complete.</h3>
-                            <p style={{ color: '#a1a1aa' }}>Enter your email to reveal your Founder Archetype and unlock the waiting list.</p>
+                            <p style={{ color: '#a1a1aa' }}>Enter your details to reveal your Founder Archetype and unlock the waiting list.</p>
                         </div>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Your Name (e.g. Alex)"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="glass-input"
+                            style={{ marginBottom: '12px', background: 'rgba(0,0,0,0.3)', textAlign: 'center' }}
+                        />
                         <input
                             type="email"
                             required

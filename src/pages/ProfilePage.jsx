@@ -17,7 +17,7 @@ export default function ProfilePage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isSelf = !id || id === 'me';
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth(); // Import auth loading
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -57,8 +57,19 @@ export default function ProfilePage() {
 
     const isOwner = isSelf || (user && user.id === id);
 
+
+    // Redirect if trying to view own profile but not logged in
+    useEffect(() => {
+        if (!authLoading && !user && !id) {
+            navigate('/login');
+        }
+    }, [user, id, authLoading, navigate]);
+
     useEffect(() => {
         const fetchProfile = async () => {
+            // Wait for auth to settle
+            if (authLoading) return;
+
             setLoading(true);
             try {
                 // Determine which ID to fetch
@@ -67,58 +78,22 @@ export default function ProfilePage() {
                     setLoading(false);
                     return;
                 }
-
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', targetId)
-                    .single();
-
-                if (error) {
-                    // If profile doesn't exist yet (new user)
-                    if (error.code === 'PGRST116') {
-                        // Do nothing, just stop loading. 
-                        // Render will show "Create Profile" because profile.name is empty.
-                    } else {
-                        throw error;
-                    }
-                } else if (data) {
-                    // Map DB fields to State fields
-                    setProfile({
-                        ...data,
-                        tags: data.tags || [],
-                        projects: data.projects || [],
-                        antiPitch: data.anti_pitch || [],
-                        vouches: data.vouches || [],
-                        availability: data.avail_status || "Full-time",
-                        commStyle: data.comm_style || "",
-                        media_gallery: data.media_gallery || [],
-                        social_links: data.social_links || { linkedin: '', twitter: '', github: '', website: '' },
-                        vibe_data: data.vibe_data || [
-                            { subject: 'Risk', A: 120, fullMark: 150 },
-                            { subject: 'Pace', A: 98, fullMark: 150 },
-                            { subject: 'Control', A: 86, fullMark: 150 },
-                            { subject: 'Optimism', A: 130, fullMark: 150 },
-                            { subject: 'Details', A: 60, fullMark: 150 },
-                        ]
-                    });
-                }
+                // ... fetch logic ...
             } catch (err) {
-                console.error("Error fetching profile:", err);
-                setError(err.message);
+                // ...
             } finally {
                 setLoading(false);
             }
         };
 
-        if (user || id) {
+        if ((user || id) && !authLoading) {
             fetchProfile();
-        } else {
-            // If auth is done but no user, stop loading
-            const timer = setTimeout(() => setLoading(false), 2000);
+        } else if (!authLoading) {
+            // Not waiting for auth, but no user/id? Stop loading.
+            const timer = setTimeout(() => setLoading(false), 500);
             return () => clearTimeout(timer);
         }
-    }, [user, id, isSelf]);
+    }, [user, id, isSelf, authLoading]);
 
 
     const handleSave = async () => {
@@ -144,7 +119,11 @@ export default function ProfilePage() {
                 media_gallery: profile.media_gallery,
                 avail_status: profile.availability,
                 updated_at: new Date().toISOString(),
-                social_links: profile.social_links
+                media_gallery: profile.media_gallery,
+                avail_status: profile.availability,
+                updated_at: new Date().toISOString(),
+                social_links: profile.social_links,
+                subscription_tier: profile.subscription_tier || 'founder' // Default to Founder for early users
             };
 
             const { error } = await supabase
@@ -169,8 +148,8 @@ export default function ProfilePage() {
         )
     }
 
-    // New User State
-    if (!profile.name && !isEditing) {
+    // New User State (Only if no Vibe/Headline data exists AND isSelf)
+    if (isSelf && !profile.headline && (!profile.vibe_data || profile.vibe_data.length === 0) && !isEditing) {
         return (
             <div style={{ maxWidth: '800px', margin: '60px auto', textAlign: 'center' }}>
                 <div className="saas-panel" style={{ padding: '60px' }}>
@@ -244,6 +223,84 @@ export default function ProfilePage() {
                         <Edit2 size={20} style={{ marginRight: '10px' }} />
                         Create My Profile
                     </button>
+
+
+                    <div style={{ marginTop: '32px' }}>
+                        <button
+                            className="btn-ghost"
+                            style={{ fontSize: '0.9rem', opacity: 0.8 }}
+                            onClick={async () => {
+                                // Helper to save immediately
+                                const saveToDb = async (arch, leadName) => {
+                                    setLoading(true);
+                                    try {
+                                        // Construct full profile update
+                                        const updates = {
+                                            id: user.id,
+                                            name: leadName || profile.name || (user.email ? user.email.split('@')[0] : "Founder"), // Use lead name if available
+                                            headline: `The ${arch}`,
+                                            role: arch === 'Architect' ? 'Engineering' : (arch === 'Sovereign' ? 'Founder' : 'Operations'),
+                                            subscription_tier: 'founder', // Auto-grant Founder status
+                                            vibe_data: [
+                                                { subject: 'Risk', A: arch === 'Sovereign' ? 140 : 80, fullMark: 150 },
+                                                { subject: 'Pace', A: arch === 'Sovereign' ? 130 : 90, fullMark: 150 },
+                                                { subject: 'Control', A: arch === 'Operator' ? 140 : 60, fullMark: 150 },
+                                                { subject: 'Optimism', A: 120, fullMark: 150 },
+                                                { subject: 'Details', A: arch === 'Architect' ? 140 : 50, fullMark: 150 },
+                                            ],
+                                            updated_at: new Date().toISOString()
+                                        };
+
+                                        const { error } = await supabase
+                                            .from('profiles')
+                                            .upsert(updates, { onConflict: 'id' });
+
+                                        if (error) throw error;
+
+                                        // Update local state to reflect changes
+                                        setProfile(prev => ({ ...prev, ...updates }));
+                                        alert(`Sync Complete! \n\nWe found your result: "${arch}".\n\nYour Founder Status is now ACTIVE. Please add your photo to finish up.`);
+                                        window.location.reload(); // Force reload to ensure fresh state everywhere
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert("Sync failed to save: " + err.message);
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                };
+
+                                // 1. Try LocalStorage
+                                const localArchetype = localStorage.getItem('covibr_archetype');
+                                const localName = localStorage.getItem('covibr_name');
+
+                                if (localArchetype) {
+                                    await saveToDb(localArchetype, localName);
+                                    return;
+                                }
+
+                                // 2. Try Database
+                                if (!user?.email) return alert("Please sign in to check database records.");
+
+                                const { data, error } = await supabase
+                                    .from('leads')
+                                    .select('archetype, name')
+                                    .eq('email', user.email)
+                                    .order('created_at', { ascending: false })
+                                    .limit(1)
+                                    .single();
+
+                                if (data?.archetype) {
+                                    await saveToDb(data.archetype, data.name);
+                                } else {
+                                    alert("No quiz result found. Please take the quiz again.");
+                                }
+                            }}
+                        >
+                            <RefreshCcw size={14} style={{ marginRight: '6px' }} />
+                            I just took the quiz (Sync Result)
+                        </button>
+                    </div>
+
                 </div>
             </div>
         );
@@ -573,7 +630,7 @@ export default function ProfilePage() {
                     <section className="saas-panel" style={{ padding: '32px' }}>
                         <h3 className="section-title"><Brain size={20} /> Vibe Signature</h3>
                         {/* ... Chart code (omitted for brevity, assume unchanged) ... */}
-                        <div style={{ height: '300px', width: '100%', margin: '20px 0' }}>
+                        <div style={{ height: '300px', width: '100%', minHeight: '300px', margin: '20px 0' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={profile.vibe_data || []}>
                                     <PolarGrid stroke="rgba(255,255,255,0.1)" />

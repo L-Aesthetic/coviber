@@ -14,16 +14,25 @@ export default function LiveSession() {
     const { teamId } = useParams();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('tasks');
-    const [timeLeft, setTimeLeft] = useState(38 * 3600 + 12 * 60 + 5); // 38:12:05
+    const [projectName, setProjectName] = useState('Loading...');
+    const [targetEndTime, setTargetEndTime] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(48 * 3600);
     const [vibeScore, setVibeScore] = useState(85);
 
     // --- Timer Logic ---
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
+        if (!targetEndTime) return;
+
+        const updateTimer = () => {
+            const now = new Date().getTime();
+            const distance = targetEndTime - now;
+            setTimeLeft(Math.max(0, Math.floor(distance / 1000)));
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [targetEndTime]);
 
     const formatTime = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
@@ -33,6 +42,8 @@ export default function LiveSession() {
     };
 
     // --- Real Data State ---
+    const [members, setMembers] = useState([]);
+    const [currentUser, setCurrentUser] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [feed, setFeed] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -82,12 +93,40 @@ export default function LiveSession() {
                 .select(`*, assignee:assignee_id(name)`) // Join to get name
                 .eq('team_id', teamId);
 
+            const { data: teamData } = await supabase
+                .from('teams')
+                .select('*')
+                .eq('id', teamId)
+                .single();
+
+            if (teamData) {
+                setProjectName(teamData.project_name || 'Chemistry Session');
+                if (teamData.created_at) {
+                    const createdAt = new Date(teamData.created_at).getTime();
+                    setTargetEndTime(createdAt + 48 * 60 * 60 * 1000);
+                }
+            }
+
             const { data: feedData } = await supabase
                 .from('activity_logs')
                 .select(`*, user:user_id(name)`)
                 .eq('team_id', teamId)
                 .order('created_at', { ascending: false })
                 .limit(20);
+
+            const { data: membersData } = await supabase
+                .from('team_members')
+                .select(`
+                    user_id,
+                    role,
+                    profile:profiles!user_id(full_name, avatar_url)
+                `)
+                .eq('team_id', teamId);
+
+            if (membersData) setMembers(membersData);
+
+            const { data: { user } } = await supabase.auth.getUser();
+            setCurrentUser(user);
 
             const { data: notesData } = await supabase
                 .from('shared_notes')
@@ -159,12 +198,22 @@ export default function LiveSession() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                     <div>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Active Sprint</div>
-                        <h1 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Project Alpha: Stripe for Lemons</h1>
+                        <h1 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{projectName}</h1>
                     </div>
                     <div style={{ width: '1px', height: '30px', background: 'var(--border-subtle)' }}></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <PresenceIndicator user="You" status="online" sub="Focus Mode" />
-                        <PresenceIndicator user="Alex V." status="away" sub="VS Code (15m)" />
+                        {members.map(m => {
+                            const isMe = m.user_id === currentUser?.id;
+                            const name = isMe ? 'You' : (m.profile?.full_name || 'Member');
+                            return (
+                                <PresenceIndicator
+                                    key={m.user_id}
+                                    user={name}
+                                    status="online" // Placeholder for real presence
+                                    sub={m.role}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
 
