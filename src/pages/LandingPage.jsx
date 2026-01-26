@@ -124,11 +124,11 @@ const LandingPage = () => {
                                 Start Free Diagnostic <ArrowRight size={20} />
                             </button>
                             <p style={{ fontSize: '0.9rem', color: '#a1a1aa' }}>
-                                Diagnosis is <strong>Free</strong>. Unlock the <span style={{ color: '#F97316', fontWeight: 600 }}>Full Risk Audit</span> in the $49 Deal.
+                                Diagnosis is <strong>Free</strong>. The "Founding 100" get <span style={{ color: '#F97316', fontWeight: 600 }}>Lifetime Access</span> for $49. Others pay monthly.
                             </p>
                             <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '0.8rem', color: '#71717a' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} color="#818cf8" /> Instant Archetype</span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={14} color="#F97316" /> Full Legal Report ($49)</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={14} color="#F97316" /> Full Legal Report ($49 Lifetime)</span>
                             </div>
                         </motion.div>
                     </div>
