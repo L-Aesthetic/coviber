@@ -58,6 +58,7 @@ function App() {
                     <Route path="/billing" element={<Billing />} />
                     <Route path="/audit" element={<AlignmentAudit />} />
                     <Route path="/audit-results" element={<AuditResults />} />
+                    <Route path="/report" element={<FullReport />} />
                   </Routes>
                 </SidebarLayout>
               </ProtectedRoute>

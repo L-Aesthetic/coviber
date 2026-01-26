@@ -478,3 +478,149 @@ h6 {
     transform: translate(0, 0);
   }
 }
+
+/* --- LANDING PAGE RESPONSIVE --- */
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Ensure spacing */
+  padding: 24px 40px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 15, 15, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.landing-logo-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.landing-logo {
+  height: 90px;
+  width: auto;
+  transition: height 0.3s ease;
+}
+
+.landing-nav-links {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-cta-container {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.landing-hero {
+  padding-top: 160px;
+  padding-bottom: 100px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.landing-hero-title {
+  font-size: 4rem;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.landing-hero-desc {
+  font-size: 1.25rem;
+  color: #a1a1aa;
+  margin-bottom: 40px;
+  max-width: 600px;
+  margin: 0 auto 40px auto;
+  line-height: 1.6;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 16px 20px;
+  }
+
+  .landing-logo {
+    height: 40px;
+    /* Much smaller logo for mobile */
+  }
+
+  /* Hide center links on mobile to save space */
+  .landing-nav-links {
+    display: none;
+  }
+
+  /* Ensure CTA button is smaller */
+  .landing-cta-btn {
+    padding: 8px 16px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .landing-hero {
+    padding-top: 120px;
+    /* Less top padding */
+    padding-bottom: 60px;
+  }
+
+  .landing-hero-title {
+    font-size: 2.5rem;
+    /* Responsive font size */
+  }
+
+  .landing-hero-desc {
+    font-size: 1rem;
+  }
+}
+
+/* Secondary Mobile Fixes */
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.landing-section-title {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 60px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.landing-section-pad {
+  padding: 80px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .landing-grid {
+    grid-template-columns: 1fr;
+    /* Stack vertically on small screens */
+  }
+
+  .landing-section-title {
+    font-size: 1.8rem;
+    /* Smaller section headers */
+    margin-bottom: 40px;
+  }
+
+  .landing-section-pad {
+    padding: 40px 20px;
+  }
+}

@@ -125,8 +125,18 @@ export default function AccountSettings() {
     };
 
 
+    const [status, setStatus] = useState({ type: '', message: '' });
+
+    useEffect(() => {
+        if (status.message) {
+            const timer = setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [status]);
+
     const handleSave = async () => {
         setSaving(true);
+        setStatus({ type: '', message: '' });
         try {
             const { error } = await supabase
                 .from('profiles')
@@ -145,10 +155,10 @@ export default function AccountSettings() {
                 setNewPassword(''); // Clear after save
             }
 
-            alert('Settings updated successfully.');
+            setStatus({ type: 'success', message: 'Settings updated successfully.' });
         } catch (error) {
             console.error('Error updating settings:', error);
-            alert('Failed to update settings.');
+            setStatus({ type: 'error', message: 'Failed to update settings. ' + error.message });
         } finally {
             setSaving(false);
         }
@@ -331,6 +341,21 @@ export default function AccountSettings() {
                 </div>
 
                 {/* Save Button */}
+                {status.message && (
+                    <div style={{
+                        marginBottom: '16px',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        background: status.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        border: `1px solid ${status.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                        color: status.type === 'success' ? '#10B981' : '#EF4444',
+                        textAlign: 'center',
+                        fontSize: '0.9rem'
+                    }}>
+                        {status.message}
+                    </div>
+                )}
+
                 <motion.button
                     className="btn-primary"
                     onClick={handleSave}

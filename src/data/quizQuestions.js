@@ -138,11 +138,20 @@ export const determineArchetype = (answers) => {
         Sovereign: 0
     };
 
-    // Map answers to archetypes (simplified heuristic)
+    // Map answers to archetypes
     Object.values(answers).forEach(type => {
-        if (['Rich', 'Rainmaker', 'High Risk', 'New Vibe', 'Ruthless'].includes(type)) scores.Sovereign += 1;
-        if (['King', 'Expert', 'Veteran', 'Low Risk', 'Rigid'].includes(type)) scores.Architect += 1;
-        if (['Conductor', 'Pragmatic', 'Mediator', 'Efficiency'].includes(type)) scores.Operator += 1;
+        // SOVEREIGN: Visionary, High Risk, Sales, Speed
+        if (['Rich', 'New Vibe', 'Indie Hacker', 'Ruthless', 'Rainmaker', 'Competing', 'High Risk', 'Delegator', 'Transactional'].includes(type)) {
+            scores.Sovereign += 1;
+        }
+        // ARCHITECT: Product-Led, Perfectionist, Low Risk, Control
+        if (['King', 'Veteran', 'Expert', 'Product', 'Rigid', 'Control', 'Security', 'Low Risk', 'Growth'].includes(type)) {
+            scores.Architect += 1;
+        }
+        // OPERATOR: Systems, People, Harmony, Efficiency, Prudence
+        if (['Conductor', 'Pragmatic', 'Mediator', 'Efficiency', 'Bureaucratic', 'Avoiding', 'Duty', 'Accommodating', 'Collaborating', 'Sensitive', 'Prudent', 'Relational'].includes(type)) {
+            scores.Operator += 1;
+        }
     });
 
     const max = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b);

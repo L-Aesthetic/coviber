@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Ghost, TrendingDown, Scale, ArrowRight, Zap, Shield, Users, CheckCircle } from 'lucide-react';
+import { Ghost, TrendingDown, Scale, ArrowRight, Zap, Shield, Users, CheckCircle, AlertTriangle, AlertOctagon, Lock } from 'lucide-react';
 import { quizQuestions, determineArchetype } from '../data/quizQuestions';
 import { supabase } from '../lib/supabaseClient';
 
@@ -16,44 +16,35 @@ const LandingPage = () => {
         <div className="landing-page" style={{ minHeight: '100vh', background: '#0f0f0f', color: '#fff', overflowX: 'hidden' }}>
 
             {/* --- NAVBAR --- */}
-            <nav style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '24px 40px',
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 100,
-                backdropFilter: 'blur(12px)',
-                background: 'rgba(15, 15, 15, 0.6)',
-                borderBottom: '1px solid rgba(255,255,255,0.08)'
-            }}>
+            {/* --- NAVBAR --- */}
+            <nav className="landing-nav">
                 {/* Left: Logo */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '90px' }} />
+                <div className="landing-logo-container">
+                    <img src="/logo-full.png" alt="CoVibr" className="landing-logo" />
                 </div>
 
                 {/* Center: Links */}
-                <div style={{ display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="landing-nav-links">
                     <a href="#why" className="nav-link" style={{ color: '#d1d5db', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>Manifesto</a>
                     <a href="#protocol" className="nav-link" style={{ color: '#d1d5db', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>The Protocol</a>
                     <button onClick={() => navigate('/login')} style={{ color: '#d1d5db', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>Login</button>
                 </div>
 
                 {/* Right: CTA */}
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                    <button onClick={scrollToQuiz} style={{
-                        background: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        color: 'white',
-                        padding: '10px 24px',
-                        borderRadius: '50px',
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}
+                <div className="landing-cta-container">
+                    <button onClick={scrollToQuiz}
+                        className="landing-cta-btn"
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: 'white',
+                            padding: '10px 24px',
+                            borderRadius: '50px',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
                         onMouseEnter={(e) => {
                             e.target.style.background = 'white';
                             e.target.style.color = 'black';
@@ -69,66 +60,89 @@ const LandingPage = () => {
             </nav>
 
             {/* --- HERO SECTION --- */}
-            <header style={{
-                paddingTop: '160px',
-                paddingBottom: '100px',
-                textAlign: 'center',
-                maxWidth: '800px',
-                margin: '0 auto',
-                paddingLeft: '20px',
-                paddingRight: '20px'
-            }}>
-                <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8 }}
-                    style={{ fontSize: '4rem', lineHeight: 1.1, marginBottom: '24px', fontFamily: 'Outfit, sans-serif' }}
-                >
-                    Stop Networking.<br />
-                    <span className="text-gradient">Start Shipping.</span>
-                </motion.h1>
-
-                <motion.p
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    style={{ fontSize: '1.25rem', color: '#a1a1aa', marginBottom: '40px', maxWidth: '600px', margin: '0 auto 40px auto', lineHeight: 1.6 }}
-                >
-                    The first co-founder platform that replaces "coffee chats" with a 48-hour code test. Don't tell us you're a good partner. Prove it.
-                </motion.p>
-
+            <header className="landing-hero" style={{ paddingTop: '140px' }}>
+                {/* Urgency Badge (Purple) */}
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                        background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)',
+                        borderRadius: '50px', padding: '6px 16px', marginBottom: '32px',
+                        color: '#818cf8', fontSize: '0.9rem', fontWeight: 600
+                    }}
                 >
-                    <button
-                        onClick={scrollToQuiz}
-                        style={{
-                            background: 'linear-gradient(135deg, var(--landing-purple), #6366f1)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '16px 32px',
-                            borderRadius: '12px',
-                            fontSize: '1.1rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            marginBottom: '16px',
-                            boxShadow: '0 10px 30px rgba(139, 92, 246, 0.4)',
-                            animation: 'pulse 2s infinite'
-                        }}
-                    >
-                        Find Your Founder Archetype
-                    </button>
-                    <p style={{ fontSize: '0.85rem', color: '#52525b' }}>
-                        Free access for the first 3 months. No credit card required.
-                    </p>
+                    <Zap size={14} fill="#818cf8" />
+                    <span>14/100 Founding Spots Taken (Live)</span>
                 </motion.div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '40px', alignItems: 'center' }}>
+                    <div>
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                            className="landing-hero-title"
+                            style={{ fontSize: '3.5rem', marginBottom: '24px' }}
+                        >
+                            Find the 3 Personality Traits<br />
+                            <span className="text-gradient">Killing Your Startup.</span>
+                        </motion.h1>
+
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.2 }}
+                            className="landing-hero-desc"
+                            style={{ maxWidth: '600px', margin: '0 auto 40px auto' }}
+                        >
+                            The free founder diagnostic. We scan for Dark Triad traits, equity misalignment, and "Idea Guy" syndrome. Get your Chemistry Score in 2 minutes.
+                        </motion.p>
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                        >
+                            <button
+                                onClick={scrollToQuiz}
+                                style={{
+                                    background: 'linear-gradient(135deg, var(--landing-purple), #6366f1)',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '16px 40px',
+                                    borderRadius: '50px',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    marginBottom: '16px',
+                                    boxShadow: '0 10px 30px rgba(139, 92, 246, 0.4)',
+                                    display: 'flex', alignItems: 'center', gap: '12px', margin: '0 auto 16px auto'
+                                }}
+                            >
+                                Start Free Diagnostic <ArrowRight size={20} />
+                            </button>
+                            <p style={{ fontSize: '0.9rem', color: '#a1a1aa' }}>
+                                Diagnosis is <strong>Free</strong>. Unlock the <span style={{ color: '#F97316', fontWeight: 600 }}>20-Page Risk Audit</span> in the $49 Deal.
+                            </p>
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '0.8rem', color: '#71717a' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} color="#818cf8" /> Instant Archetype</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={14} color="#F97316" /> Full Legal Report ($49)</span>
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* Report Preview Card (Purple Glass Style) */}
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                        <SampleReportCard />
+                    </div>
+                </div>
             </header>
 
             {/* --- PROBLEM SECTION --- */}
-            <section id="why" style={{ padding: '80px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            <section id="why" className="landing-section-pad">
+                <div className="landing-grid">
                     <ProblemCard
                         icon={<Ghost color="#ef4444" size={32} />}
                         title="The Ghoster"
@@ -147,32 +161,40 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* --- SOLUTION SECTION --- */}
-            <section id="protocol" style={{ padding: '100px 20px', maxWidth: '800px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '2.5rem', textAlign: 'center', marginBottom: '60px', fontFamily: 'Outfit, sans-serif' }}>
-                    The CoVibr Protocol
+            {/* --- SOLUTION SECTION (CHECKLIST STYLE) --- */}
+            <section id="protocol" className="landing-section-pad">
+                <h2 className="landing-section-title">
+                    The Founder Audit Protocol
                 </h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', position: 'relative' }}>
-                    {/* Vertical Line */}
-                    <div style={{ position: 'absolute', left: '24px', top: '20px', bottom: '20px', width: '2px', background: 'rgba(255,255,255,0.1)' }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+                    {/* Column 1 */}
+                    <div className="saas-panel" style={{ padding: '32px' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '24px', display: 'flex', items: 'center', gap: '8px' }}>
+                            <Shield size={20} color="#F97316" />
+                            <span>Risk Assessment</span>
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <CheckListItem text="Dark Triad Personality Scan" />
+                            <CheckListItem text="Equity Vesting & Cliff Alignment" />
+                            <CheckListItem text="Runway & Financial Risk Sync" />
+                            <CheckListItem text="Legal Entity Structure Check" />
+                        </div>
+                    </div>
 
-                    <ProtocolStep
-                        number="01"
-                        title="The Diagnostic"
-                        desc="We map your Founder Archetype using the Big Five, Dark Triad, and 'Rich vs. King' frameworks."
-                    />
-                    <ProtocolStep
-                        number="02"
-                        title="The Chemistry Test"
-                        desc="A 48-hour work simulation. If you don't ship, the match self-destructs. No hard feelings."
-                    />
-                    <ProtocolStep
-                        number="03"
-                        title="The Deal Room"
-                        desc="Equity splits based on risk and contribution, not ego. Sign the pact and build an empire."
-                        isLast
-                    />
+                    {/* Column 2 */}
+                    <div className="saas-panel" style={{ padding: '32px' }}>
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '24px', display: 'flex', items: 'center', gap: '8px' }}>
+                            <Zap size={20} color="#F97316" />
+                            <span>Chemistry Validation</span>
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <CheckListItem text="48-Hour Code Simulation" />
+                            <CheckListItem text="Communication Style Match" />
+                            <CheckListItem text="Conflict Resolution War Game" />
+                            <CheckListItem text="Ambition Level (Rich vs. King)" />
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -207,39 +229,148 @@ const LandingPage = () => {
 const ProblemCard = ({ icon, title, desc }) => (
     <motion.div
         whileHover={{ y: -5 }}
-        className="saas-card-dark"
-        style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+        className="saas-card" // Back to generic glass card
+        style={{
+            display: 'flex', flexDirection: 'column', gap: '16px',
+            background: 'rgba(255,255,255,0.02)', // Lighter glass
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.2)', borderRadius: '16px', padding: '0', overflow: 'hidden'
+        }}
     >
-        <div style={{ background: 'rgba(99, 102, 241, 0.1)', width: '64px', height: '64px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+            background: 'rgba(255,255,255,0.03)', width: '100%', padding: '24px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            borderBottom: '1px solid rgba(255,255,255,0.05)'
+        }}>
             {icon}
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#a1a1aa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DETECTED ISSUE</span>
         </div>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, fontFamily: 'Outfit' }}>{title}</h3>
-        <p style={{ color: '#94a3b8', lineHeight: 1.6 }}>{desc}</p>
+        <div style={{ padding: '0 24px 24px 24px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, fontFamily: 'Outfit', marginBottom: '8px' }}>{title}</h3>
+            <p style={{ color: '#94a3b8', lineHeight: 1.6, fontSize: '0.95rem' }}>{desc}</p>
+        </div>
     </motion.div>
 );
 
-const ProtocolStep = ({ number, title, desc, isLast }) => (
-    <div style={{ display: 'flex', gap: '32px', position: 'relative' }}>
+// --- SAMPLE REPORT CARD (REALISTIC PRODUCT MOCKUP) ---
+const SampleReportCard = () => (
+    <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.8 }}
+        style={{
+            width: '100%', maxWidth: '500px', // Wider to fit content
+            background: 'linear-gradient(180deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '20px',
+            padding: '32px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+            position: 'relative',
+            overflow: 'hidden'
+        }}
+    >
+        {/* Background Glow */}
+        <div style={{ position: 'absolute', top: '-10%', left: '20%', width: '60%', height: '40%', background: '#ef4444', filter: 'blur(100px)', opacity: 0.1, pointerEvents: 'none' }}></div>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative', zIndex: 2 }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: 800, color: '#ef4444', margin: 0, letterSpacing: '-1px' }}>9% Match</h2>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff', marginBottom: '4px' }}>Full Compatibility Audit</h3>
+            <div style={{ position: 'absolute', top: 0, right: -40, background: '#F97316', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '4px 20px', transform: 'rotate(45deg)', boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>PREMIUM</div>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Day & Dawn</p>
+        </div>
+
+        {/* Section Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', color: '#fff', fontWeight: 700 }}>
+            <AlertOctagon size={20} color="#ef4444" />
+            <span>Critical Divergences</span>
+        </div>
+
+        {/* Card: Survival Number */}
         <div style={{
-            width: '50px',
-            height: '50px',
-            background: '#0f111a',
-            border: '1px solid var(--landing-purple)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--landing-purple)',
-            fontWeight: 'bold',
-            zIndex: 1,
-            flexShrink: 0
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            borderLeft: '4px solid #ef4444',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '16px'
         }}>
-            {number}
+            <h4 style={{ fontSize: '1rem', color: '#fff', marginBottom: '6px', lineHeight: 1.4, fontWeight: 600 }}>
+                What is your 'Survival Number' (minimum monthly income)?
+            </h4>
+            <p style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px', fontWeight: 700 }}>
+                MODULE 1: FINANCIAL & RISK
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                {/* User A */}
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#334155', color: '#fff', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>A</div>
+                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Day said:</span>
+                    </div>
+                    <p style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px' }}>Low (&#60;$4k/mo).</p>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: '#cbd5e1', fontStyle: 'italic', lineHeight: 1.5 }}>
+                        "I can survive on very little. Ramen profitability."
+                    </div>
+                </div>
+
+                {/* User B */}
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#334155', color: '#fff', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>B</div>
+                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Dawn said:</span>
+                    </div>
+                    <p style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px' }}>Medium ($5k-$10k/mo).</p>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', color: '#cbd5e1', fontStyle: 'italic', lineHeight: 1.5 }}>
+                        "I have standard obligations (mortgage/rent)."
+                    </div>
+                </div>
+            </div>
+
+            {/* Discussion Point */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ color: '#8b5cf6' }}>💬</div>
+                    <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 700 }}>Discussion Point</span>
+                </div>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                    If one founder needs $3k and the other needs $15k, resentment builds.
+                </p>
+            </div>
         </div>
-        <div style={{ paddingTop: '10px' }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '8px', color: '#fff' }}>{title}</h3>
-            <p style={{ color: '#a1a1aa', fontSize: '1.1rem', lineHeight: 1.6 }}>{desc}</p>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 20px', background: 'rgba(249, 115, 22, 0.1)', borderTop: '1px solid rgba(249, 115, 22, 0.2)', color: '#F97316', fontSize: '0.8rem', fontWeight: 600, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <Lock size={12} /> Included in Founding 100 Membership
         </div>
+    </motion.div>
+);
+
+const RiskItem = ({ status, title, desc }) => {
+    const color = status === 'CRITICAL' ? '#ef4444' : status === 'WARNING' ? '#f59e0b' : '#10b981';
+    return (
+        <div style={{ display: 'flex', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ marginTop: '2px' }}>
+                {status === 'CRITICAL' ? <AlertOctagon size={16} color={color} /> :
+                    status === 'WARNING' ? <AlertTriangle size={16} color={color} /> :
+                        <CheckCircle size={16} color={color} />}
+            </div>
+            <div>
+                <div style={{ display: 'flex', items: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: `${color}20`, color: color }}>{status}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{title}</span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#a1a1aa', lineHeight: 1.4 }}>{desc}</p>
+            </div>
+        </div>
+    )
+}
+
+const CheckListItem = ({ text }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <CheckCircle size={18} color="#10b981" />
+        <span style={{ fontSize: '1rem', color: '#d4d4d8' }}>{text}</span>
     </div>
 );
 
@@ -517,7 +648,7 @@ const InteractiveQuiz = () => {
                     ARCHETYPE DETECTED
                 </div>
 
-                <h2 style={{ fontSize: '3.5rem', marginBottom: '16px', color: '#fff', fontFamily: 'Outfit' }}>
+                <h2 className="landing-hero-title">
                     THE {result.name.toUpperCase()}
                 </h2>
                 <p style={{ color: '#a1a1aa', marginBottom: '40px', fontSize: '1.2rem' }}>{result.desc}</p>
@@ -535,7 +666,25 @@ const InteractiveQuiz = () => {
                     </div>
                 </div>
 
-                <p style={{ color: '#52525b', fontSize: '0.9rem' }}>Check your email ({email}) for your detailed match report.</p>
+                <button
+                    onClick={() => navigate('/login?ref=report')}
+                    style={{
+                        background: '#F97316',
+                        color: 'white',
+                        padding: '16px 32px',
+                        borderRadius: '50px',
+                        fontSize: '1.1rem',
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: 'pointer',
+                        width: '100%',
+                        marginBottom: '16px',
+                        boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
+                    }}
+                >
+                    Unlock Full Report
+                </button>
+                <p style={{ color: '#52525b', fontSize: '0.9rem' }}>Check your email ({email}) for your summary.</p>
             </div>
         );
     }

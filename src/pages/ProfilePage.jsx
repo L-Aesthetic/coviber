@@ -1,4 +1,4 @@
-import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown, Twitter } from 'lucide-react';
+import { Play, Github, Linkedin, ExternalLink, MapPin, Clock, ChevronLeft, ShieldCheck, Zap, Brain, MessageCircle, AlertTriangle, Users, Trophy, Target, Globe, Video, FileText, Heart, XCircle, Edit2, Save, Image, Trash2, Plus, ChevronRight, Maximize2, RefreshCcw, ChevronDown, Twitter, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 // Add basic styles for avatar overlay
 const styles = `
@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
+import { getArchetypeDetails } from '../data/archetypes';
 
 export default function ProfilePage() {
     const navigate = useNavigate();
@@ -20,10 +21,12 @@ export default function ProfilePage() {
     const { user, loading: authLoading } = useAuth(); // Import auth loading
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [status, setStatus] = useState({ type: '', message: '' }); // For sync feedback
     const [isEditing, setIsEditing] = useState(false);
     const [showProjectModal, setShowProjectModal] = useState(false);
     const [showVouchModal, setShowVouchModal] = useState(false);
     const [showMediaEditModal, setShowMediaEditModal] = useState(false);
+    const [showPresetModal, setShowPresetModal] = useState(false); // New modal state
     const [selectedMediaIndex, setSelectedMediaIndex] = useState(null);
     const [newProject, setNewProject] = useState({ title: '', role: '', desc: '', stack: '' });
     const [newVouch, setNewVouch] = useState({ name: '', role: '', text: '' });
@@ -78,9 +81,31 @@ export default function ProfilePage() {
                     setLoading(false);
                     return;
                 }
-                // ... fetch logic ...
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', targetId)
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                if (data) {
+                    setProfile(prev => ({
+                        ...prev,
+                        ...data,
+                        // Ensure arrays are at least empty arrays if null in DB
+                        tags: data.tags || [],
+                        projects: data.projects || [],
+                        antiPitch: data.anti_pitch || [],
+                        vouches: data.vouches || [],
+                        vibe_data: data.vibe_data || [],
+                        media_gallery: data.media_gallery || [],
+                        social_links: data.social_links || { linkedin: '', twitter: '', github: '', website: '' }
+                    }));
+                }
             } catch (err) {
-                // ...
+                console.error("Error fetching profile:", err);
+                setError(err.message);
             } finally {
                 setLoading(false);
             }
@@ -133,10 +158,12 @@ export default function ProfilePage() {
             if (error) throw error;
 
             setIsEditing(false);
-            alert('Profile saved successfully!');
+            setStatus({ type: 'success', message: 'Profile saved successfully!' });
+            setTimeout(() => setStatus({ type: '', message: '' }), 3000);
         } catch (error) {
             console.error('Error saving profile:', error);
-            alert('Failed to save profile: ' + error.message);
+            setStatus({ type: 'error', message: 'Failed to save: ' + error.message });
+            setTimeout(() => setStatus({ type: '', message: '' }), 5000);
         }
     };
 
@@ -147,6 +174,70 @@ export default function ProfilePage() {
             </div>
         )
     }
+
+    // --- SUBCOMPONENTS (RENDERED INSIDE) ---
+    const PresetModal = () => (
+        <AnimatePresence>
+            {showPresetModal && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="saas-panel"
+                        style={{ width: '100%', maxWidth: '500px', padding: '32px', border: '1px solid var(--accent-primary)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                    >
+                        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                            <Zap size={48} color="var(--accent-primary)" style={{ marginBottom: '16px' }} />
+                            <h2 style={{ fontSize: '1.8rem', fontFamily: 'Outfit', marginBottom: '8px' }}>Select Archetype</h2>
+                            <p style={{ color: 'var(--text-secondary)' }}>Instantly populate your profile with a Founder Persona.</p>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {['Sovereign', 'Architect', 'Operator'].map((type) => (
+                                <button
+                                    key={type}
+                                    className="hover-glass"
+                                    onClick={() => {
+                                        const details = getArchetypeDetails(type);
+                                        setProfile(prev => ({
+                                            ...prev,
+                                            headline: details.headline,
+                                            role: details.role,
+                                            bio: details.bio,
+                                            superpower: details.superpower,
+                                            kryptonite: details.kryptonite,
+                                            commStyle: details.commStyle,
+                                            triggerWarning: details.triggerWarning,
+                                            vibe_data: details.vibe_data
+                                        }));
+                                        setShowPresetModal(false);
+                                        setStatus({ type: 'success', message: `${type} preset applied!` });
+                                        setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+                                    }}
+                                    style={{
+                                        padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'rgba(255,255,255,0.02)', color: 'white', fontSize: '1.1rem', fontWeight: 600,
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                    }}
+                                >
+                                    <span>The {type}</span>
+                                    <ChevronRight size={18} color="var(--text-tertiary)" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => setShowPresetModal(false)}
+                            style={{ padding: '12px', width: '100%', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', marginTop: '24px', cursor: 'pointer' }}
+                        >
+                            Cancel
+                        </button>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
 
     // New User State (Only if no Vibe/Headline data exists AND isSelf)
     if (isSelf && !profile.headline && (!profile.vibe_data || profile.vibe_data.length === 0) && !isEditing) {
@@ -234,20 +325,23 @@ export default function ProfilePage() {
                                 const saveToDb = async (arch, leadName) => {
                                     setLoading(true);
                                     try {
+                                        // Get rich data for this archetype
+                                        const details = getArchetypeDetails(arch);
+
                                         // Construct full profile update
                                         const updates = {
                                             id: user.id,
-                                            name: leadName || profile.name || (user.email ? user.email.split('@')[0] : "Founder"), // Use lead name if available
-                                            headline: `The ${arch}`,
-                                            role: arch === 'Architect' ? 'Engineering' : (arch === 'Sovereign' ? 'Founder' : 'Operations'),
+                                            name: leadName || profile.name || (user.email ? user.email.split('@')[0] : "Founder"),
+                                            headline: details.headline,
+                                            role: details.role,
+                                            bio: details.bio,
+                                            superpower: details.superpower,
+                                            kryptonite: details.kryptonite,
+                                            comm_style: details.commStyle,
+                                            trigger_warning: details.triggerWarning,
+                                            vibe_data: details.vibe_data,
+
                                             subscription_tier: 'founder', // Auto-grant Founder status
-                                            vibe_data: [
-                                                { subject: 'Risk', A: arch === 'Sovereign' ? 140 : 80, fullMark: 150 },
-                                                { subject: 'Pace', A: arch === 'Sovereign' ? 130 : 90, fullMark: 150 },
-                                                { subject: 'Control', A: arch === 'Operator' ? 140 : 60, fullMark: 150 },
-                                                { subject: 'Optimism', A: 120, fullMark: 150 },
-                                                { subject: 'Details', A: arch === 'Architect' ? 140 : 50, fullMark: 150 },
-                                            ],
                                             updated_at: new Date().toISOString()
                                         };
 
@@ -259,11 +353,14 @@ export default function ProfilePage() {
 
                                         // Update local state to reflect changes
                                         setProfile(prev => ({ ...prev, ...updates }));
-                                        alert(`Sync Complete! \n\nWe found your result: "${arch}".\n\nYour Founder Status is now ACTIVE. Please add your photo to finish up.`);
-                                        window.location.reload(); // Force reload to ensure fresh state everywhere
+                                        setStatus({
+                                            type: 'success',
+                                            message: `Sync Complete! Found "${arch}". refreshing...`
+                                        });
+                                        setTimeout(() => window.location.reload(), 2000);
                                     } catch (err) {
                                         console.error(err);
-                                        alert("Sync failed to save: " + err.message);
+                                        setStatus({ type: 'error', message: "Sync failed: " + err.message });
                                     } finally {
                                         setLoading(false);
                                     }
@@ -279,7 +376,10 @@ export default function ProfilePage() {
                                 }
 
                                 // 2. Try Database
-                                if (!user?.email) return alert("Please sign in to check database records.");
+                                if (!user?.email) {
+                                    setStatus({ type: 'error', message: "Please sign in to check database records." });
+                                    return;
+                                }
 
                                 const { data, error } = await supabase
                                     .from('leads')
@@ -292,13 +392,28 @@ export default function ProfilePage() {
                                 if (data?.archetype) {
                                     await saveToDb(data.archetype, data.name);
                                 } else {
-                                    alert("No quiz result found. Please take the quiz again.");
+                                    setStatus({ type: 'error', message: "No quiz result found for " + user.email + ". Please take the quiz again." });
                                 }
                             }}
                         >
                             <RefreshCcw size={14} style={{ marginRight: '6px' }} />
                             I just took the quiz (Sync Result)
                         </button>
+
+                        {/* Status Message Display */}
+                        {loading && <div style={{ marginTop: '16px', color: 'var(--text-secondary)' }}>Searching for records...</div>}
+                        {status.message && (
+                            <div style={{
+                                marginTop: '16px',
+                                padding: '12px',
+                                borderRadius: '8px',
+                                background: status.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                border: `1px solid ${status.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                                color: status.type === 'success' ? '#10B981' : '#EF4444',
+                            }}>
+                                {status.message}
+                            </div>
+                        )}
                     </div>
 
                 </div>
@@ -328,7 +443,7 @@ export default function ProfilePage() {
 
             if (uploadError) {
                 if (uploadError.message.includes('bucket not found')) {
-                    alert("Storage Bucket 'avatars' not found. Please create a public bucket named 'avatars' in your Supabase dashboard.");
+                    setStatus({ type: 'error', message: "Storage Bucket 'avatars' missing." });
                 } else {
                     throw uploadError;
                 }
@@ -342,18 +457,50 @@ export default function ProfilePage() {
 
             if (data) {
                 setProfile({ ...profile, avatar_url: data.publicUrl });
+                setStatus({ type: 'success', message: 'Avatar updated!' });
+                setTimeout(() => setStatus({ type: '', message: '' }), 3000);
             }
 
         } catch (error) {
-            alert('Error uploading avatar: ' + error.message);
+            setStatus({ type: 'error', message: 'Upload failed: ' + error.message });
         } finally {
+            setLoading(false); // Fix: logic used 'setUploading' but code used 'setLoading' or similar? Checking previous code. 'setUploading' was used.
             setUploading(false);
+            setTimeout(() => setStatus({ type: '', message: '' }), 5000);
         }
     };
+
+    // --- TOAST NOTIFICATION COMPONENT ---
+    const Toast = () => (
+        <AnimatePresence>
+            {status.message && (
+                <motion.div
+                    initial={{ opacity: 0, y: 50, x: '-50%' }}
+                    animate={{ opacity: 1, y: 0, x: '-50%' }}
+                    exit={{ opacity: 0, y: 20, x: '-50%' }}
+                    style={{
+                        position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)',
+                        zIndex: 200, padding: '12px 24px', borderRadius: '12px',
+                        background: status.type === 'error' ? 'rgba(239, 68, 68, 0.9)' : 'rgba(16, 185, 129, 0.9)',
+                        color: 'white', fontWeight: 600, boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                        backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                >
+                    {status.type === 'error' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+                    {status.message}
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
             <style>{styles}</style>
+
+            <Toast />
+
+            {/* Modal Injection */}
+            <PresetModal />
             <input
                 type="file"
                 ref={fileInputRef}
@@ -460,6 +607,17 @@ export default function ProfilePage() {
                                 color: 'white', border: '4px solid #1c1c24', textTransform: 'uppercase'
                             }}>
                                 {profile.status === 'ready' ? 'Ready to Build' : 'Exploring'}
+                            </div>
+                        )}
+                        {isEditing && (
+                            <div style={{ position: 'absolute', top: '24px', right: '24px' }}>
+                                <button
+                                    className="btn-ghost"
+                                    onClick={() => setShowPresetModal(true)}
+                                    style={{ fontSize: '0.8rem', padding: '6px 12px', border: '1px dashed var(--text-tertiary)' }}
+                                >
+                                    <Zap size={14} style={{ marginRight: '6px' }} /> Apply Preset
+                                </button>
                             </div>
                         )}
                     </div>

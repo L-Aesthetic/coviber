@@ -1,7 +1,7 @@
 import { Search as SearchIcon, Filter, MapPin, Briefcase, Star, CheckCircle2, SlidersHorizontal, Zap, Hammer, Clock, Scale, Info, ShieldCheck, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 
@@ -314,13 +314,44 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
 }
 
 function IntroButton({ candidate }) {
-    const [sent, setSent] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [status, setStatus] = useState('idle'); // idle, sending, sent, received, error
     const { user } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!user) return;
+        const checkStatus = async () => {
+            // Check if *I* sent one
+            const { data: sentData } = await supabase
+                .from('intro_requests')
+                .select('*')
+                .eq('from_user_id', user.id)
+                .eq('to_user_id', candidate.id)
+                .maybeSingle();
+
+            if (sentData) {
+                setStatus('sent');
+                return;
+            }
+
+            // Check if *THEY* sent one
+            const { data: receivedData } = await supabase
+                .from('intro_requests')
+                .select('*')
+                .eq('from_user_id', candidate.id)
+                .eq('to_user_id', user.id)
+                .maybeSingle();
+
+            if (receivedData) {
+                setStatus('received');
+            }
+        };
+        checkStatus();
+    }, [user, candidate.id]);
 
     const handleRequest = async () => {
-        if (!user) return alert("Please login first");
-        setLoading(true);
+        if (!user) return navigate('/login');
+        setStatus('sending');
 
         try {
             // 1. Add to requester's pipeline
@@ -334,7 +365,7 @@ function IntroButton({ candidate }) {
                     notes: `Intro requested to ${candidate.name}`
                 }]);
 
-            // 2. Create intro request (so the other user can see it)
+            // 2. Create intro request
             const { error } = await supabase
                 .from('intro_requests')
                 .insert([{
@@ -345,20 +376,19 @@ function IntroButton({ candidate }) {
                 }]);
 
             if (error) throw error;
-            setSent(true);
+            setStatus('sent');
         } catch (e) {
             console.error(e);
-            alert("Failed to request intro");
-        } finally {
-            setLoading(false);
+            setStatus('error');
+            setTimeout(() => setStatus('idle'), 3000);
         }
     };
 
-    if (sent) {
+    if (status === 'sent') {
         return (
             <button
                 className="btn-ghost"
-                style={{ width: '100%', justifyContent: 'center', color: '#10B981', borderColor: '#10B981' }}
+                style={{ width: '100%', justifyContent: 'center', color: '#10B981', borderColor: '#10B981', opacity: 0.8 }}
                 disabled
             >
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={16} /> Sent</span>
@@ -366,14 +396,32 @@ function IntroButton({ candidate }) {
         )
     }
 
+    if (status === 'received') {
+        return (
+            <Link to="/dashboard" style={{ textDecoration: 'none', width: '100%' }}>
+                <button
+                    className="btn-ghost"
+                    style={{ width: '100%', justifyContent: 'center', color: '#F59E0B', borderColor: '#F59E0B', background: 'rgba(245, 158, 11, 0.1)' }}
+                >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Please Accept in Dashboard</span>
+                </button>
+            </Link>
+        )
+    }
+
     return (
         <button
             className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center' }}
+            style={{
+                width: '100%',
+                justifyContent: 'center',
+                background: status === 'error' ? 'var(--accent-error)' : undefined,
+                borderColor: status === 'error' ? 'var(--accent-error)' : undefined
+            }}
             onClick={handleRequest}
-            disabled={loading}
+            disabled={status === 'sending'}
         >
-            {loading ? "Sending..." : "Request Intro"}
+            {status === 'sending' ? "Sending..." : status === 'error' ? "Failed" : "Request Intro"}
         </button>
     )
 }

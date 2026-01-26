@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -9,20 +9,57 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
+    const [error, setError] = useState(null);
+    const [needsVerification, setNeedsVerification] = useState(false);
     const [sentMessage, setSentMessage] = useState({ title: 'Check your email', sub: '' });
     const [mode, setMode] = useState('password'); // 'magic', 'password', 'signup'
-    const { signIn, signInWithPassword, signUp, user } = useAuth();
+    const { signIn, signInWithPassword, signUp, user, supabase } = useAuth();
+
+    // Redirect when user state confirms login (fixes race condition)
+    const location = useLocation();
 
     // Redirect when user state confirms login (fixes race condition)
     useEffect(() => {
         if (user) {
-            navigate('/dashboard');
+            const params = new URLSearchParams(location.search);
+            const ref = params.get('ref');
+            if (ref === 'report') {
+                navigate('/report');
+            } else {
+                navigate('/dashboard');
+            }
         }
-    }, [user, navigate]);
+    }, [user, navigate, location]);
+
+    // Clear error when switching modes
+    useEffect(() => {
+        setError(null);
+        setNeedsVerification(false);
+    }, [mode]);
+
+    const handleResend = async () => {
+        setLoading(true);
+        try {
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+            });
+            if (error) throw error;
+            setSentMessage({ title: 'Link Resent', sub: `We sent a new confirmation link to ${email}` });
+            setSent(true);
+            setNeedsVerification(false);
+        } catch (err) {
+            setError("Failed to resend: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
+        setNeedsVerification(false);
         try {
             if (mode === 'magic') {
                 await signIn(email);
@@ -37,15 +74,23 @@ export default function Login() {
                 });
                 setSentMessage({ title: 'Account Created', sub: `Please check ${email} to verify your account.` });
                 setSent(true);
+            } else if (mode === 'forgot') {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/settings', // Redirect to settings to enter new password
+                });
+                if (error) throw error;
+                setSentMessage({ title: 'Reset Link Sent', sub: `Check ${email} for a link to reset your password.` });
+                setSent(true);
             }
         } catch (error) {
             console.error("Login error:", error);
             if (error.message.includes('Email not confirmed')) {
-                alert('Your email is not confirmed. Please check your inbox (and spam) for the confirmation link.');
+                setError('Email not confirmed. Please check your inbox.');
+                setNeedsVerification(true);
             } else if (error.message.includes('Invalid login credentials')) {
-                alert('Invalid email or password. Please try again.');
+                setError('Invalid email or password.');
             } else {
-                alert('Error: ' + error.message);
+                setError(error.message);
             }
         } finally {
             setLoading(false);
@@ -82,6 +127,13 @@ export default function Login() {
                         </div>
                         <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '8px' }}>{sentMessage.title}</h3>
                         <p style={{ color: 'var(--text-secondary)' }}>{sentMessage.sub}</p>
+                        <button
+                            className="btn-ghost"
+                            style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}
+                            onClick={() => { setSent(false); setMode('password'); }}
+                        >
+                            Back to Login
+                        </button>
                     </div>
                 ) : (
                     <div>
@@ -109,6 +161,41 @@ export default function Login() {
                             ))}
                         </div>
 
+                        {error && (
+                            <div style={{
+                                padding: '12px',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                borderRadius: '8px',
+                                color: '#ef4444',
+                                fontSize: '0.9rem',
+                                marginBottom: '20px',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                alignItems: 'center'
+                            }}>
+                                <span>{error}</span>
+                                {needsVerification && (
+                                    <button
+                                        onClick={handleResend}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#ef4444',
+                                            textDecoration: 'underline',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.9rem'
+                                        }}
+                                    >
+                                        Resend Verification Link
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
                         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Email</label>
@@ -135,7 +222,16 @@ export default function Login() {
 
                             {mode !== 'magic' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Password</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Password</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMode('forgot')}
+                                            style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
                                     <input
                                         type="password"
                                         style={{
@@ -161,7 +257,7 @@ export default function Login() {
 
                             <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }} disabled={loading}>
                                 {loading && <Loader2 className="animate-spin" size={20} style={{ marginRight: '8px' }} />}
-                                {mode === 'magic' ? 'Send Magic Link' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+                                {mode === 'magic' ? 'Send Magic Link' : mode === 'signup' ? 'Create Account' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
                             </button>
 
                             <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>

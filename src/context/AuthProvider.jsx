@@ -34,46 +34,65 @@ export const AuthProvider = ({ children }) => {
 
                     if (!profile || !profile.archetype) {
                         let finalArchetype = null;
+                        let finalName = null;
 
                         // 2a. Check LocalStorage (Most reliable for same-device flow)
                         const localArchetype = localStorage.getItem('covibr_archetype');
+                        const localName = localStorage.getItem('covibr_name');
+
                         if (localArchetype) {
                             console.log("Found archetype in LocalStorage:", localArchetype);
                             finalArchetype = localArchetype;
                         }
+                        if (localName) {
+                            finalName = localName;
+                        }
 
                         // 2b. Check DB for Lead data (Fallback if cross-device)
-                        if (!finalArchetype) {
+                        if (!finalArchetype || !finalName) {
                             const { data: lead } = await supabase
                                 .from('leads')
-                                .select('archetype')
+                                .select('archetype, name')
                                 .eq('email', currentUser.email)
                                 .order('created_at', { ascending: false })
                                 .limit(1)
                                 .single();
-                            if (lead) finalArchetype = lead.archetype;
+
+                            if (lead) {
+                                if (!finalArchetype) finalArchetype = lead.archetype;
+                                if (!finalName) finalName = lead.name;
+                            }
                         }
 
                         if (finalArchetype) {
                             console.log("Syncing archetype to profile:", finalArchetype);
 
                             // 3. Update Profile
+                            const updates = {
+                                id: currentUser.id,
+                                email: currentUser.email,
+                                archetype: finalArchetype,
+                                // Default role if missing based on archetype
+                                role: !profile?.role ? (finalArchetype === 'Architect' ? 'Engineering' : (finalArchetype === 'Sovereign' ? 'Founder' : 'Operations')) : undefined,
+                                subscription_tier: 'founder', // Auto-grant Founder status
+                                updated_at: new Date().toISOString()
+                            };
+
+                            // Only update name if we found one and profile doesn't have one
+                            if (finalName && !profile?.full_name) {
+                                updates.full_name = finalName;
+                                updates.display_name = finalName;
+                            }
+
                             const { error: updateError } = await supabase
                                 .from('profiles')
-                                .upsert({
-                                    id: currentUser.id,
-                                    email: currentUser.email,
-                                    archetype: finalArchetype,
-                                    // Default role if missing based on archetype
-                                    role: !profile?.role ? (finalArchetype === 'Architect' ? 'Engineering' : (finalArchetype === 'Sovereign' ? 'Founder' : 'Operations')) : undefined,
-                                    subscription_tier: 'founder', // Auto-grant Founder status
-                                    updated_at: new Date().toISOString()
-                                }, { onConflict: 'id' });
+                                .upsert(updates, { onConflict: 'id' });
 
                             // Only cleanup if successful
                             if (!updateError) {
                                 console.log("Profile synced successfully. Clearing cache.");
                                 localStorage.removeItem('covibr_archetype');
+                                localStorage.removeItem('covibr_name');
                             } else {
                                 console.error("Failed to sync profile (DB Error):", updateError);
                                 // Keep localStorage so we can try again
@@ -127,7 +146,9 @@ export const AuthProvider = ({ children }) => {
         signInWithPassword,
         signUp,
         signOut,
-        loading
+        signOut,
+        loading,
+        supabase // Expose client for advanced auth (resend)
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
