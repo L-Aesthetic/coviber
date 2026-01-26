@@ -69,6 +69,8 @@ export default function ProfilePage() {
     }, [user, id, authLoading, navigate]);
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchProfile = async () => {
             // Wait for auth to settle
             if (authLoading) return;
@@ -78,7 +80,7 @@ export default function ProfilePage() {
                 // Determine which ID to fetch
                 const targetId = isSelf ? user?.id : id;
                 if (!targetId) {
-                    setLoading(false);
+                    if (isMounted) setLoading(false);
                     return;
                 }
                 const { data, error } = await supabase
@@ -89,7 +91,7 @@ export default function ProfilePage() {
 
                 if (error) throw error;
 
-                if (data) {
+                if (data && isMounted) {
                     const richDetails = getArchetypeDetails(data.headline);
                     setProfile(prev => ({
                         ...prev,
@@ -115,10 +117,14 @@ export default function ProfilePage() {
                     }));
                 }
             } catch (err) {
-                console.error("Error fetching profile:", err);
-                setError(err.message);
+                if (isMounted) {
+                    if (err.name !== 'AbortError') {
+                        console.error("Error fetching profile:", err);
+                        setError(err.message);
+                    }
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
 
@@ -126,9 +132,10 @@ export default function ProfilePage() {
             fetchProfile();
         } else if (!authLoading) {
             // Not waiting for auth, but no user/id? Stop loading.
-            const timer = setTimeout(() => setLoading(false), 500);
-            return () => clearTimeout(timer);
+            if (isMounted) setLoading(false);
         }
+
+        return () => { isMounted = false; };
     }, [user, id, isSelf, authLoading]);
 
 
