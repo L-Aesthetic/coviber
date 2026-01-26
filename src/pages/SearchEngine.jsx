@@ -347,14 +347,6 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 700 }}>{candidate.archetype || 'Match'}</div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {candidate.matchReason && candidate.matchReason.map((reason, i) => (
-                        <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
-                            {reason}
-                        </span>
-                    ))}
-                </div>
-
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
                     <CompatibilityIcon icon={Scale} tooltip="Equity Alignment" />
                     <CompatibilityIcon icon={Clock} tooltip="Timezone Match" />
