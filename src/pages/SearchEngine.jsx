@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
+import { getArchetypeDetails } from '../data/archetypes';
 
 export default function SearchEngine() {
     const { user } = useAuth();
@@ -13,32 +14,66 @@ export default function SearchEngine() {
 
     // Fetch candidates from Supabase
     useEffect(() => {
-        const fetchCandidates = async () => {
-            setLoading(true);
+        const fetchArchetypes = async () => {
+            if (!user) { return }
 
+            setLoading(true);
             try {
+                // 1. Get MY archetype
+                const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                const myArchetype = myProfile?.headline ? getArchetypeDetails(myProfile.headline).name : null;
+                const myMatchName = myProfile?.headline ? getArchetypeDetails(myProfile.headline).match.name : null; // e.g. "THE OPERATOR 🎯"
+
+                // 2. Get CANDIDATES
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
-                    .neq('id', user?.id || '00000000-0000-0000-0000-000000000000');
+                    .neq('id', user.id);
 
                 if (error) throw error;
 
-                const formattedCandidates = data.map(profile => ({
-                    id: profile.id,
-                    name: profile.name || 'Founder',
-                    role: profile.role || 'Builder',
-                    location: profile.location || 'Remote',
-                    match: Math.min(100, 50 + (profile.bio ? 10 : 0) + ((profile.skills?.length || 0) * 5)),
-                    skills: profile.skills || [],
-                    isVerified: profile.subscription_tier !== 'free',
-                    hasShipped: profile.has_shipped || false,
-                    isExFounder: profile.is_ex_founder || false,
-                    bio: profile.bio || 'No bio available',
-                    avatar_url: profile.avatar_url
-                }));
+                // 3. Score them
+                const formattedCandidates = data.map(profile => {
+                    const theirArchetype = profile.headline ? getArchetypeDetails(profile.headline).name : null;
 
-                setCandidates(formattedCandidates);
+                    // BASE SCORE: 50
+                    let score = 50;
+
+                    // ARCHETYPE COMPATIBILITY (+30)
+                    // If my "match" description contains their archetype name (e.g. "THE OPERATOR" contains "Operator")
+                    // OR if their "match" description contains my archetype name.
+                    let isPerfectMatch = false;
+
+                    if (myMatchName && theirArchetype && myMatchName.toUpperCase().includes(theirArchetype.toUpperCase())) {
+                        isPerfectMatch = true;
+                        score += 30; // 80 base
+                    }
+
+                    // PROFILE COMPLETENESS (+15)
+                    if (profile.bio && profile.bio.length > 20) score += 10;
+                    if (profile.skills && profile.skills.length > 0) score += 5;
+
+                    // VERIFIED/PAID (+5)
+                    if (profile.subscription_tier !== 'free') score += 5;
+
+                    return {
+                        id: profile.id,
+                        name: profile.name || 'Founder',
+                        role: profile.role || 'Builder',
+                        location: profile.location || 'Remote',
+                        match: Math.min(99, score),
+                        skills: profile.skills || [],
+                        isVerified: profile.subscription_tier !== 'free',
+                        hasShipped: profile.has_shipped || false,
+                        isExFounder: profile.is_ex_founder || false,
+                        bio: profile.bio || 'No bio available',
+                        avatar_url: profile.avatar_url,
+                        headline: profile.headline // Useful to see
+                    };
+                });
+
+                // Sort by match score
+                setCandidates(formattedCandidates.sort((a, b) => b.match - a.match));
             } catch (error) {
                 console.error('Error fetching candidates:', error);
                 setCandidates([]);
@@ -47,7 +82,7 @@ export default function SearchEngine() {
             }
         };
 
-        fetchCandidates();
+        fetchArchetypes();
     }, [user]);
 
     const mockCandidates = [

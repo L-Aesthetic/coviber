@@ -43,6 +43,7 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/search" element={<SearchEngine />} />
+                    <Route path="/find-candidates" element={<SearchEngine />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="/profile/:id" element={<ProfilePage />} />
                     <Route path="/briefs" element={<BriefBuilder />} />
