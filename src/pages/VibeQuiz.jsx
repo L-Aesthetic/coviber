@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { getArchetypeDetails } from '../data/archetypes';
 import { PROTOCOL_QUESTIONS } from '../lib/protocol_questions';
 
 const QUESTIONS = PROTOCOL_QUESTIONS;
@@ -46,6 +47,8 @@ export default function VibeQuiz() {
             const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (data?.vibe_data?.length > 0 && data?.headline) {
                 // Determine if we have enough data to show results
+                const richDetails = getArchetypeDetails(data.headline);
+
                 // Reconstruct a "profile" object compatible with ResultsView
                 setExistingProfile({
                     title: data.headline,
@@ -53,9 +56,9 @@ export default function VibeQuiz() {
                     radarData: data.vibe_data,
                     insights: {
                         stress: data.comm_style, // mapped back
-                        power: "View full profile for details", // We might lose some granularity if not stored JSON, but deemed acceptable for "Results View"
+                        power: richDetails.powerDynamics, // Default from rich data
                         risk: data.superpower,
-                        dialect: "View full profile"
+                        dialect: richDetails.workDialect // Default from rich data
                     },
                     isExisting: true
                 });

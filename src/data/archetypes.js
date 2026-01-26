@@ -8,6 +8,8 @@ export const ARCHETYPE_DATA = {
         kryptonite: "The House of Cards Trap: I often sell the dream before the reality exists. Without checks, I will scale a broken system until it collapses.",
         commStyle: "Direct, Visionary, Impatient with details. I prefer 'What' and 'Why' over 'How'.",
         triggerWarning: "I might pivot the entire company at 3am if I have a better idea.",
+        powerDynamics: "Equity is performance fuel. I believe in dynamic splits based on value creation, not time spent.",
+        workDialect: "Speed & Vision. I communicate in possibilities and aggressive timelines.",
         vibe_data: [
             { subject: 'Risk', A: 140, fullMark: 150 },
             { subject: 'Pace', A: 145, fullMark: 150 },
@@ -25,6 +27,8 @@ export const ARCHETYPE_DATA = {
         kryptonite: "The Gold-Plating Trap: I am statistically likely to build a perfect product that nobody wants. I prioritize scalability before we have users.",
         commStyle: "Precise, Asynchronous, Data-backed. I prefer written specs over brainstorming calls.",
         triggerWarning: "If you ask me to 'just hack it basically', I will lecture you on technical debt for 45 minutes.",
+        powerDynamics: "Equity is long-term commitment. I value fairness, vesting, and protecting the cap table.",
+        workDialect: "Quality & Precision. I communicate in specifications, constraints, and scalability.",
         vibe_data: [
             { subject: 'Risk', A: 40, fullMark: 150 },
             { subject: 'Pace', A: 70, fullMark: 150 },
@@ -42,6 +46,8 @@ export const ARCHETYPE_DATA = {
         kryptonite: "The Optimization Trap: I might optimize funnels for a product that has no market fit. I struggle with 'irrational bets' that look bad on a spreadsheet.",
         commStyle: "Action-oriented, Bullet points, Clear next steps. I hate ambiguous meetings.",
         triggerWarning: "I hate chaos. If it's not on the calendar or in the project board, it doesn't exist.",
+        powerDynamics: "Equity aligns incentives. I believe in clear roles, structure, and operational leverage.",
+        workDialect: "Efficiency & Clarity. I communicate in OKRs, process maps, and deliverables.",
         vibe_data: [
             { subject: 'Risk', A: 80, fullMark: 150 },
             { subject: 'Pace', A: 120, fullMark: 150 },
