@@ -356,24 +356,13 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                    <CompatibilityIcon icon={Scale} tooltip="Equity Alignment" />
+                    <CompatibilityIcon icon={Clock} tooltip="Timezone Match" />
+                    <CompatibilityIcon icon={Zap} tooltip="Speed Vibe" active />
+                </div>
 
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {candidate.matchReason && candidate.matchReason.map((reason, i) => (
-                            <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
-                                {reason}
-                            </span>
-                        ))}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-                        <CompatibilityIcon icon={Scale} tooltip="Equity Alignment" />
-                        <CompatibilityIcon icon={Clock} tooltip="Timezone Match" />
-                        <CompatibilityIcon icon={Zap} tooltip="Speed Vibe" active />
-                    </div>
-
-                    <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                        <IntroButton candidate={{ name, role, id }} />
-                    </div>
+                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                    <IntroButton candidate={{ name, role, id }} />
                 </div>
             </motion.div>
         </Link >
