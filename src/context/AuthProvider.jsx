@@ -20,17 +20,16 @@ export const AuthProvider = ({ children }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             const currentUser = session?.user ?? null;
             setUser(currentUser);
-            setLoading(false);
 
             // Auto-populate profile from leads if needed
-            if (currentUser && (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION')) {
+            if (currentUser && (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED')) {
                 try {
                     // 1. Check if profile exists/needs update
                     const { data: profile } = await supabase
                         .from('profiles')
                         .select('archetype, role')
                         .eq('id', currentUser.id)
-                        .single();
+                        .maybeSingle(); // Use maybeSingle to avoid 406 error if not found
 
                     if (!profile || !profile.archetype) {
                         let finalArchetype = null;
@@ -56,7 +55,7 @@ export const AuthProvider = ({ children }) => {
                                 .eq('email', currentUser.email)
                                 .order('created_at', { ascending: false })
                                 .limit(1)
-                                .single();
+                                .maybeSingle();
 
                             if (lead) {
                                 if (!finalArchetype) finalArchetype = lead.archetype;
@@ -101,7 +100,11 @@ export const AuthProvider = ({ children }) => {
                     }
                 } catch (err) {
                     console.error("Error auto-syncing profile:", err);
+                } finally {
+                    setLoading(false); // Done syncing
                 }
+            } else {
+                setLoading(false); // No sync needed
             }
         });
 
