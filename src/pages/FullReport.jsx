@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Shield, Zap, TrendingUp, AlertTriangle, CheckCircle, FileText, Download, Scale } from 'lucide-react';
 import { useAuth } from '../context/AuthProvider';
@@ -9,6 +10,7 @@ const FullReport = () => {
     const [archetype, setArchetype] = useState(null);
     const [isPremium, setIsPremium] = useState(false); // Mock for now
 
+    const navigate = useNavigate(); // Added hook
     const { user } = useAuth();
 
     useEffect(() => {
@@ -17,14 +19,41 @@ const FullReport = () => {
             const savedArch = localStorage.getItem('covibr_archetype');
             if (savedArch) {
                 setArchetype(savedArch);
-                setLoading(false);
-                return;
             }
 
             // 2. Try Supabase (if logged in)
-            if (user && user.email) {
+            if (user) {
                 try {
-                    const { data, error } = await supabase
+                    // Check subscription status first
+                    const { data: profileData } = await supabase
+                        .from('profiles')
+                        .select('subscription_tier, headline, name')
+                        .eq('id', user.id)
+                        .single();
+
+                    if (profileData) {
+                        // Redirect if paid
+                        if (['founder', 'pro', 'certified', 'accelerator'].includes(profileData.subscription_tier)) {
+                            navigate('/vibe-quiz'); // User wants to see the full Vibe Quiz result view
+                            return;
+                        }
+
+                        // Also update Name/Archetype if available
+                        if (profileData.headline) {
+                            // Extract archetype from headline
+                            let arch = 'Sovereign';
+                            if (profileData.headline.includes('Architect')) arch = 'Architect';
+                            if (profileData.headline.includes('Operator')) arch = 'Operator';
+                            setArchetype(arch);
+                            localStorage.setItem('covibr_archetype', arch);
+                        }
+                        if (profileData.name) {
+                            localStorage.setItem('covibr_name', profileData.name);
+                        }
+                    }
+
+                    // Fallback to leads table if no profile or free
+                    const { data } = await supabase
                         .from('leads')
                         .select('archetype')
                         .eq('email', user.email)
@@ -33,22 +62,21 @@ const FullReport = () => {
                     if (data && data.archetype) {
                         setArchetype(data.archetype);
                         localStorage.setItem('covibr_archetype', data.archetype);
-                    } else {
-                        // Fallback / No Data
+                    } else if (!archetype) { // Only set default if nothing found
                         setArchetype('Sovereign');
                     }
                 } catch (err) {
                     console.error("Error fetching archetype:", err);
-                    setArchetype('Sovereign');
+                    if (!archetype) setArchetype('Sovereign');
                 }
             } else {
-                setArchetype('Sovereign');
+                if (!archetype) setArchetype('Sovereign');
             }
             setLoading(false);
         };
 
         fetchArchetype();
-    }, [user]);
+    }, [user, navigate]);
 
     if (loading) return <div className="p-10 text-center" style={{ color: 'white' }}>Loading Report...</div>;
 

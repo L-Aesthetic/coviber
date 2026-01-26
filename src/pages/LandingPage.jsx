@@ -74,7 +74,7 @@ const LandingPage = () => {
                     }}
                 >
                     <Zap size={14} fill="#818cf8" />
-                    <span>14/100 Founding Spots Taken (Live)</span>
+                    <span>86 Spots Left (Founding 100)</span>
                 </motion.div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '40px', alignItems: 'center' }}>

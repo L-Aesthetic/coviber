@@ -90,13 +90,24 @@ export default function ProfilePage() {
                 if (error) throw error;
 
                 if (data) {
+                    const richDetails = getArchetypeDetails(data.headline);
                     setProfile(prev => ({
                         ...prev,
                         ...data,
+                        // Apply defaults if DB fields are empty
+                        commStyle: data.comm_style || richDetails.commStyle,
+                        triggerWarning: data.trigger_warning || richDetails.triggerWarning,
+                        superpower: data.superpower || richDetails.superpower,
+                        kryptonite: data.kryptonite || richDetails.kryptonite,
+                        antiPitch: (data.anti_pitch && data.anti_pitch.length > 0) ? data.anti_pitch : (
+                            // Use fallback logic for antiPitch if empty
+                            richDetails.name === 'Sovereign' ? ["Passive employees", "Safety seekers", "Bureaucrats"] :
+                                richDetails.name === 'Architect' ? ["Sales-first overpromisers", "Spaghetti hackers", "Short-term thinkers"] :
+                                    ["Chaos agents", "Daily pivots", "Disorganized creatives"]
+                        ),
                         // Ensure arrays are at least empty arrays if null in DB
                         tags: data.tags || [],
                         projects: data.projects || [],
-                        antiPitch: data.anti_pitch || [],
                         vouches: data.vouches || [],
                         vibe_data: data.vibe_data || [],
                         media_gallery: data.media_gallery || [],

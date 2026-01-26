@@ -291,6 +291,16 @@ function ResultsView({ answers, existingProfile }) {
             dialect: richDetails.workDialect
         };
 
+        // Anti-Pitch (What NOT to look for)
+        let antiPitch = [];
+        if (richDetails.name === 'Sovereign') {
+            antiPitch = ["Passive employees waiting for instructions", "People who need equity for 'safety'", "Bureaucrats who love meetings"];
+        } else if (richDetails.name === 'Architect') {
+            antiPitch = ["Sales-first founders who overpromise", "Spaghetti code hackers", "Short-term thinkers"];
+        } else if (richDetails.name === 'Operator') {
+            antiPitch = ["Chaos agents with no follow-through", "Visionaries who change strategy daily", "Disorganized creative types"];
+        }
+
         return {
             title,
             description,
@@ -301,7 +311,8 @@ function ResultsView({ answers, existingProfile }) {
             quote: richDetails.quote,
             whyEssential: richDetails.whyEssential,
             matchName: richDetails.match?.name,
-            matchDesc: richDetails.match?.desc
+            matchDesc: richDetails.match?.desc,
+            antiPitch // Return this
         };
     };
 
@@ -323,6 +334,7 @@ function ResultsView({ answers, existingProfile }) {
                     kryptonite: profile.kryptonite,
                     trigger_warning: profile.triggerWarning,
                     comm_style: profile.insights.stress,
+                    anti_pitch: profile.antiPitch, // Save anti-pitch
                     updated_at: new Date()
                 });
                 if (error) throw error;
@@ -337,7 +349,7 @@ function ResultsView({ answers, existingProfile }) {
     }, [user, existingProfile, autoSaved, profile]);
 
     const handleSync = () => {
-        navigate('/dashboard');
+        navigate('/find-candidates'); // Updated route
     };
 
     return (
