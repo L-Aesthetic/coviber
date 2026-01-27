@@ -170,7 +170,7 @@ export default function Billing() {
                 </motion.div>
 
                 <div style={{ marginTop: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <p>Thank you for being one of our first believers. You have full access forever.</p>
+                    <p>Thank you for being one of our first believers! You have full access forever.</p>
                 </div>
             </div>
         );
