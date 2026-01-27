@@ -23,7 +23,8 @@ export default function SidebarLayout({ children }) {
             try {
                 const { data } = await supabase
                     .from('profiles')
-                    .select('subscription_tier, notification_prefs')
+                    .from('profiles')
+                    .select('subscription_tier, notification_prefs, avatar_url, name, email')
                     .eq('id', user.id)
                     .single();
 
@@ -231,7 +232,16 @@ export default function SidebarLayout({ children }) {
                         onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                         onMouseLeave={(e) => e.currentTarget.style.background = showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent'}
                     >
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366F1, #EC4899)' }}></div>
+
+                        <div style={{
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #6366F1, #EC4899)',
+                            flexShrink: 0, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                            {profileData?.avatar_url ? (
+                                <img src={profileData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : null}
+                        </div>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
                                 {profileData?.full_name || user?.email || 'User'}

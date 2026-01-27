@@ -160,6 +160,7 @@ export default function ProfilePage() {
                 vouches: profile.vouches,
                 vibe_data: profile.vibe_data,
                 media_gallery: profile.media_gallery,
+                avatar_url: profile.avatar_url,
                 avail_status: profile.availability,
                 updated_at: new Date().toISOString(),
                 media_gallery: profile.media_gallery,
