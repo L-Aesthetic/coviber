@@ -34,84 +34,133 @@ export default function Dashboard() {
 
         const fetchDashboardData = async () => {
             try {
-                // 1. Fetch Teams
-                const { data: teamData, error: teamError } = await supabase
-                    .from('team_members')
-                    .select(`
-                        team_id,
-                        role,
-                        teams (
-                            id,
-                            name,
-                            avatar_url,
-                            created_at
-                        )
-                    `)
-                    .eq('user_id', user.id);
+                // Parallelize independent fetches
+                const [teamRes, profileRes, pipelineRes, agreementsRes] = await Promise.all([
+                    // 1. Fetch Teams
+                    supabase
+                        .from('team_members')
+                        .select(`
+                            team_id,
+                            role,
+                            teams (
+                                id,
+                                name,
+                                avatar_url,
+                                created_at
+                            )
+                        `)
+                        .eq('user_id', user.id),
 
-                if (teamError) throw teamError;
+                    // 2. Fetch Profile (for Onboarding check)
+                    supabase
+                        .from('profiles')
+                        .select('headline')
+                        .eq('id', user.id)
+                        .single(),
 
-                // Format teams for display
+                    // 3. Fetch Pipeline Count
+                    supabase
+                        .from('pipeline_items')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('owner_id', user.id),
+
+                    // 4. Fetch Agreements
+                    supabase
+                        .from('agreements')
+                        .select('*')
+                        .eq('founder_a_id', user.id)
+                ]);
+
+                // Handle Profile / Onboarding first (Critical Path)
+                if (!profileRes.data?.headline) {
+                    setShowOnboarding(true);
+                    setLoading(false);
+                    return;
+                }
+
+                // Process Teams
+                const teamData = teamRes.data || [];
                 const formattedTeams = teamData.map(item => {
-                    // Calculate mock vesting based on created_at
                     const createdAt = new Date(item.teams.created_at);
                     const now = new Date();
                     const diffTime = Math.abs(now - createdAt);
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    const vesting = Math.min(100, Math.floor((diffDays / 365) * 25)); // 4 year vesting assumption
+                    const vesting = Math.min(100, Math.floor((diffDays / 365) * 25));
 
                     return {
                         id: item.teams.id,
                         name: item.teams.name,
                         avatar: item.teams.avatar_url || '🚀',
-                        members: 1, // Placeholder until we count members per team
+                        members: 1,
                         vesting: vesting,
                         lastActive: new Date(item.teams.created_at).toLocaleDateString(),
                         status: 'active'
                     };
                 });
-
                 setTeams(formattedTeams);
 
-                // Check for Onboarding (Archetype Presence)
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('headline')
-                    .eq('id', user.id)
-                    .single();
-
-                if (!profile?.headline) {
-                    setShowOnboarding(true);
-                    setLoading(false); // Stop loading main dash since we'll show overlay
-                    return; // Stop fetching other dash data
-                }
-
-                // 2. Fetch Pipeline Count (Open Matches)
-                const { count: matchesCount } = await supabase
-                    .from('pipeline_items')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('owner_id', user.id);
-
-                // Calculate Avg Vesting
+                // Process Stats (Teams & Pipeline)
                 const totalVesting = formattedTeams.reduce((acc, curr) => acc + curr.vesting, 0);
                 const avgVesting = formattedTeams.length > 0 ? Math.floor(totalVesting / formattedTeams.length) : 0;
-
                 setStats({
                     teamCount: formattedTeams.length,
                     activeSessions: formattedTeams.length > 0 ? 1 : 0,
-                    openMatches: matchesCount || 0,
+                    openMatches: pipelineRes.count || 0,
                     avgVesting: avgVesting
                 });
 
-                // 3. Fetch Health Metrics (across all user's teams)
+                // Process Agreements (Milestones)
+                const futureMilestones = [];
+                if (agreementsRes.data?.length > 0) {
+                    agreementsRes.data.forEach(agg => {
+                        const createdAt = new Date(agg.created_at);
+                        const now = new Date();
+
+                        // 83(b)
+                        const deadline83b = new Date(createdAt);
+                        deadline83b.setDate(deadline83b.getDate() + 30);
+                        if (deadline83b > now) {
+                            const daysLeft = Math.ceil((deadline83b - now) / (1000 * 60 * 60 * 24));
+                            futureMilestones.push({
+                                id: `83b-${agg.id}`,
+                                icon: AlertCircle,
+                                label: "83(b) Election Deadline",
+                                date: `Due in ${daysLeft} days`,
+                                color: "#F59E0B"
+                            });
+                        }
+
+                        // Cliff
+                        const cliffDate = new Date(createdAt);
+                        cliffDate.setFullYear(cliffDate.getFullYear() + 1);
+                        if (cliffDate > now) {
+                            const monthsLeft = Math.ceil((cliffDate - now) / (1000 * 60 * 60 * 24 * 30));
+                            futureMilestones.push({
+                                id: `cliff-${agg.id}`,
+                                icon: Crown,
+                                label: "Equity Cliff Vesting",
+                                date: `Vests in ~${monthsLeft} months`,
+                                color: "#10B981"
+                            });
+                        }
+                    });
+                }
+
+                // Parallelize Dependent Fetches (Health & Activity) if we have teamIds
                 const teamIds = teamData.map(t => t.team_id);
+                let recentActivity = [];
 
                 if (teamIds.length > 0) {
-                    // Contributions this week
                     const oneWeekAgo = new Date();
                     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-                    const [contribsWeek, contribsTotal, docsData] = await Promise.all([
+                    const [activityLogs, contribsWeek, contribsTotal, docsData] = await Promise.all([
+                        supabase
+                            .from('activity_logs')
+                            .select('*')
+                            .in('team_id', teamIds)
+                            .order('created_at', { ascending: false })
+                            .limit(5),
                         supabase
                             .from('contributions')
                             .select('id', { count: 'exact', head: true })
@@ -127,6 +176,8 @@ export default function Dashboard() {
                             .in('team_id', teamIds)
                     ]);
 
+                    recentActivity = activityLogs.data || [];
+
                     const totalDocs = docsData.data?.length || 0;
                     const signedDocs = docsData.data?.filter(d => d.status === 'signed').length || 0;
 
@@ -136,62 +187,6 @@ export default function Dashboard() {
                         legalDocsSigned: signedDocs,
                         totalLegalDocs: totalDocs
                     });
-                }
-
-                // 4. Fetch Agreements (for Upcoming Milestones)
-                const { data: agreements } = await supabase
-                    .from('agreements')
-                    .select('*')
-                    .eq('founder_a_id', user.id); // Simplify query for now to owner
-
-                const futureMilestones = [];
-                if (agreements && agreements.length > 0) {
-                    agreements.forEach(agg => {
-                        const createdAt = new Date(agg.created_at);
-                        const now = new Date();
-
-                        // 83(b) Deadline (30 days)
-                        const deadline83b = new Date(createdAt);
-                        deadline83b.setDate(deadline83b.getDate() + 30);
-
-                        if (deadline83b > now) {
-                            const daysLeft = Math.ceil((deadline83b - now) / (1000 * 60 * 60 * 24));
-                            futureMilestones.push({
-                                id: `83b-${agg.id}`,
-                                icon: AlertCircle,
-                                label: "83(b) Election Deadline",
-                                date: `Due in ${daysLeft} days`,
-                                color: "#F59E0B"
-                            });
-                        }
-
-                        // 1-Year Cliff
-                        const cliffDate = new Date(createdAt);
-                        cliffDate.setFullYear(cliffDate.getFullYear() + 1);
-
-                        if (cliffDate > now) {
-                            const monthsLeft = Math.ceil((cliffDate - now) / (1000 * 60 * 60 * 24 * 30));
-                            futureMilestones.push({
-                                id: `cliff-${agg.id}`,
-                                icon: Crown, // Using Crown or similar for Cliff
-                                label: "Equity Cliff Vesting",
-                                date: `Vests in ~${monthsLeft} months`,
-                                color: "#10B981"
-                            });
-                        }
-                    });
-                }
-
-                // 5. Fetch Recent Activity (Past)
-                let recentActivity = [];
-                if (teamIds.length > 0) {
-                    const { data: logs } = await supabase
-                        .from('activity_logs')
-                        .select('*')
-                        .in('team_id', teamIds)
-                        .order('created_at', { ascending: false })
-                        .limit(5);
-                    recentActivity = logs || [];
                 }
 
                 // Process Activity Logs
@@ -221,11 +216,10 @@ export default function Dashboard() {
                     icon: getActivityIcon(a.action_type),
                     label: a.description,
                     date: getRelativeTime(a.created_at),
-                    color: 'var(--accent-primary)' // Standard color for past logs
+                    color: 'var(--accent-primary)'
                 }));
 
                 const finalFeed = [...futureMilestones, ...pastMilestones];
-
                 if (finalFeed.length > 0) {
                     setMilestones(finalFeed);
                 } else {
