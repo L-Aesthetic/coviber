@@ -23,7 +23,7 @@ export default function SidebarLayout({ children }) {
             try {
                 const { data } = await supabase
                     .from('profiles')
-                    .from('profiles')
+
                     .select('subscription_tier, notification_prefs, avatar_url, name, email')
                     .eq('id', user.id)
                     .single();
@@ -237,7 +237,7 @@ export default function SidebarLayout({ children }) {
 
                         <div style={{
                             width: '32px', height: '32px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #6366F1, #EC4899)',
+                            background: profileData?.avatar_url ? 'none' : 'linear-gradient(135deg, #6366F1, #EC4899)',
                             flexShrink: 0, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)'
                         }}>
                             {profileData?.avatar_url ? (
