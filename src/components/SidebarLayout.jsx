@@ -119,7 +119,7 @@ export default function SidebarLayout({ children }) {
             }}>
                 {/* Logo */}
                 <div style={{ marginBottom: '40px', paddingLeft: '8px' }}>
-                    <img src="/logo-full.png" alt="CoVibr" style={{ height: '110px', display: 'block' }} />
+                    <img src="/logo-full.png" alt="CoVibr" className="app-logo" style={{ height: '110px', display: 'block' }} />
                 </div>
 
                 {/* Navigation */}

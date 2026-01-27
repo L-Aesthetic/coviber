@@ -637,3 +637,8 @@ h6 {
     padding: 40px 20px;
   }
 }
+
+/* Logo Theme Adaptation */
+[data-theme="light"] .app-logo {
+  filter: invert(1) hue-rotate(180deg);
+}
