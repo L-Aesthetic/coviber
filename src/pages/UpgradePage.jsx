@@ -64,7 +64,7 @@ export default function UpgradePage() {
             billingCycle: '/mo',
             features: ['Unlimited Matches', 'Full Chemistry Tests', 'Deep Vibe Analytics', 'Priority Support']
         },
-        expert: { name: 'Expert Review', price: 499, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] }
+        certified: { name: 'Certified Pair', price: 399, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] }
     };
 
     const [errorMsg, setErrorMsg] = useState(null);
@@ -239,11 +239,11 @@ export default function UpgradePage() {
                             Or
                         </div>
                         <PlanCard
-                            active={selectedPlan === 'expert'}
-                            onClick={() => setSelectedPlan('expert')}
-                            title="Expert Review"
-                            price="$499"
-                            description="Have a real human expert review your partnership agreement."
+                            active={selectedPlan === 'certified'}
+                            onClick={() => setSelectedPlan('certified')}
+                            title="Certified Pair"
+                            price="$399"
+                            description="48-Hour Chemistry Test, Official Report & Investor Certificate."
                             muted
                         />
                     </div>
