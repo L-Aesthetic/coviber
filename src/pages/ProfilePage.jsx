@@ -163,8 +163,6 @@ export default function ProfilePage() {
                 avail_status: profile.availability,
                 updated_at: new Date().toISOString(),
                 media_gallery: profile.media_gallery,
-                avail_status: profile.availability,
-                updated_at: new Date().toISOString(),
                 social_links: profile.social_links,
                 subscription_tier: profile.subscription_tier || 'founder' // Default to Founder for early users
             };
