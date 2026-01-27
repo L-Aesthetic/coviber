@@ -135,7 +135,7 @@ export default function Billing() {
                                 <div style={{ fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>
                                     Member Since
                                 </div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>2024</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>2026</div>
                             </div>
                         </div>
 
