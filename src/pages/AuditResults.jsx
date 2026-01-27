@@ -1,14 +1,41 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ALIGNMENT_QUESTIONS } from '../lib/alignment_questions';
-import { CheckCircle, AlertTriangle, MessageSquare, ArrowRight } from 'lucide-react';
+import { CheckCircle, AlertTriangle, MessageSquare, ArrowRight, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthProvider';
+import { supabase } from '../lib/supabaseClient';
 
 export default function AuditResults() {
     const { state } = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [isPremium, setIsPremium] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     if (!state) return <div style={{ padding: 40 }}>No data found. Please take the audit first.</div>;
 
     const { founderA, founderB, answersA, answersB, founderBData } = state;
+
+    // Check Premium Status
+    useEffect(() => {
+        const checkPremium = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+            const { data } = await supabase
+                .from('profiles')
+                .select('subscription_tier')
+                .eq('id', user.id)
+                .single();
+
+            if (data && ['founder', 'pro', 'certified', 'accelerator'].includes(data.subscription_tier)) {
+                setIsPremium(true);
+            }
+            setLoading(false);
+        };
+        checkPremium();
+    }, [user]);
 
     // Calculate Alignment Score
     let matches = 0;
@@ -68,60 +95,82 @@ export default function AuditResults() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                     <AlertTriangle color="#EF4444" size={24} />
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Critical Divergences</h2>
+                    {!isPremium && <span className="tag" style={{ background: '#EF4444', color: 'white', marginLeft: 'auto' }}>LOCKED</span>}
                 </div>
 
-                <div style={{ display: 'grid', gap: '20px' }}>
-                    {ALIGNMENT_QUESTIONS.map(q => {
-                        const ansA = q.options.find(opt => opt.id === answersA[q.id]);
-                        const ansB = q.options.find(opt => opt.id === answersB[q.id]);
-                        const isMatch = answersA[q.id] === answersB[q.id];
-
-                        if (isMatch) return null; // Only show mismatches here
-
-                        return (
-                            <div key={q.id} className="saas-panel" style={{ padding: '24px', borderLeft: '4px solid #EF4444' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'flex-start', gap: '16px' }}>
-                                    <div>
-                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '4px', lineHeight: 1.4 }}>{q.question}</h3>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{q.module}</div>
-                                    </div>
-                                    {/* <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{q.module}</span> */}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', position: 'relative', marginBottom: '24px' }}>
-                                    {/* Divider Line */}
-                                    <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.1)', transform: 'translateX(-50%)' }}></div>
-
-                                    <div style={{ paddingRight: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>A</div>
-                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderA} said:</div>
-                                        </div>
-                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansA?.label}</div>
-                                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansA?.desc}"</div>
-                                    </div>
-
-                                    <div style={{ paddingLeft: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>B</div>
-                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderB} said:</div>
-                                        </div>
-                                        <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansB?.label}</div>
-                                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansB?.desc}"</div>
-                                    </div>
-                                </div>
-                                <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                                    <MessageSquare size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                                    <div>
-                                        <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px', fontSize: '0.95rem' }}>Discussion Point</strong>
-                                        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                            {q.subtext}
-                                        </p>
-                                    </div>
-                                </div>
+                {!isPremium ? (
+                    <div className="saas-panel" style={{ padding: '60px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ filter: 'blur(8px)', opacity: 0.3, pointerEvents: 'none' }}>
+                            <div style={{ display: 'flex', marginBottom: '20px', gap: '20px' }}>
+                                <div style={{ flex: 1, height: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}></div>
+                                <div style={{ flex: 1, height: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}></div>
                             </div>
-                        );
-                    })}
-                </div>
+                            <div style={{ height: '40px', width: '60%', margin: '0 auto', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}></div>
+                        </div>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}>
+                            <Lock size={48} color="white" style={{ marginBottom: '24px' }} />
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px' }}>Unlock Deep Dive Analysis</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '400px' }}>
+                                Upgrade to see exactly where you disagree and how to resolve it before it kills your startup.
+                            </p>
+                            <Link to="/upgrade?tier=founder" className="btn-primary">
+                                Unlock Full Report ($49)
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        {ALIGNMENT_QUESTIONS.map(q => {
+                            const ansA = q.options.find(opt => opt.id === answersA[q.id]);
+                            const ansB = q.options.find(opt => opt.id === answersB[q.id]);
+                            const isMatch = answersA[q.id] === answersB[q.id];
+
+                            if (isMatch) return null; // Only show mismatches here
+
+                            return (
+                                <div key={q.id} className="saas-panel" style={{ padding: '24px', borderLeft: '4px solid #EF4444' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'flex-start', gap: '16px' }}>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '4px', lineHeight: 1.4 }}>{q.question}</h3>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{q.module}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', position: 'relative', marginBottom: '24px' }}>
+                                        {/* Divider Line */}
+                                        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: 'rgba(255,255,255,0.1)', transform: 'translateX(-50%)' }}></div>
+
+                                        <div style={{ paddingRight: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>A</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderA} said:</div>
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansA?.label}</div>
+                                            <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansA?.desc}"</div>
+                                        </div>
+
+                                        <div style={{ paddingLeft: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700 }}>B</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>{founderB} said:</div>
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#EF4444', marginBottom: '8px', fontSize: '1.1rem', lineHeight: 1.3 }}>{ansB?.label}</div>
+                                            <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>"{ansB?.desc}"</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                                        <MessageSquare size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                        <div>
+                                            <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: '4px', fontSize: '0.95rem' }}>Discussion Point</strong>
+                                            <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                                {q.subtext}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Alignments Section */}

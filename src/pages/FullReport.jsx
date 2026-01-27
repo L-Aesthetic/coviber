@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 const FullReport = () => {
     const [loading, setLoading] = useState(true);
     const [archetype, setArchetype] = useState(null);
-    const [isPremium, setIsPremium] = useState(false); // Mock for now
+    const [isPremium, setIsPremium] = useState(false);
 
     const navigate = useNavigate(); // Added hook
     const { user } = useAuth();
@@ -32,8 +32,9 @@ const FullReport = () => {
                         .single();
 
                     if (profileData) {
-                        // Redirect if paid
-                        if (['founder', 'pro', 'certified', 'accelerator'].includes(profileData.subscription_tier)) {
+                        const isPaid = ['founder', 'pro', 'certified', 'accelerator'].includes(profileData.subscription_tier);
+                        if (isPaid) {
+                            setIsPremium(true);
                             navigate('/vibe-quiz'); // User wants to see the full Vibe Quiz result view
                             return;
                         }

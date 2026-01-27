@@ -17,31 +17,54 @@ export default function UpgradePage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
-    const [selectedPlan, setSelectedPlan] = useState('pro');
+    const [selectedPlan, setSelectedPlan] = useState('founder');
+    const [founderCount, setFounderCount] = useState(0);
+    const isSoldOut = founderCount >= 100;
+
     const [isSuccess, setIsSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
     // Removed mock cardData
     const billingCycle = 'yearly';
 
     useEffect(() => {
-        const checkSuccess = async () => {
+        const init = async () => {
+            // Check for success param
             if (searchParams.get('success') === 'true' && user) {
                 const tier = searchParams.get('tier');
                 if (tier) {
-                    // Verify/Update profile (Ideally verify via API, but client-side for MVP)
                     await supabase.from('profiles').update({ subscription_tier: tier }).eq('id', user.id);
                     setIsSuccess(true);
                 }
             }
+
+            // Fetch founder count
+            const { count, error } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('subscription_tier', 'founder');
+
+            if (!error && count !== null) {
+                setFounderCount(count);
+                if (count >= 100) setSelectedPlan('pro');
+            }
         };
-        checkSuccess();
+        init();
     }, [searchParams, user]);
 
     const plans = {
-        founder: { name: 'Founder (Limited)', price: 0, originalPrice: 49, features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats', 'Early Access Badge'] },
-        pro: { name: 'Pro Member', price: 49, billingCycle: '/mo', features: ['Unlimited Matches', 'Full Chemistry Tests', 'Deep Vibe Analytics', 'Priority Support'] },
-        certified: { name: 'Certified Pair', price: 399, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] },
-        accelerator: { name: 'Accelerator', price: 'Custom', features: ['Cohort Dashboard', 'Batch Analytics', 'Risk Heatmaps', 'Dedicated Support'] }
+        founder: {
+            name: isSoldOut ? 'Founding Member (Sold Out)' : 'Founding Member',
+            price: 49,
+            isOneTime: true,
+            features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats', 'Early Access Badge']
+        },
+        pro: {
+            name: 'Pro Member',
+            price: 49,
+            billingCycle: '/mo',
+            features: ['Unlimited Matches', 'Full Chemistry Tests', 'Deep Vibe Analytics', 'Priority Support']
+        },
+        expert: { name: 'Expert Review', price: 499, isOneTime: true, features: ['48-Hour Chemistry Test', 'Official Chemistry Report', 'IP Assignment Docs', 'Investor-Ready Certificate'] }
     };
 
     const [errorMsg, setErrorMsg] = useState(null);
@@ -128,22 +151,7 @@ export default function UpgradePage() {
     // but the button text logic requested was "current plan but its the free plan... should say switch plan"
     // We'll trust the button click handler to do the right thing.
 
-    const [founderCount, setFounderCount] = useState(0);
-    const isSoldOut = founderCount >= 100;
 
-    useEffect(() => {
-        const fetchCount = async () => {
-            const { count, error } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('subscription_tier', 'founder');
-
-            if (!error && count !== null) {
-                setFounderCount(count);
-            }
-        };
-        fetchCount();
-    }, []);
 
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -195,18 +203,38 @@ export default function UpgradePage() {
 
                     {/* Plan Cards */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Founding Member Card (Lifetime Deal) */}
                         <PlanCard
-                            active={selectedPlan === 'founder'}
+                            active={!isSoldOut && selectedPlan === 'founder'}
                             onClick={() => !isSoldOut && setSelectedPlan('founder')}
                             title="Founding Member (Gold Card)"
                             price="$49"
                             billingCycle="one-time"
                             originalPrice="$49/mo"
-                            description={isSoldOut ? "Sold Out. Waiting list only." : "Lifetime Access. First 100 Users Only."}
+                            description={isSoldOut ? "Sold Out. Improve your odds with a Pro Plan." : "Lifetime Access. 50% Off. First 100 Users Only."}
                             limited
                             soldOut={isSoldOut}
-                            isGold
+                            isGold={!isSoldOut}
                         />
+
+                        {/* Pro Member Card (Fallback when sold out) */}
+                        {isSoldOut && (
+                            <div style={{ marginTop: '12px' }}>
+                                <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                    Standard Membership
+                                </div>
+                                <PlanCard
+                                    active={selectedPlan === 'pro'}
+                                    onClick={() => setSelectedPlan('pro')}
+                                    title="Pro Member"
+                                    price="$49"
+                                    billingCycle="/mo"
+                                    description="Standard monthly subscription. Cancel anytime."
+                                    popular
+                                />
+                            </div>
+                        )}
+
                         <div style={{ textAlign: 'center', margin: '8px 0', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
                             Or
                         </div>
