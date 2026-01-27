@@ -12,6 +12,21 @@ export default function Billing() {
     const [loading, setLoading] = useState(true);
     const [memberNumber, setMemberNumber] = useState(1);
 
+    // --- STRIPE CONFIGURATION ---
+    // REPLACE THESE WITH YOUR LIVE STRIPE PRICE IDs
+    const STRIPE_PRICE_IDS = {
+        pro_monthly: 'price_1234567890', // $49/mo
+        pro_yearly: 'price_0987654321',  // $399/yr
+        founder_lifetime: 'price_1122334455', // $399 one-time
+        special_offer: 'price_5544332211' // $49 one-time (if utilizing)
+    };
+
+    const handleCheckout = (priceId) => {
+        // Redirect to Stripe Checkout or open Stripe Elements
+        // Example: window.location.href = `https://buy.stripe.com/${priceId}?prefilled_email=${user.email}`;
+        alert(`Integration Ready: Replace this alert with Stripe Checkout redirect for Price ID: ${priceId}`);
+    };
+
     useEffect(() => {
         if (!user) {
             setTier('free');
@@ -246,11 +261,22 @@ export default function Billing() {
 
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                         {!isPro && (
-                            <Link to="/upgrade" style={{ width: '100%', maxWidth: '400px', textDecoration: 'none' }}>
-                                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: '1.1rem', padding: '16px' }}>
+                            <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button
+                                    className="btn-primary"
+                                    style={{ width: '100%', justifyContent: 'center', fontSize: '1.1rem', padding: '16px' }}
+                                    onClick={() => handleCheckout(STRIPE_PRICE_IDS.pro_monthly)}
+                                >
                                     Unlock Pro Membership - $49/mo
                                 </button>
-                            </Link>
+                                <button
+                                    className="btn-ghost"
+                                    style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}
+                                    onClick={() => handleCheckout(STRIPE_PRICE_IDS.special_offer)}
+                                >
+                                    Limited Time User Offer ($49 One-Time)
+                                </button>
+                            </div>
                         )}
                         {isPro && (
                             <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={handleCancel}>

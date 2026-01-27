@@ -165,7 +165,7 @@ export default function ProfilePage() {
                 updated_at: new Date().toISOString(),
                 media_gallery: profile.media_gallery,
                 social_links: profile.social_links,
-                subscription_tier: profile.subscription_tier || 'founder' // Default to Founder for early users
+                subscription_tier: profile.subscription_tier || 'free' // Default to Free for new users
             };
 
             const { error } = await supabase
