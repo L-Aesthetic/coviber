@@ -39,6 +39,7 @@ export default function SidebarLayout({ children }) {
         if (user) {
             fetchProfileData();
             window.addEventListener('tier-change', fetchProfileData);
+            window.addEventListener('profile-updated', fetchProfileData);
 
             // Realtime Subscription
             const channel = supabase
@@ -62,6 +63,7 @@ export default function SidebarLayout({ children }) {
 
             return () => {
                 window.removeEventListener('tier-change', fetchProfileData);
+                window.removeEventListener('profile-updated', fetchProfileData);
                 supabase.removeChannel(channel);
             };
         }

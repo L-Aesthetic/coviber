@@ -175,6 +175,9 @@ export default function ProfilePage() {
             if (error) throw error;
 
             setIsEditing(false);
+            // Force sidebar update
+            window.dispatchEvent(new Event('profile-updated'));
+
             setStatus({ type: 'success', message: 'Profile saved successfully!' });
             setTimeout(() => setStatus({ type: '', message: '' }), 3000);
         } catch (error) {
@@ -474,6 +477,9 @@ export default function ProfilePage() {
 
             if (data) {
                 setProfile({ ...profile, avatar_url: data.publicUrl });
+                // Force sidebar update
+                window.dispatchEvent(new Event('profile-updated'));
+
                 setStatus({ type: 'success', message: 'Avatar updated!' });
                 setTimeout(() => setStatus({ type: '', message: '' }), 3000);
             }
