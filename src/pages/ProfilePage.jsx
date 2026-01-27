@@ -814,7 +814,7 @@ export default function ProfilePage() {
                         <div style={{ height: '300px', width: '100%', minHeight: '300px', margin: '20px 0' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={profile.vibe_data || []}>
-                                    <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                    <PolarGrid stroke="var(--border-subtle)" />
                                     <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
                                     <Radar
                                         name="Alex"
