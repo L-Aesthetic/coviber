@@ -308,6 +308,19 @@ h6 {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Light Mode Overrides for Ghost Button Visibility */
+[data-theme="light"] .btn-ghost {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
+}
+
 /* Hover glass effect */
 .hover-glass {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);

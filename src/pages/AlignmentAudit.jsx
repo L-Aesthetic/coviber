@@ -307,7 +307,7 @@ export default function AlignmentAudit() {
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     padding: '12px 16px',
                                     borderRadius: '12px',
-                                    color: 'white',
+                                    color: 'var(--text-primary)',
                                     fontSize: '1rem',
                                     outline: 'none'
                                 }}
@@ -354,7 +354,7 @@ export default function AlignmentAudit() {
                                                     padding: '12px 16px',
                                                     paddingRight: '40px',
                                                     borderRadius: '12px',
-                                                    color: 'white',
+                                                    color: 'var(--text-primary)',
                                                     fontSize: '1rem',
                                                     outline: 'none'
                                                 }}
@@ -410,7 +410,7 @@ export default function AlignmentAudit() {
                                             border: '1px solid rgba(255,255,255,0.1)',
                                             padding: '12px 16px',
                                             borderRadius: '12px',
-                                            color: 'white',
+                                            color: 'var(--text-primary)',
                                             fontSize: '1rem',
                                             outline: 'none'
                                         }}

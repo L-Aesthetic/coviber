@@ -64,6 +64,16 @@ export default function EquityCalculator() {
         { name: 'Co-Founder', value: 35, color: '#10B981' }
     ]);
 
+    const [split, setSplit] = useState([
+        { name: 'You', value: 65, color: '#6366F1' },
+        { name: 'Co-Founder', value: 35, color: '#10B981' }
+    ]);
+
+    // Asset Modal State
+    const [showAssetModal, setShowAssetModal] = useState(false);
+    const [assetModalTarget, setAssetModalTarget] = useState(null); // 'founderA' or 'founderB'
+    const [newAssetName, setNewAssetName] = useState('');
+
     const [showSummaryModal, setShowSummaryModal] = useState(false);
 
     useEffect(() => {
@@ -380,12 +390,22 @@ export default function EquityCalculator() {
                             setFounder={setFounderA}
                             color="#6366F1"
                             title="Founder 1 (You)"
+                            onAddAsset={() => {
+                                setAssetModalTarget('founderA');
+                                setNewAssetName('');
+                                setShowAssetModal(true);
+                            }}
                         />
                         <ContributionCard
                             founder={founderB}
                             setFounder={setFounderB}
                             color="#10B981"
                             title="Founder 2 (Partner)"
+                            onAddAsset={() => {
+                                setAssetModalTarget('founderB');
+                                setNewAssetName('');
+                                setShowAssetModal(true);
+                            }}
                         >
                             <div className="input-field" style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
                                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>Partner Email (for Invite)</label>
@@ -692,11 +712,86 @@ export default function EquityCalculator() {
                 )}
             </AnimatePresence>
 
+        </AnimatePresence>
+
+            {/* Add Asset Modal */ }
+    <AnimatePresence>
+        {showAssetModal && (
+            <div
+                style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                }}
+                onClick={() => setShowAssetModal(false)}
+            >
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="saas-panel"
+                    style={{ width: '400px', padding: '32px', border: '1px solid var(--border-subtle)' }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '24px' }}>Add Contribution</h3>
+
+                    <div className="input-field" style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Asset Name</label>
+                        <input
+                            className="glass-input"
+                            placeholder="e.g. Existing Patents, 50k Userbase"
+                            value={newAssetName}
+                            onChange={e => setNewAssetName(e.target.value)}
+                            autoFocus
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && newAssetName) {
+                                    if (assetModalTarget === 'founderA') {
+                                        setFounderA({ ...founderA, assets: [...founderA.assets, newAssetName] });
+                                    } else {
+                                        setFounderB({ ...founderB, assets: [...founderB.assets, newAssetName] });
+                                    }
+                                    setShowAssetModal(false);
+                                    setNewAssetName('');
+                                }
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button
+                            className="btn-primary"
+                            style={{ flex: 1, justifyContent: 'center' }}
+                            onClick={() => {
+                                if (newAssetName) {
+                                    if (assetModalTarget === 'founderA') {
+                                        setFounderA({ ...founderA, assets: [...founderA.assets, newAssetName] });
+                                    } else {
+                                        setFounderB({ ...founderB, assets: [...founderB.assets, newAssetName] });
+                                    }
+                                    setShowAssetModal(false);
+                                    setNewAssetName('');
+                                }
+                            }}
+                        >
+                            Add Asset
+                        </button>
+                        <button
+                            className="btn-ghost"
+                            style={{ flex: 1, justifyContent: 'center' }}
+                            onClick={() => setShowAssetModal(false)}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
+
         </div >
     );
 }
 
-function ContributionCard({ founder, setFounder, color, title, children }) {
+function ContributionCard({ founder, setFounder, color, title, onAddAsset, children }) {
     return (
         <div style={{
             padding: '20px',
@@ -732,7 +827,7 @@ function ContributionCard({ founder, setFounder, color, title, children }) {
                             style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: 'white',
+                                color: 'var(--text-primary)',
                                 width: '100%',
                                 fontSize: '0.9rem',
                                 outline: 'none',
@@ -774,10 +869,7 @@ function ContributionCard({ founder, setFounder, color, title, children }) {
                     ))}
                     <button
                         className="tag"
-                        onClick={() => {
-                            const newAsset = prompt("Enter asset name (e.g., 'Patents', 'Existing Userbase'):");
-                            if (newAsset) setFounder({ ...founder, assets: [...founder.assets, newAsset] });
-                        }}
+                        onClick={onAddAsset}
                         style={{ fontSize: '0.7rem', padding: '4px 8px', border: '1px dashed var(--border-subtle)', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', height: '26px' }}
                     >
                         + Add Asset
