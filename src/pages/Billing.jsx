@@ -15,16 +15,18 @@ export default function Billing() {
     // --- STRIPE CONFIGURATION ---
     // REPLACE THESE WITH YOUR LIVE STRIPE PRICE IDs
     const STRIPE_PRICE_IDS = {
-        pro_monthly: 'price_1234567890', // $49/mo
-        pro_yearly: 'price_0987654321',  // $399/yr
-        founder_lifetime: 'price_1122334455', // $399 one-time
-        special_offer: 'price_5544332211' // $49 one-time (if utilizing)
+        pro_monthly: 'price_1Su6UC3ui0ICIaHwtIEglpwP', // Pro Membership
+        pro_yearly: 'price_1Su6fI3ui0ICIaHw8q9Tfnkj',  // Certified Accelerator
+        founder_lifetime: 'price_1Su6VU3ui0ICIaHwQBZVpGsI', // Founders Club
+        special_offer: 'price_1Su6VU3ui0ICIaHwQBZVpGsI' // Using Founders Club price for now
     };
 
     const handleCheckout = (priceId) => {
-        // Redirect to Stripe Checkout or open Stripe Elements
-        // Example: window.location.href = `https://buy.stripe.com/${priceId}?prefilled_email=${user.email}`;
-        alert(`Integration Ready: Replace this alert with Stripe Checkout redirect for Price ID: ${priceId}`);
+        // Since we are launch-ready, we use Stripe's direct Checkout Sessions or Payment Links.
+        // For now, we'll use a standard Stripe redirect pattern.
+        // You can cũng replace this with a Supabase Edge Function call later.
+        const stripeUrl = `https://buy.stripe.com/${priceId}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
+        window.open(stripeUrl, '_blank');
     };
 
     useEffect(() => {
