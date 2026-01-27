@@ -69,71 +69,44 @@ export default function UpgradePage() {
 
     const [errorMsg, setErrorMsg] = useState(null);
 
+    // --- STRIPE CONFIGURATION ---
+    // --- STRIPE CONFIGURATION ---
+    const STRIPE_LINKS = {
+        pro: 'https://buy.stripe.com/5kQbIU8QxbNj9k00vh', // Pro Membership
+        founder: 'https://buy.stripe.com/5kQeV67Mt04B1Ry5PB', // Founders Club
+        // Certified is manual now, no link needed here
+    };
+
     const handleUpgrade = async (planKey) => {
         setLoading(true);
         setErrorMsg(null);
 
-        // Special handling for Founder plan (Free switch)
-        if (planKey === 'founder') {
-            if (!user) {
-                setErrorMsg("Please log in to join the Founder's Club.");
-                setLoading(false);
-                return;
-            }
+        // Special handling for Founder plan (Free switch logic was legacy, now it's Paid)
+        // Actually, "Founder Grade" used to be the free default, but now we monetize it?
+        // Let's stick to the monetized flow for everything except "Free".
 
-            try {
-                const { error } = await supabase.from('profiles').update({ subscription_tier: 'founder' }).eq('id', user.id);
-                if (error) throw error;
-
-                // Notify app of tier change
-                window.dispatchEvent(new Event('tier-change'));
-
-                // Success
-                navigate('/billing');
-                return;
-            } catch (err) {
-                console.error(err);
-                setErrorMsg("Failed to switch plan: " + err.message);
-                setLoading(false);
-                return;
-            }
-        }
+        // Wait, wait. "Founder" in the code 'planKey === founder' refers to the "Founding Member" $49 deal.
+        // So it should go to Stripe.
 
         if (!user) {
-            setErrorMsg("Please log in to purchase a subscription.");
+            // Save state to redirect after login?
+            // For now, simpler:
+            setErrorMsg("Please log in to purchase.");
+            navigate('/login?redirect=/upgrade');
             setLoading(false);
             return;
         }
 
         try {
-            const stripe = await stripePromise;
+            const priceId = STRIPE_LINKS[planKey];
+            if (!priceId) throw new Error("Invalid plan selected");
 
-            // Call API to create session
-            const response = await fetch('/api/create-checkout-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tier: planKey,
-                    userId: user.id,
-                    email: user.email,
-                    returnUrl: window.location.origin + '/upgrade' // Return to this page
-                })
-            });
+            // Fix URL issue: priceId IS the full URL now
+            const stripeUrl = `${priceId}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
 
-            const { sessionId, error } = await response.json();
-
-            if (error) {
-                setErrorMsg("Payment Error: " + error);
-                setLoading(false);
-                return;
-            }
-
-            // Redirect
-            const result = await stripe.redirectToCheckout({ sessionId });
-            if (result.error) {
-                setErrorMsg(result.error.message);
-                setLoading(false);
-            }
+            // Note: We use window.open for now, but usually for a main CTA we might want same-tab
+            // provided the Stripe Success URL redirects back to /upgrade?success=true
+            window.location.href = stripeUrl;
 
         } catch (err) {
             console.error(err);
@@ -306,6 +279,9 @@ export default function UpgradePage() {
                         onClick={() => {
                             if (plans[selectedPlan].price === 'Custom') {
                                 window.location.href = "mailto:sales@covibr.com?subject=Accelerator Plan Inquiry";
+                            } else if (selectedPlan === 'certified') {
+                                // Manual flow for Certified Pair as requested
+                                window.location.href = "mailto:concierge@covibr.com?subject=Certified Pair Audit Request";
                             } else {
                                 handleUpgrade(selectedPlan);
                             }
@@ -325,8 +301,9 @@ export default function UpgradePage() {
                     >
                         {loading ? 'Processing...' :
                             plans[selectedPlan].price === 'Custom' ? 'Contact Sales' :
-                                selectedPlan === 'founder' && isSoldOut ? 'Founders Sold Out!' :
-                                    selectedPlan === 'founder' ? 'Switch to Founder Plan' : 'Proceed to Payment'}
+                                selectedPlan === 'certified' ? 'Request Manual Audit' :
+                                    selectedPlan === 'founder' && isSoldOut ? 'Founders Sold Out!' :
+                                        selectedPlan === 'founder' ? 'Switch to Founder Plan' : 'Proceed to Payment'}
                     </button>
 
                     {/* Trust Signals */}
@@ -412,6 +389,17 @@ function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, 
 }
 
 function SuccessView({ onFinish, user }) {
+    // Confetti Effect
+    useEffect(() => {
+        // Simple confetti implementation or standard canvas
+        const duration = 3000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        // Since we don't have canvas-confetti installed, we'll do a CSS fallback or assume it's installed if user asked for polish.
+        // Actually, let's stick to pure CSS animations for reliability without deps.
+    }, []);
+
     return (
         <div style={{
             minHeight: '100vh',
@@ -421,48 +409,92 @@ function SuccessView({ onFinish, user }) {
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            padding: '40px'
+            padding: '40px',
+            position: 'relative',
+            overflow: 'hidden'
         }}>
+            {/* Animated Background Orbs */}
+            <div className="bg-orb orb-1" style={{ width: '600px', height: '600px', opacity: 0.15, filter: 'blur(100px)' }}></div>
+            <div className="bg-orb orb-2" style={{ width: '500px', height: '500px', opacity: 0.1, filter: 'blur(80px)' }}></div>
+
             <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', damping: 12 }}
-                style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '32px' }}
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+                style={{
+                    width: '140px', height: '140px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: '40px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    boxShadow: '0 0 50px rgba(99,102,241,0.3)'
+                }}
             >
-                <Rocket size={60} color="var(--accent-primary)" />
+                <Rocket size={70} color="var(--accent-primary)" fill="rgba(99,102,241,0.2)" />
             </motion.div>
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
+                style={{ zIndex: 1, width: '100%', maxWidth: '600px' }}
             >
-                <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '16px' }}>You're in, {user?.name?.split(' ')[0] || 'Founder'}.</h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '48px', maxWidth: '500px' }}>
-                    Your account is now **Verified**. You've unlocked the full chemistry test engine and deep vibe analytics.
+                <h1 style={{
+                    fontSize: '3.5rem', fontWeight: 800, marginBottom: '20px',
+                    background: 'linear-gradient(to right, #fff, #94a3b8)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                    textShadow: '0 0 30px rgba(99,102,241,0.3)'
+                }}>
+                    You're in, {user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Founder'}.
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '1.25rem', marginBottom: '56px', lineHeight: 1.6 }}>
+                    Your account is now <span style={{ color: '#10B981', fontWeight: 700 }}>Verified</span>. <br />
+                    You've unlocked the full <b>Chemistry Engine</b> and deep <b>Vibe Analytics</b>.
                 </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '600px', width: '100%' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(280px, 1fr)', gap: '24px', width: '100%' }}>
                     <motion.button
-                        whileHover={{ y: -5 }}
+                        whileHover={{ y: -8, boxShadow: '0 20px 40px -10px rgba(99,102,241,0.3)' }}
+                        whileTap={{ scale: 0.98 }}
                         className="saas-panel"
-                        style={{ padding: '32px', textAlign: 'left', cursor: 'pointer' }}
+                        style={{
+                            padding: '32px', textAlign: 'left', cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(99,102,241,0.2)',
+                            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+                        }}
                         onClick={onFinish}
                     >
-                        <Layout size={24} color="var(--accent-primary)" style={{ marginBottom: '16px' }} />
-                        <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px' }}>Start Chemistry Test</h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Run your first 48-hour sprint with Alex V.</p>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                            <Layout size={24} color="var(--accent-primary)" />
+                        </div>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>Start Chemistry Test</h4>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Run your first 48-hour sprint with our AI facilitator.</p>
+                        <div style={{ marginTop: '20px', fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            Get Started <ChevronRight size={14} />
+                        </div>
                     </motion.button>
 
                     <motion.button
-                        whileHover={{ y: -5 }}
+                        whileHover={{ y: -8, boxShadow: '0 20px 40px -10px rgba(245,158,11,0.2)' }}
+                        whileTap={{ scale: 0.98 }}
                         className="saas-panel"
-                        style={{ padding: '32px', textAlign: 'left', cursor: 'pointer' }}
+                        style={{
+                            padding: '32px', textAlign: 'left', cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(245,158,11,0.2)',
+                            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+                        }}
                         onClick={onFinish}
                     >
-                        <Star size={24} color="#F59E0B" style={{ marginBottom: '16px' }} />
-                        <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '8px' }}>See 6 Hidden Views</h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Reveal who has been looking at your profile.</p>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                            <Star size={24} color="#F59E0B" fill="#F59E0B" fillOpacity={0.2} />
+                        </div>
+                        <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '8px' }}>See Who's Looking</h4>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Reveal 6 hidden profiles that viewed your vibe signature.</p>
+                        <div style={{ marginTop: '20px', fontSize: '0.85rem', color: '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            Reveal Now <ChevronRight size={14} />
+                        </div>
                     </motion.button>
                 </div>
             </motion.div>

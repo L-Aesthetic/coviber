@@ -14,19 +14,16 @@ export default function Billing() {
 
     // --- STRIPE CONFIGURATION ---
     // REPLACE THESE WITH YOUR LIVE STRIPE PRICE IDs
-    const STRIPE_PRICE_IDS = {
-        pro_monthly: 'price_1Su6UC3ui0ICIaHwtIEglpwP', // Pro Membership
-        pro_yearly: 'price_1Su6fI3ui0ICIaHw8q9Tfnkj',  // Certified Accelerator
-        founder_lifetime: 'price_1Su6VU3ui0ICIaHwQBZVpGsI', // Founders Club
-        special_offer: 'price_1Su6VU3ui0ICIaHwQBZVpGsI' // Using Founders Club price for now
+    // --- STRIPE CONFIGURATION ---
+    const STRIPE_LINKS = {
+        pro_monthly: 'https://buy.stripe.com/5kQbIU8QxbNj9k00vh', // Pro Membership
+        founder_lifetime: 'https://buy.stripe.com/5kQeV67Mt04B1Ry5PB', // Founders Club
     };
 
-    const handleCheckout = (priceId) => {
-        // Since we are launch-ready, we use Stripe's direct Checkout Sessions or Payment Links.
-        // For now, we'll use a standard Stripe redirect pattern.
-        // You can cũng replace this with a Supabase Edge Function call later.
-        const stripeUrl = `https://buy.stripe.com/${priceId}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
-        window.open(stripeUrl, '_blank');
+    const handleCheckout = (linkUrl) => {
+        if (!linkUrl) return;
+        const finalUrl = `${linkUrl}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
+        window.open(finalUrl, '_blank');
     };
 
     useEffect(() => {
@@ -267,14 +264,14 @@ export default function Billing() {
                                 <button
                                     className="btn-primary"
                                     style={{ width: '100%', justifyContent: 'center', fontSize: '1.1rem', padding: '16px' }}
-                                    onClick={() => handleCheckout(STRIPE_PRICE_IDS.pro_monthly)}
+                                    onClick={() => handleCheckout(STRIPE_LINKS.pro_monthly)}
                                 >
                                     Unlock Pro Membership - $49/mo
                                 </button>
                                 <button
                                     className="btn-ghost"
                                     style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}
-                                    onClick={() => handleCheckout(STRIPE_PRICE_IDS.special_offer)}
+                                    onClick={() => handleCheckout(STRIPE_LINKS.founder_lifetime)}
                                 >
                                     Limited Time User Offer ($49 One-Time)
                                 </button>

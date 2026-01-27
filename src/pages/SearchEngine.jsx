@@ -104,40 +104,7 @@ export default function SearchEngine() {
         fetchArchetypes();
     }, [user]);
 
-    const mockCandidates = [
-        {
-            id: "alex-v",
-            name: "Alex V.",
-            role: "Full Stack Wizard",
-            location: "San Francisco (Remote)",
-            match: 98,
-            skills: ["Rust", "Next.js", "Solana"],
-            isVerified: true,
-            hasShipped: true,
-            bio: "Ex-Stripe. Built 'FlowState' (10k MAU). Obsessed with marketplace liquidity and zero-knowledge proofs."
-        },
-        {
-            id: "sarah-k",
-            name: "Sarah K.",
-            role: "Growth Hacker",
-            location: "London (Hybrid)",
-            match: 94,
-            skills: ["SEO", "Stripe API", "Python"],
-            isVerified: true,
-            isExFounder: true,
-            bio: "Second-time founder. Scaled previous SaaS to $1M ARR. Looking for a technical partner to tackle Healthtech HIPAA blockers."
-        },
-        {
-            id: "jordan-t",
-            name: "Jordan T.",
-            role: "AI Architect",
-            location: "Berlin (Remote)",
-            match: 89,
-            skills: ["PyTorch", "AWS", "Go"],
-            hasShipped: true,
-            bio: "Built LLM infrastructures for Series A startups. Shipped 4 production apps in 12 months. Value fast sprints over long planning."
-        }
-    ];
+
 
     const [filters, setFilters] = useState({
         role: null,
@@ -290,28 +257,63 @@ export default function SearchEngine() {
                     ) : filteredCandidates.length > 0 ? (
                         <>
                             {/* Free Tier Limit: Show only 3 */}
-                            {filteredCandidates.slice(0, isPremium ? undefined : 3).map(c => (
-                                <CandidateCard
-                                    key={c.id}
-                                    {...c}
-                                />
-                            ))}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                                {(isPremium ? filteredCandidates : filteredCandidates.slice(0, 3)).map((candidate, index) => (
+                                    <CandidateCard
+                                        key={candidate.id}
+                                        {...candidate}
+                                        index={index}
+                                    />
+                                ))}
 
-                            {/* Paywall Card */}
-                            {!isPremium && filteredCandidates.length > 3 && (
-                                <div className="saas-panel" style={{ padding: '40px', textAlign: 'center', border: '1px solid var(--accent-primary)', background: 'rgba(99, 102, 241, 0.05)' }}>
-                                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                                        <div style={{ fontWeight: 800, fontSize: '1.5rem' }}>+{filteredCandidates.length - 3}</div>
+                                {/* FREEMIUM LOCK - Show if not premium and there are more candidates */}
+                                {!isPremium && filteredCandidates.length > 3 && (
+                                    <div className="saas-panel" style={{
+                                        padding: '40px',
+                                        display: 'flex',
+                                        flexDirection: 'column', // Simplified for clarity
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        textAlign: 'center',
+                                        minHeight: '200px',
+                                        background: 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
+                                        borderStyle: 'dashed',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            backdropFilter: 'blur(8px)',
+                                            zIndex: 0
+                                        }}></div>
+
+                                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                                            <div style={{
+                                                width: '48px', height: '48px', borderRadius: '50%',
+                                                background: 'rgba(99, 102, 241, 0.1)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                <ShieldCheck size={24} color="var(--accent-primary)" />
+                                            </div>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                                                    {filteredCandidates.length - 3} More Candidates Found
+                                                </h3>
+                                                <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto' }}>
+                                                    Upgrade to Pro to see their full profiles, compatibility scores, and send unlimited intro requests.
+                                                </p>
+                                            </div>
+                                            <Link to="/upgrade" style={{ textDecoration: 'none' }}>
+                                                <button className="btn-primary" style={{ padding: '12px 32px' }}>
+                                                    Unlock All Candidates
+                                                </button>
+                                            </Link>
+                                        </div>
                                     </div>
-                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px' }}>Unlock {filteredCandidates.length - 3} More Candidates</h3>
-                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
-                                        Join the Founding 100 to access the full database and see verified matches.
-                                    </p>
-                                    <Link to="/upgrade?tier=founder" className="btn-primary" style={{ display: 'inline-flex' }}>
-                                        Unlock Full Access ($49)
-                                    </Link>
-                                </div>
-                            )}
+
+                                )}
+                            </div>
                         </>
                     ) : (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
