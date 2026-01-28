@@ -25,50 +25,56 @@ import Messages from './pages/Messages';
 import FullReport from './pages/FullReport';
 import { AuthProvider } from './context/AuthProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/landing" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/schedule" element={<Scheduling />} />
-            <Route path="/agreement/:id" element={<AgreementPage />} />
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <SidebarLayout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/search" element={<SearchEngine />} />
-                    <Route path="/find-candidates" element={<SearchEngine />} />
-                    <Route path="/profile" element={<ProfilePage />} />
-                    <Route path="/profile/:id" element={<ProfilePage />} />
-                    <Route path="/briefs" element={<BriefBuilder />} />
-                    <Route path="/pipeline" element={<Pipeline />} />
-                    <Route path="/session/:teamId" element={<LiveSession />} />
-                    <Route path="/teams" element={<Teams />} />
-                    <Route path="/studio/:teamId" element={<Studio />} />
-                    <Route path="/chemistry/:sessionId" element={<ChemistryRoom />} />
-                    <Route path="/quiz" element={<VibeQuiz />} />
-                    <Route path="/equity" element={<EquityCalculator />} />
-                    <Route path="/upgrade" element={<UpgradePage />} />
-                    <Route path="/messages/:conversationId" element={<Messages />} />
-                    <Route path="/settings" element={<AccountSettings />} />
-                    <Route path="/billing" element={<Billing />} />
-                    <Route path="/audit" element={<AlignmentAudit />} />
-                    <Route path="/audit-results" element={<AuditResults />} />
-                    <Route path="/report" element={<FullReport />} />
-                  </Routes>
-                </SidebarLayout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+    <>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/schedule" element={<Scheduling />} />
+              <Route path="/agreement/:id" element={<AgreementPage />} />
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <SidebarLayout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/search" element={<SearchEngine />} />
+                      <Route path="/find-candidates" element={<SearchEngine />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/profile/:id" element={<ProfilePage />} />
+                      <Route path="/briefs" element={<BriefBuilder />} />
+                      <Route path="/pipeline" element={<Pipeline />} />
+                      <Route path="/session/:teamId" element={<LiveSession />} />
+                      <Route path="/teams" element={<Teams />} />
+                      <Route path="/studio/:teamId" element={<Studio />} />
+                      <Route path="/chemistry/:sessionId" element={<ChemistryRoom />} />
+                      <Route path="/quiz" element={<VibeQuiz />} />
+                      <Route path="/equity" element={<EquityCalculator />} />
+                      <Route path="/upgrade" element={<UpgradePage />} />
+                      <Route path="/messages/:conversationId" element={<Messages />} />
+                      <Route path="/settings" element={<AccountSettings />} />
+                      <Route path="/billing" element={<Billing />} />
+                      <Route path="/audit" element={<AlignmentAudit />} />
+                      <Route path="/audit-results" element={<AuditResults />} />
+                      <Route path="/report" element={<FullReport />} />
+                    </Routes>
+                  </SidebarLayout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+      <Analytics />
+      <SpeedInsights />
+    </>
   );
 }
 
