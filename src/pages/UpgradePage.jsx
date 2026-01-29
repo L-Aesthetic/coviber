@@ -54,8 +54,10 @@ export default function UpgradePage() {
     const plans = {
         founder: {
             name: isSoldOut ? 'Founding Member (Sold Out)' : 'Founding Member',
-            price: 49,
+            price: 19,
+            originalPrice: '$49',
             isOneTime: true,
+            promoText: 'Use code COVIBR at checkout',
             features: ['Vibe Quiz Profile', 'Search Matches', 'Basic Stats', 'Early Access Badge']
         },
         pro: {
@@ -183,8 +185,8 @@ export default function UpgradePage() {
                             title="Founding Member (Gold Card)"
                             price="$49"
                             billingCycle="one-time"
-                            originalPrice="$129"
-                            description={isSoldOut ? "Sold Out. Improve your odds with a Pro Plan." : "Lifetime Access. 60% Off. First 100 Users Only."}
+                            originalPrice="$49/mo"
+                            description={isSoldOut ? "Sold Out. Improve your odds with a Pro Plan." : "Lifetime Access. 50% Off. First 100 Users Only."}
                             limited
                             soldOut={isSoldOut}
                             isGold={!isSoldOut}
@@ -384,6 +386,12 @@ function PlanCard({ active, onClick, title, price, originalPrice, billingCycle, 
             </div>
 
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{description}</p>
+            {!soldOut && active && title.includes('Founding') && (
+                <div style={{ marginTop: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '8px', borderRadius: '8px', fontSize: '0.8rem', color: '#10B981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={12} />
+                    <span>Promo: <b>60% OFF</b> with code <b>COVIBR</b></span>
+                </div>
+            )}
         </motion.div>
     );
 }

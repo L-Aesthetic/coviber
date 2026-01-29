@@ -273,7 +273,7 @@ export default function Billing() {
                                     style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}
                                     onClick={() => handleCheckout(STRIPE_LINKS.founder_lifetime)}
                                 >
-                                    Limited Time User Offer ($49 One-Time) • <span style={{ fontWeight: 800 }}>60% OFF</span>
+                                    Limited Time User Offer ($49 One-Time)
                                 </button>
                             </div>
                         )}
