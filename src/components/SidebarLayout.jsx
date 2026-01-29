@@ -339,7 +339,15 @@ export default function SidebarLayout({ children }) {
                             </Link>
                             <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
                             <button
-                                onClick={() => window.location.href = '/login'}
+                                onClick={async () => {
+                                    try {
+                                        await supabase.auth.signOut();
+                                        window.location.href = '/login';
+                                    } catch (error) {
+                                        console.error('Error logging out:', error);
+                                        window.location.href = '/login';
+                                    }
+                                }}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
