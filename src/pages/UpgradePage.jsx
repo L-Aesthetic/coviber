@@ -183,8 +183,8 @@ export default function UpgradePage() {
                             title="Founding Member (Gold Card)"
                             price="$49"
                             billingCycle="one-time"
-                            originalPrice="$49/mo"
-                            description={isSoldOut ? "Sold Out. Improve your odds with a Pro Plan." : "Lifetime Access. 50% Off. First 100 Users Only."}
+                            originalPrice="$129"
+                            description={isSoldOut ? "Sold Out. Improve your odds with a Pro Plan." : "Lifetime Access. 60% Off. First 100 Users Only."}
                             limited
                             soldOut={isSoldOut}
                             isGold={!isSoldOut}
