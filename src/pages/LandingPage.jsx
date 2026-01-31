@@ -25,7 +25,7 @@ const LandingPage = () => {
 
                 {/* Center: Links */}
                 <div className="landing-nav-links">
-                    <a href="#why" className="nav-link" style={{ color: '#d1d5db', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>Manifesto</a>
+                    <button onClick={() => navigate('/manifesto')} className="nav-link" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#d1d5db', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s', padding: 0, fontFamily: 'inherit' }}>Manifesto</button>
                     <a href="#protocol" className="nav-link" style={{ color: '#d1d5db', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>The Protocol</a>
                     <button onClick={() => navigate('/login')} style={{ color: '#d1d5db', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500, transition: 'color 0.2s' }}>Login</button>
                 </div>

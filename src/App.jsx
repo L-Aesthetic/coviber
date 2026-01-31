@@ -21,6 +21,7 @@ import Billing from './pages/Billing';
 import AlignmentAudit from './pages/AlignmentAudit';
 import AuditResults from './pages/AuditResults';
 import LandingPage from './pages/LandingPage';
+import ManifestoPage from './pages/ManifestoPage';
 import Messages from './pages/Messages';
 import FullReport from './pages/FullReport';
 import { AuthProvider } from './context/AuthProvider';
@@ -36,6 +37,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/landing" element={<LandingPage />} />
+              <Route path="/manifesto" element={<ManifestoPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/schedule" element={<Scheduling />} />
               <Route path="/agreement/:id" element={<AgreementPage />} />
