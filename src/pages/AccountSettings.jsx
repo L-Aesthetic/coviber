@@ -173,8 +173,17 @@ export default function AccountSettings() {
             // 1. Try to clean up dependencies (Best Effort)
             // Even if these fail (e.g. no permission), we continue to try profile delete.
             try {
+                // Delete dependants that might lack CASCADE
                 await supabase.from('messages').delete().eq('sender_id', user.id);
                 await supabase.from('intro_requests').delete().eq('sender_id', user.id);
+
+                // Pipeline Items (where I am owner)
+                await supabase.from('pipeline_items').delete().eq('owner_id', user.id);
+
+                // Teams (where I am creator - might fail if team has other members, but standard for cleanup)
+                // Actually, if I created a team, it might trigger cascade on team_members? 
+                // Let's try to delete teams I created.
+                await supabase.from('teams').delete().eq('created_by', user.id);
             } catch (err) {
                 console.warn("Cleanup warning:", err);
             }
