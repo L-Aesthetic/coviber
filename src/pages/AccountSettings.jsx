@@ -9,6 +9,7 @@ export default function AccountSettings() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteInput, setDeleteInput] = useState('');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -167,24 +168,39 @@ export default function AccountSettings() {
     const handleConfirmDelete = async () => {
         setLoading(true);
         try {
-            // Delete Profile (RLS should allow users to delete their own profile)
-            // This will automatically adjust dynamic founder numbering for others
+            console.log("Attempting to delete account for user:", user.id);
+
+            // 1. Try to clean up dependencies (Best Effort)
+            // Even if these fail (e.g. no permission), we continue to try profile delete.
+            try {
+                await supabase.from('messages').delete().eq('sender_id', user.id);
+                await supabase.from('intro_requests').delete().eq('sender_id', user.id);
+            } catch (err) {
+                console.warn("Cleanup warning:", err);
+            }
+
+            // 2. Delete Profile
             const { error } = await supabase
                 .from('profiles')
                 .delete()
                 .eq('id', user.id);
 
-            if (error) throw error;
+            if (error) {
+                console.error("Supabase Deletion Error:", error);
+                throw error;
+            }
 
-            // Sign out
+            // 3. Sign out
             await supabase.auth.signOut();
             window.location.href = '/landing';
         } catch (error) {
             console.error('Error deleting account:', error);
-            alert('Error deleting account. Please contact support if the issue persists.');
+            // Show the ACTUAL error message to the user so they can report it
+            alert(`Error deleting account: ${error.message || JSON.stringify(error)}. Please screenshot this and contact support.`);
             setLoading(false);
         } finally {
-            setShowDeleteModal(false);
+            // Don't close modal if error, so they can retry
+            if (!loading) setShowDeleteModal(false);
         }
     };
 
@@ -408,16 +424,9 @@ export default function AccountSettings() {
                                 <input
                                     className="glass-input"
                                     placeholder="DELETE"
+                                    value={deleteInput}
                                     style={{ width: '100%', borderColor: '#EF4444' }}
-                                    onChange={(e) => {
-                                        if (e.target.value === 'DELETE') {
-                                            document.getElementById('confirm-delete-btn').disabled = false;
-                                            document.getElementById('confirm-delete-btn').style.opacity = 1;
-                                        } else {
-                                            document.getElementById('confirm-delete-btn').disabled = true;
-                                            document.getElementById('confirm-delete-btn').style.opacity = 0.5;
-                                        }
-                                    }}
+                                    onChange={(e) => setDeleteInput(e.target.value)}
                                 />
                             </div>
 
@@ -425,15 +434,23 @@ export default function AccountSettings() {
                                 <button
                                     className="btn-ghost"
                                     style={{ flex: 1, justifyContent: 'center' }}
-                                    onClick={() => setShowDeleteModal(false)}
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setDeleteInput('');
+                                    }}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     id="confirm-delete-btn"
                                     className="btn-primary"
-                                    style={{ flex: 1, justifyContent: 'center', background: '#EF4444', borderColor: '#EF4444', opacity: 0.5 }}
-                                    disabled={true}
+                                    style={{
+                                        flex: 1, justifyContent: 'center',
+                                        background: '#EF4444', borderColor: '#EF4444',
+                                        opacity: deleteInput === 'DELETE' ? 1 : 0.5,
+                                        cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed'
+                                    }}
+                                    disabled={deleteInput !== 'DELETE' || loading}
                                     onClick={handleConfirmDelete}
                                 >
                                     {loading ? 'Deleting...' : 'Confirm Delete'}

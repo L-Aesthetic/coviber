@@ -21,3 +21,10 @@ create policy "Users can insert their own profile"
   on profiles for insert
   to authenticated
   with check ( auth.uid() = id );
+
+-- 4. DELETE: Users can delete their own profile
+drop policy if exists "Users can delete own profile" on profiles;
+create policy "Users can delete own profile"
+  on profiles for delete
+  to authenticated
+  using ( auth.uid() = id );
