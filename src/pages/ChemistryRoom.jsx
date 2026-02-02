@@ -648,7 +648,7 @@ export default function ChemistryRoom() {
                     {/* Countdown Timer */}
                     <div className="saas-panel" style={{ padding: '24px', textAlign: 'center', minWidth: '200px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600, justifyContent: 'center' }}>
-                            <Clock size={16} /> REMAINING
+                            <Clock size={16} /> REMAINING <span style={{ fontSize: '0.6rem', background: '#F59E0B', color: 'black', padding: '2px 4px', borderRadius: '4px' }}>V2.1</span>
                         </div>
                         <div style={{ fontSize: '2.5rem', fontWeight: 800, color: timeRemaining < 3600 ? '#EF4444' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.05em', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
                             {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
@@ -659,10 +659,11 @@ export default function ChemistryRoom() {
                                 className={`btn-ghost ${isPaused ? 'pulsing-border' : ''}`}
                                 style={{
                                     padding: '8px', borderRadius: '50%',
-                                    border: isPaused ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.1)',
-                                    color: isPaused ? '#F59E0B' : 'var(--text-secondary)',
-                                    background: isPaused ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                                    cursor: 'pointer', transition: 'all 0.2s ease'
+                                    border: '1px solid var(--accent-primary)',
+                                    color: isPaused ? '#F59E0B' : 'white',
+                                    background: isPaused ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.1)',
+                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                    marginTop: '4px'
                                 }}
                                 title={isPaused ? "Resume Session" : "Pause Session"}
                             >
