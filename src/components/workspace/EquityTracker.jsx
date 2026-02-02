@@ -37,7 +37,7 @@ export default function EquityTracker({ team }) {
                     </div>
                 </div>
 
-                <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ height: '300px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
