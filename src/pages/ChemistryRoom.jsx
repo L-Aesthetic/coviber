@@ -192,6 +192,171 @@ export default function ChemistryRoom() {
         }
     };
 
+    // --- PAUSE / RESUME LOGIC (Clock In/Out) ---
+    const [isPaused, setIsPaused] = useState(false);
+    const [timeOffset, setTimeOffset] = useState(0); // Total paused duration in ms
+
+    // Parse Description for State (Hack for MVP schema)
+    // Format: "Desc|OFFSET:12345|PAUSED:123456789"
+    useEffect(() => {
+        const parseTeamState = async () => {
+            if (!teamId) return;
+            const { data: team } = await supabase.from('teams').select('description, created_at').eq('id', teamId).single();
+
+            if (team) {
+                // 1. EXTENDED
+                let duration = 48 * 60 * 60 * 1000;
+                if (team.description.includes('|EXTENDED')) duration += 24 * 60 * 60 * 1000;
+
+                // 2. OFFSET
+                const offsetMatch = team.description.match(/\|OFFSET:(\d+)/);
+                const savedOffset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+                setTimeOffset(savedOffset);
+
+                // 3. PAUSED
+                const pausedMatch = team.description.match(/\|PAUSED:(\d+)/);
+                if (pausedMatch) {
+                    setIsPaused(true);
+                    // If paused, targetEndTime handles differently?
+                    // actually, if paused, we just stop timer.
+                    // But to display remaining time correctly, we need to know when it WAS paused.
+                    // effectively: targetEndTime = originalTarget + savedOffset + (NOW - pausedAt) <-- dynamic?
+                    // No, when paused, the "remaining" is static.
+                    // Let's calculate "Effective End Time"
+                } else {
+                    setIsPaused(false);
+                }
+
+                // Base Target
+                const createdAt = new Date(team.created_at).getTime();
+                setTargetEndTime(createdAt + duration + savedOffset);
+            }
+        }
+        parseTeamState();
+    }, [teamId]);
+
+
+    const handleTogglePause = async () => {
+        if (!teamId) return;
+
+        try {
+            const { data: team } = await supabase.from('teams').select('description').eq('id', teamId).single();
+            if (!team) return;
+
+            let newDesc = team.description;
+            const now = Date.now();
+
+            if (isPaused) {
+                // RESUME
+                // 1. Calculate how long we were paused
+                const pausedMatch = newDesc.match(/\|PAUSED:(\d+)/);
+                const pausedAt = pausedMatch ? parseInt(pausedMatch[1]) : now;
+                const diff = now - pausedAt;
+
+                // 2. Add to total offset
+                const offsetMatch = newDesc.match(/\|OFFSET:(\d+)/);
+                const currentOffset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+                const newOffset = currentOffset + diff;
+
+                // 3. Update String (Remove PAUSED, Update OFFSET)
+                newDesc = newDesc.replace(/\|PAUSED:\d+/, '').replace(/\|OFFSET:\d+/, '') + `|OFFSET:${newOffset}`;
+
+                setTimeOffset(newOffset);
+                setIsPaused(false);
+                setToast({ message: "Resumed (Clocked In)", icon: "▶️" });
+
+                // Update target locally immediately to prevent jump
+                setTargetEndTime(prev => prev + diff);
+
+            } else {
+                // PAUSE
+                // 1. Add PAUSED timestamp
+                // Remove existing just in case
+                newDesc = newDesc.replace(/\|PAUSED:\d+/, '') + `|PAUSED:${now}`;
+
+                setIsPaused(true);
+                setToast({ message: "Paused (Clocked Out)", icon: "⏸️" });
+            }
+
+            await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+
+        } catch (err) {
+            console.error("Error toggling pause:", err);
+            setToast({ message: "Action failed", type: 'error' });
+        }
+    };
+
+    // Countdown timer Update
+    useEffect(() => {
+        if (!targetEndTime) return;
+
+        const updateTimer = () => {
+            if (isPaused) return; // Don't tick if paused
+
+            const now = new Date().getTime();
+            const distance = targetEndTime - now;
+            const remaining = Math.max(0, Math.floor(distance / 1000));
+            setTimeRemaining(remaining);
+
+            if (remaining === 0 && !hasVoted && !showTimeExpModal && !modalDismissed && !isPaused) {
+                setShowTimeExpModal(true);
+            }
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [targetEndTime, hasVoted, showTimeExpModal, modalDismissed, isPaused]);
+
+
+    // --- DYNAMIC MOMENTUM CALCULATION ---
+    const calculateMomentum = (tasksStatus, lastActivityTime, isSessionPaused) => {
+        const { todo, doing, done } = tasksStatus;
+        const total = todo.length + doing.length + done.length;
+
+        // 1. Base Progress (70%)
+        let progressScore = 0;
+        if (total > 0) {
+            progressScore = (done.length / total) * 100;
+        }
+
+        // 2. Velocity Decay (30%)
+        let velocityScore = 0;
+        if (lastActivityTime) {
+            const now = Date.now();
+            // If paused, we assume "time stopped" at the last activity or pause time?
+            // Actually, if paused, freshness shouldn't decay.
+            // Simplified: If paused, velocity is 100 (frozen).
+            if (isSessionPaused) {
+                velocityScore = 100;
+            } else {
+                const diffHours = (now - new Date(lastActivityTime).getTime()) / (1000 * 60 * 60);
+
+                if (diffHours < 1) {
+                    velocityScore = 100; // Fresh
+                } else if (diffHours < 4) {
+                    // Linear decay: 1h=100%, 4h=0%
+                    // Formula: 100 - ((diff - 1) / 3) * 100
+                    velocityScore = Math.max(0, 100 - ((diffHours - 1) / 3) * 100);
+                } else {
+                    velocityScore = 0; // Stale
+                }
+            }
+        } else if (total > 0) {
+            // Tasks exist but no activity log? (Legacy/Edge case) -> Assume mid velocity
+            velocityScore = 50;
+        }
+
+        // 3. Timeout Zero
+        // (Handled partially by ensuring timeRemaining usage in UI, but logic here:)
+        if (timeRemaining === 0 && done.length === 0 && !isSessionPaused) return 0;
+
+        // Weighted Average
+        // Progress 70%, Velocity 30%
+        return Math.round((progressScore * 0.7) + (velocityScore * 0.3));
+    };
+
+
     // Fetch Data from Supabase (Dependent on teamId)
     useEffect(() => {
         const fetchData = async () => {
@@ -222,48 +387,35 @@ export default function ChemistryRoom() {
                 })));
             }
 
-            // 2. Fetch Tasks to calculate Momentum
-            const { data: tasksData } = await supabase
-                .from('tasks')
-                .select('*')
-                .eq('team_id', teamId);
-
-            if (tasksData) {
-                const todo = tasksData.filter(t => t.status === 'todo');
-                const doing = tasksData.filter(t => t.status === 'progress');
-                const done = tasksData.filter(t => t.status === 'shipped' || t.status === 'done');
-                setTasks({ todo, doing, done });
-
-                // Calculate Momentum based on tasks
-                const total = tasksData.length;
-                if (total > 0) {
-                    setMomentum(Math.round((done.length / total) * 100));
-                } else {
-                    setMomentum(0);
-                }
-            }
-
-            // 3. Fetch Activity
+            // 2. Fetch Tasks AND Activity for Momentum
+            const { data: tasksData } = await supabase.from('tasks').select('*').eq('team_id', teamId);
             const { data: activityData } = await supabase
                 .from('activity_logs')
-                .select(`*, user:user_id(full_name)`) // Note: user_id links to auth.users, need profile join
+                .select(`*, user:user_id(full_name)`)
                 .eq('team_id', teamId)
                 .order('created_at', { ascending: false })
-                .limit(5);
+                .limit(20);
 
-            // Since we can't join auth.users easily in client, we might rely on a 'user_name' if we stored it, or profile join if setup
-            // For now, simpler map:
-            if (activityData) {
-                // We might need to fetch profile names separately if not joined, but let's assume we can map roughly
-                const formattedActivity = await Promise.all(activityData.map(async (act) => {
+            // Process Tasks
+            let currentTasks = { todo: [], doing: [], done: [] };
+            if (tasksData) {
+                currentTasks.todo = tasksData.filter(t => t.status === 'todo');
+                currentTasks.doing = tasksData.filter(t => t.status === 'progress');
+                currentTasks.done = tasksData.filter(t => t.status === 'shipped' || t.status === 'done');
+                setTasks(currentTasks);
+            }
+
+            // Process Activity
+            let lastActive = null;
+            if (activityData && activityData.length > 0) {
+                lastActive = activityData[0].created_at;
+
+                const formattedActivity = await Promise.all(activityData.slice(0, 5).map(async (act) => {
                     let userName = 'User';
                     if (act.user_id === user?.id) userName = 'You';
-                    // For others, we could fetch profile, but for MVP let's see if we have it in members map
-                    // Optimization: Use membersData
-
                     return {
-                        user: userName, // simplified for now
-                        action: act.description, // using description as action
+                        user: userName,
+                        action: act.description,
                         time: new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         type: act.action_type === 'code' ? 'code' : (act.action_type === 'review_sentiment' ? 'review' : 'task')
                     };
@@ -271,18 +423,16 @@ export default function ChemistryRoom() {
                 setRecentActivity(formattedActivity);
             }
 
-            // 4. Calculate Velocity based on Activity Logs (Commits/Tasks per Time Bucket)
-            // Simplified: Group activity by day/hour (mocking bucket for visualization)
-            // In a real app, query aggregation would happen on backend
+            // CALCULATE MOMENTUM
+            const newMomentum = calculateMomentum(currentTasks, lastActive, isPaused);
+            setMomentum(newMomentum);
+
+            // Velocity Chart Data (Mock vs Real)
+            // ... (keep existing velocity data logic or simple placeholder)
             if (activityData) {
                 setVelocityData([
                     { time: 'Start', deploys: 0, leadTime: 5 },
-                    { time: 'Now', deploys: activityData.length, leadTime: Math.max(1, 5 - activityData.length) } // Mock trend based on volume
-                ]);
-            } else {
-                setVelocityData([
-                    { time: 'Start', deploys: 0, leadTime: 5 },
-                    { time: 'Now', deploys: 0, leadTime: 5 }
+                    { time: 'Now', deploys: activityData.length, leadTime: Math.max(1, 5 - activityData.length) }
                 ]);
             }
 
@@ -292,317 +442,10 @@ export default function ChemistryRoom() {
         fetchData(); // Expose for refresh
         const interval = setInterval(fetchData, 10000); // Polling for updates
         return () => clearInterval(interval);
-    }, [teamId]);
-
-    // State for Challenge Selection
-    const [activeChallenge, setActiveChallenge] = useState(null);
-    const [isSetupOpen, setIsSetupOpen] = useState(false); // Start closed, will open if needed
-    const [isAddingTask, setIsAddingTask] = useState(false);
-    const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [draggedTask, setDraggedTask] = useState(null); // DnD State
-    const [editingTask, setEditingTask] = useState(null); // Task being edited
-
-    // Immediate Momentum Update
-    useEffect(() => {
-        const total = tasks.todo.length + tasks.doing.length + tasks.done.length;
-        if (total > 0) {
-            setMomentum(Math.round((tasks.done.length / total) * 100));
-        } else {
-            setMomentum(0);
-        }
-    }, [tasks]);
-
-    // Auto-detect challenge if tasks already exist (user is returning to an existing session)
-    useEffect(() => {
-        if (loading || !teamId) return; // Wait for data to load
-
-        const totalTasks = tasks.todo.length + tasks.doing.length + tasks.done.length;
-
-        if (!activeChallenge && totalTasks > 0) {
-            // Existing session - detect challenge from tasks
-            const allTasks = [...tasks.todo, ...tasks.doing, ...tasks.done];
-            const taskTitles = allTasks.map(t => t.title.toLowerCase());
-
-            if (taskTitles.some(title => title.includes('stripe') || title.includes('checkout'))) {
-                setActiveChallenge(CHALLENGES.stripe);
-                setIsSetupOpen(false);
-            } else if (taskTitles.some(title => title.includes('pokemon') || title.includes('sdk') || title.includes('pokeapi'))) {
-                setActiveChallenge(CHALLENGES.api_race);
-                setIsSetupOpen(false);
-            }
-        } else if (!activeChallenge && totalTasks === 0 && !loading) {
-            // New session - show challenge selection explicitly
-            setIsSetupOpen(true);
-        }
-    }, [tasks, activeChallenge, loading, teamId]);
-
-    // Initial Tasks based on Challenge
+    }, [teamId, isPaused, timeRemaining]); // Re-run if pause state changes
 
 
-    const CHALLENGES = {
-        stripe: {
-            title: "The Stripe Integration",
-            desc: "Build a subscription checkout flow using Stripe Elements.",
-            tasks: [
-                { id: '1', title: 'Setup Stripe Secret Keys (Env)', assignee: 'Unassigned' },
-                { id: '2', title: 'Create Checkout Session API', assignee: 'Unassigned' },
-                { id: '3', title: 'Build Pricing UI Component', assignee: 'Unassigned' },
-                { id: '4', title: 'Handle Webhooks', assignee: 'Unassigned' }
-            ]
-        },
-        api_race: {
-            title: "The API Wrapper Race",
-            desc: "Build a fully typed SDK for the PokeAPI.",
-            tasks: [
-                { id: '1', title: 'Design Interface Types', assignee: 'Unassigned' },
-                { id: '2', title: 'Implement GET /pokemon', assignee: 'Unassigned' },
-                { id: '3', title: 'Implement Caching Layer', assignee: 'Unassigned' },
-                { id: '4', title: 'Write Tests', assignee: 'Unassigned' }
-            ]
-        }
-    };
-
-    const handleStartChallenge = async (challengeKey) => {
-        setActiveChallenge(CHALLENGES[challengeKey]);
-        setIsSetupOpen(false);
-
-        if (!teamId) return;
-
-        // Batch Insert Challenge Tasks
-        const tasksToInsert = CHALLENGES[challengeKey].tasks.map(t => ({
-            team_id: teamId,
-            title: t.title,
-            status: 'todo',
-            type: 'General',
-            assignee_id: currentUser?.id
-        }));
-
-        try {
-            await supabase.from('tasks').insert(tasksToInsert);
-            // Refresh will happen via polling or could trigger manually
-        } catch (error) {
-            console.error("Error creating challenge tasks:", error);
-        }
-    };
-
-    const CRISIS_SCENARIOS = [
-        { title: "OpenAI API Deprecated", desc: "The model you built on just broke. You have 4 hours to swap providers.", type: "Crisis" },
-        { title: "Competitor Feature Drop", desc: "A competitor just launched your core feature. Pivot to a niche NOW.", type: "Crisis" },
-        { title: "Security Breach", desc: "User data leak detected. Drop everything and patch the auth flow.", type: "Crisis" },
-        { title: "Payment Processor Ban", desc: "Stripe suspended the account. Switch to LemonSqueezy immediately.", type: "Crisis" }
-    ];
-
-    const handleTriggerStress = async () => {
-        const scenario = CRISIS_SCENARIOS[Math.floor(Math.random() * CRISIS_SCENARIOS.length)];
-        setStressMode(true);
-        setCurrentCrisis(scenario);
-
-        try {
-            // 1. Insert Crisis Task
-            const { data: task, error } = await supabase.from('tasks').insert([{
-                team_id: teamId,
-                title: `[URGENT] ${scenario.title}`,
-                status: 'todo',
-                type: 'Crisis',
-                assignee_id: currentUser?.id
-            }]).select().single();
-
-            if (task) {
-                setTasks(prev => ({ ...prev, todo: [task, ...prev.todo] })); // Prepend to top
-            }
-
-            // 2. Log Activity
-            await supabase.from('activity_logs').insert([{
-                team_id: teamId,
-                user_id: currentUser?.id,
-                action_type: 'task_created',
-                description: `TRIGGERED CRISIS: ${scenario.title}`
-            }]);
-
-            setToast({ message: "CRISIS MODE ACTIVATED", icon: "🚨", isError: true });
-
-        } catch (error) {
-            console.error("Error triggering stress:", error);
-        }
-    };
-
-    const handleResolveCrisis = () => {
-        setStressMode(false);
-        setCurrentCrisis(null);
-        setToast({ message: "Crisis Resolved", icon: "✅" });
-    };
-
-    const handleTaskClick = (task) => {
-        setEditingTask(task);
-    };
-
-    const handleUpdateTaskDetails = async (taskId, updates) => {
-        // Optimistic Update
-        setTasks(prev => {
-            const newTasks = { ...prev };
-            // Find task and update it
-            ['todo', 'doing', 'done'].forEach(status => {
-                newTasks[status] = newTasks[status].map(t =>
-                    t.id === taskId ? { ...t, ...updates } : t
-                );
-            });
-            return newTasks;
-        });
-        setEditingTask(null);
-
-        try {
-            const { error } = await supabase.from('tasks').update(updates).eq('id', taskId);
-            if (error) throw error;
-            setToast({ message: "Task Updated", icon: "✏️" });
-            setTimeout(() => setToast(null), 3000);
-        } catch (error) {
-            console.error("Error updating task:", error);
-            setToast({ message: "Update failed", icon: "⚠️", isError: true });
-        }
-    };
-
-    const handleTaskMove = async (task) => {
-        // Function kept for other uses if needed, but click now opens modal
-        // Manual move (click)
-        let newStatus = 'todo';
-        if (task.status === 'todo') newStatus = 'progress';
-        else if (task.status === 'progress') newStatus = 'done';
-        else return;
-
-        await updateTaskStatus(task, newStatus);
-    };
-
-    const handleDeleteTask = async (taskId) => {
-        // Optimistic Delete
-        setTasks(prev => ({
-            todo: prev.todo.filter(t => t.id !== taskId),
-            doing: prev.doing.filter(t => t.id !== taskId),
-            done: prev.done.filter(t => t.id !== taskId)
-        }));
-
-        try {
-            await supabase.from('tasks').delete().eq('id', taskId);
-            setToast({ message: "Task Deleted", icon: "🗑️" });
-            setTimeout(() => setToast(null), 3000);
-        } catch (error) {
-            console.error("Error deleting task:", error);
-        }
-    };
-
-    const handleDragStart = (task) => {
-        setDraggedTask(task);
-    };
-
-    const handleDrop = async (status) => {
-        if (!draggedTask) return;
-        if (draggedTask.status === status) {
-            setDraggedTask(null);
-            return;
-        }
-
-        // Map UI status to DB status
-        let dbStatus = status;
-        if (status === 'doing') dbStatus = 'progress';
-        if (status === 'done') dbStatus = 'shipped'; // or 'done' depending on schema, let's keep consistent with existing logic
-
-        // Optimistic UI update maps 'doing' -> 'progress' state? 
-        // Wait, the state keys are 'todo', 'doing', 'done'. 
-        // The task objects have .status of 'todo', 'progress', 'shipped'/'done'. 
-        // Let's standardize: The valid state keys are todo, doing, done.
-        // Valid DB statuses are todo, progress, shipped/done.
-
-        // Let's use the updateTaskStatus helper I'll create to DRY this up
-        // Need to map status (column key) to DB status
-        let targetDbStatus = 'todo';
-        if (status === 'doing') targetDbStatus = 'progress';
-        if (status === 'done') targetDbStatus = 'shipped';
-
-        await updateTaskStatus(draggedTask, targetDbStatus);
-        setDraggedTask(null);
-    };
-
-    const updateTaskStatus = async (task, newDbStatus) => {
-        // Optimistic Update helper
-        // Calculate new column key
-        let newCol = 'todo';
-        if (newDbStatus === 'progress') newCol = 'doing';
-        if (newDbStatus === 'shipped' || newDbStatus === 'done') newCol = 'done';
-
-        // Calculate old column key
-        let oldCol = 'todo';
-        if (task.status === 'progress') oldCol = 'doing';
-        if (task.status === 'shipped' || task.status === 'done') oldCol = 'done';
-
-        const updatedTask = { ...task, status: newDbStatus };
-
-        setTasks(prev => {
-            const newTasks = { ...prev };
-            newTasks[oldCol] = newTasks[oldCol].filter(t => t.id !== task.id);
-            newTasks[newCol] = [...newTasks[newCol], updatedTask];
-            return newTasks;
-        });
-
-        // Auto-Resolve Crisis if moving to Done
-        if (task.type === 'Crisis' && newCol === 'done') {
-            handleResolveCrisis();
-        }
-
-        try {
-            await supabase.from('tasks').update({ status: newDbStatus }).eq('id', task.id);
-            // Log Activity
-            if (teamId) {
-                await supabase.from('activity_logs').insert([{
-                    team_id: teamId,
-                    user_id: currentUser?.id,
-                    action_type: 'task_update',
-                    description: `Moved "${task.title}" to ${newCol}`
-                }]);
-            }
-        } catch (error) {
-            console.error("Error updating task:", error);
-        }
-    };
-
-    const handleAddTask = async (e) => {
-        if (e) e.preventDefault();
-        if (!newTaskTitle.trim()) return;
-
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            const userId = user?.id || currentUser?.id;
-
-            if (!teamId) throw new Error("Team not initialized for this session");
-
-            const { data, error } = await supabase.from('tasks').insert([{
-                team_id: teamId,
-                title: newTaskTitle,
-                status: 'todo',
-                type: 'General',
-                assignee_id: userId
-            }]).select().single();
-
-            if (error) throw error;
-
-            if (data) {
-                setTasks(prev => ({ ...prev, todo: [...prev.todo, data] }));
-                setNewTaskTitle('');
-                setIsAddingTask(false);
-
-                // Log Activity
-                await supabase.from('activity_logs').insert([{
-                    team_id: teamId,
-                    user_id: userId,
-                    action_type: 'task_created',
-                    description: `Added task "${newTaskTitle}"`
-                }]);
-            }
-
-        } catch (error) {
-            console.error("Error adding task:", error);
-            alert(`Failed to add task: ${error.message}`);
-        }
-    };
-
+    // Other existing handlers...
     const handleReviewLog = async (sentiment, emoji) => {
         try {
             if (!teamId) {
@@ -634,6 +477,9 @@ export default function ChemistryRoom() {
             // Trigger Toast
             setToast({ message: `Feedback Recorded: ${sentiment}`, icon: emoji });
             setTimeout(() => setToast(null), 3000);
+
+            // Re-calc momentum immediately for UI responsiveness
+            // (Actually the poll will catch it, or we could force it)
 
         } catch (error) {
             console.error("Error logging review:", error);
@@ -801,13 +647,31 @@ export default function ChemistryRoom() {
 
                     {/* Countdown Timer */}
                     <div className="saas-panel" style={{ padding: '24px', textAlign: 'center', minWidth: '200px' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: '8px', fontWeight: 700, textTransform: 'uppercase' }}>
-                            Time Remaining
-                        </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: timeRemaining < 3600 ? '#EF4444' : 'var(--accent-primary)', fontFamily: 'monospace', letterSpacing: '-0.05em' }}>
-                            {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                        </div>
-                        {timeRemaining < 3600 && (
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>
+                                <Clock size={16} /> REMAINING
+                            </div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: timeRemaining < 3600 ? '#EF4444' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.05em', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+
+                                {/* Pause Button */}
+                                <button
+                                    onClick={handleTogglePause}
+                                    className={`btn-ghost ${isPaused ? 'pulsing-border' : ''}`}
+                                    style={{
+                                        padding: '8px', borderRadius: '50%',
+                                        border: isPaused ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.1)',
+                                        color: isPaused ? '#F59E0B' : 'var(--text-secondary)',
+                                        background: isPaused ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                        cursor: 'pointer', transition: 'all 0.2s ease'
+                                    }}
+                                    title={isPaused ? "Resume Session" : "Pause Session"}
+                                >
+                                    {isPaused ? <Play size={20} fill="#F59E0B" /> : <div style={{ width: 20, height: 20, display: 'flex', gap: 4, justifyContent: 'center' }}><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /></div>}
+                                </button>
+                            </div>
+                            {isPaused && <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginTop: 4, fontWeight: 700, letterSpacing: '0.05em' }}>SESSION PAUSED</div>}
+                        </div>        {timeRemaining < 3600 && (
                             <div style={{ fontSize: '0.75rem', color: '#EF4444', marginTop: '8px', fontWeight: 600 }}>
                                 <AlertCircle size={12} style={{ display: 'inline', marginRight: '4px' }} />
                                 Final hour!
