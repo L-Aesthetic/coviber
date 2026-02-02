@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Ghost, TrendingDown, Scale, ArrowRight, Zap, Shield, Users, CheckCircle, AlertTriangle, AlertOctagon, Lock } from 'lucide-react';
+import { Ghost, TrendingDown, Scale, ArrowRight, Zap, Shield, Users, CheckCircle, AlertTriangle, AlertOctagon, Lock, Menu, X } from 'lucide-react';
 import { quizQuestions, determineArchetype } from '../data/quizQuestions';
 import { supabase } from '../lib/supabaseClient';
 
@@ -57,7 +57,31 @@ const LandingPage = () => {
                         Join Founding 100
                     </button>
                 </div>
+                {/* Mobile Menu Toggle */}
+                <div className="mobile-menu-toggle">
+                    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={{ background: 'transparent', border: 'none', color: 'white' }}>
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
             </nav>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                        position: 'fixed', top: '80px', left: 0, right: 0,
+                        background: 'rgba(15, 15, 15, 0.95)', backdropFilter: 'blur(10px)',
+                        padding: '24px', zIndex: 999, borderBottom: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center'
+                    }}
+                >
+                    <button onClick={() => navigate('/manifesto')} className="nav-link" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem' }}>Manifesto</button>
+                    <a href="#protocol" className="nav-link" style={{ color: '#fff', fontSize: '1.2rem', textDecoration: 'none' }} onClick={() => setIsMobileMenuOpen(false)}>The Protocol</a>
+                    <button onClick={() => navigate('/login')} style={{ color: '#fff', background: 'transparent', border: 'none', fontSize: '1.2rem' }}>Login</button>
+                </motion.div>
+            )}
 
             {/* --- HERO SECTION --- */}
             <header className="landing-hero" style={{ paddingTop: '140px' }}>
@@ -393,6 +417,7 @@ const InteractiveQuiz = () => {
     const [email, setEmail] = useState("");
     const [name, setName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const totalQuestions = quizQuestions.length;
 
@@ -465,7 +490,11 @@ const InteractiveQuiz = () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email, archetype: archetype.name }),
                 });
-                if (!emailResponse.ok) console.warn("Background Email failed (likely Sandbox)");
+
+                if (!emailResponse.ok) {
+                    console.warn("Background Email failed (likely Sandbox or API missing)");
+                    alert("Note: Email confirmation failed to send. Don't worry, your result is saved in the dashboard!");
+                }
 
             } catch (bgError) {
                 console.error("Background task error:", bgError);
@@ -667,7 +696,10 @@ const InteractiveQuiz = () => {
                 </div>
 
                 <button
-                    onClick={() => navigate('/login?ref=report')}
+                    onClick={() => {
+                        // Force full navigation to handle mobile constraints reliably
+                        window.location.href = '/login?ref=report';
+                    }}
                     style={{
                         background: '#F97316',
                         color: 'white',
