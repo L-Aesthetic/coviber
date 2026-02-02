@@ -126,7 +126,6 @@ export const AuthProvider = ({ children }) => {
         signInWithPassword,
         signUp,
         signOut,
-        signOut,
         loading,
         supabase // Expose client for advanced auth (resend)
     };

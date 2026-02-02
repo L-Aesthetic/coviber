@@ -163,7 +163,6 @@ export default function ProfilePage() {
                 avatar_url: profile.avatar_url,
                 avail_status: profile.availability,
                 updated_at: new Date().toISOString(),
-                media_gallery: profile.media_gallery,
                 social_links: profile.social_links,
                 subscription_tier: profile.subscription_tier || 'free' // Default to Free for new users
             };
