@@ -1,45 +1,55 @@
 import { Resend } from 'resend';
 import { getArchetypeEmail } from './emailTemplates.js';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ error: 'Method not allowed' });
-    }
-
-    const { email, archetype } = request.body;
-
-    if (!email || !archetype) {
-        return response.status(400).json({ error: 'Missing email or archetype' });
-    }
-
-    // DEBUG: Check if Key is loaded
-    if (!process.env.RESEND_API_KEY) {
-        console.error("CRITICAL: RESEND_API_KEY is missing in process.env!");
-        return response.status(500).json({ error: "Server Configuration Error: Missing API Key" });
-    } else {
-        console.log("RESEND_API_KEY is loaded. Attempting to send...");
-    }
+    // 1. Safe JSON Error Helper
+    const safeError = (code, message, details = null) => {
+        console.error(`API Error (${code}): ${message}`, details);
+        return response.status(code).json({ error: { message, details } });
+    };
 
     try {
-        const htmlContent = getArchetypeEmail(archetype);
+        if (request.method !== 'POST') {
+            return safeError(405, 'Method not allowed');
+        }
 
+        const { email, archetype } = request.body;
+
+        if (!email || !archetype) {
+            return safeError(400, 'Missing email or archetype');
+        }
+
+        // 2. Validate API Key
+        if (!process.env.RESEND_API_KEY) {
+            return safeError(500, 'Server Configuration Error: Missing RESEND_API_KEY');
+        }
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        // 3. Generate HTML (Safe)
+        let htmlContent;
+        try {
+            htmlContent = getArchetypeEmail(archetype);
+        } catch (templateError) {
+            return safeError(500, 'Template Generation Failed', templateError.message);
+        }
+
+        // 4. Send Email
         const { data, error } = await resend.emails.send({
-            from: 'CoVibr <founder@covibr.com>',
+            from: 'CoVibr <founder@covibr.com>', // MUST be verified domain
             to: [email],
             subject: `Your Founder Archetype: ${archetype}`,
             html: htmlContent,
         });
 
         if (error) {
-            console.error('Resend Error:', error);
-            return response.status(400).json({ error });
+            return safeError(400, 'Resend API Error', error);
         }
 
         return response.status(200).json({ data });
+
     } catch (e) {
-        console.error('Server Error:', e);
-        return response.status(500).json({ error: e.message });
+        // 5. Catch-All for Crash
+        return safeError(500, 'Internal Server Error', e.message);
     }
 }
