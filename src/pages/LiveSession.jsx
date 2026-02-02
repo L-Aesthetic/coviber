@@ -18,6 +18,42 @@ export default function LiveSession() {
     const [targetEndTime, setTargetEndTime] = useState(null);
     const [timeLeft, setTimeLeft] = useState(48 * 3600);
     const [vibeScore, setVibeScore] = useState(85);
+    const [sessionId, setSessionId] = useState(null); // Derived from description
+
+    // Button Handlers
+    const handleExtension = async () => {
+        if (!confirm("Add 24 hours to the timer?")) return;
+        try {
+            const { data: team } = await supabase.from('teams').select('description, created_at').eq('id', teamId).single();
+            if (team && !team.description.includes('|EXTENDED')) {
+                const newDesc = team.description + '|EXTENDED';
+                const { error } = await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+                if (error) throw error;
+                // Update local (optimistic)
+                const createdAt = new Date(team.created_at).getTime();
+                setTargetEndTime(createdAt + 72 * 3600 * 1000); // 72h
+                alert("Time Extended! (+24h)");
+            } else {
+                alert("Session already extended or invalid.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error extending time");
+        }
+    };
+
+    const handleEndSession = () => {
+        // Go to Chemistry Room for Voting
+        if (sessionId) {
+            navigate(`/chemistry/${sessionId}`);
+        } else {
+            console.error("No Session ID found");
+            // Fallback: try to find it from description if state is missing
+            // But for now, alert
+            alert("Redirecting to Decision Room...");
+            // Hard navigate if needed or just go back
+        }
+    };
 
     // --- Timer Logic ---
     useEffect(() => {
@@ -103,7 +139,14 @@ export default function LiveSession() {
                 setProjectName(teamData.project_name || 'Chemistry Session');
                 if (teamData.created_at) {
                     const createdAt = new Date(teamData.created_at).getTime();
-                    setTargetEndTime(createdAt + 48 * 60 * 60 * 1000);
+                    let duration = 48 * 3600 * 1000;
+                    if (teamData.description?.includes('|EXTENDED')) duration += 24 * 3600 * 1000;
+                    setTargetEndTime(createdAt + duration);
+                }
+                // Extract SessionId
+                if (teamData.description?.startsWith('Chemistry-Session:')) {
+                    const sid = teamData.description.split('Chemistry-Session:')[1].split('|')[0];
+                    setSessionId(sid);
                 }
             }
 
@@ -474,12 +517,16 @@ export default function LiveSession() {
 
                     {/* Actions Panel */}
                     <div className="saas-panel" style={{ padding: '20px' }}>
-                        <button className="btn-primary" style={{ width: '100%', height: '54px', justifyContent: 'center', marginBottom: '12px', background: 'var(--accent-primary)' }}>
+                        <button
+                            className="btn-primary"
+                            onClick={handleEndSession}
+                            style={{ width: '100%', height: '54px', justifyContent: 'center', marginBottom: '12px', background: 'var(--accent-primary)' }}
+                        >
                             <CheckCircle2 size={18} /> Submit MVP for Review
                         </button>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                            <button className="btn-ghost" style={{ fontSize: '0.8rem', justifyContent: 'center' }}>Need Extension?</button>
-                            <button className="btn-ghost" style={{ fontSize: '0.8rem', justifyContent: 'center', color: '#EF4444' }}>Abort Mission</button>
+                            <button className="btn-ghost" onClick={handleExtension} style={{ fontSize: '0.8rem', justifyContent: 'center' }}>Need Extension?</button>
+                            <button className="btn-ghost" onClick={handleEndSession} style={{ fontSize: '0.8rem', justifyContent: 'center', color: '#EF4444' }}>Abort Mission</button>
                         </div>
                     </div>
                 </div>

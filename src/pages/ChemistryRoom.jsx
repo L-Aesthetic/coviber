@@ -38,6 +38,8 @@ export default function ChemistryRoom() {
     const [targetEndTime, setTargetEndTime] = useState(null);
     const [showTimeExpModal, setShowTimeExpModal] = useState(false); // New: Timer Expiration Modal
 
+    const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
+
     // Countdown timer
     useEffect(() => {
         if (!targetEndTime) return;
@@ -48,9 +50,9 @@ export default function ChemistryRoom() {
             const remaining = Math.max(0, Math.floor(distance / 1000));
             setTimeRemaining(remaining);
 
-            if (remaining === 0 && !hasVoted && !showTimeExpModal) {
+            if (remaining === 0 && !hasVoted && !showTimeExpModal && !modalDismissed) {
                 // Double check we haven't already handled this or aren't in a post-game state
-                // Only show if we haven't voted yet.
+                // Only show if we haven't voted yet AND haven't manually dismissed it.
                 setShowTimeExpModal(true);
             }
         };
@@ -58,7 +60,7 @@ export default function ChemistryRoom() {
         updateTimer();
         const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, [targetEndTime, hasVoted, showTimeExpModal]);
+    }, [targetEndTime, hasVoted, showTimeExpModal, modalDismissed]);
 
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
@@ -1347,7 +1349,10 @@ export default function ChemistryRoom() {
 
                                 <button
                                     className="btn-primary"
-                                    onClick={() => setShowTimeExpModal(false)}
+                                    onClick={() => {
+                                        setModalDismissed(true);
+                                        setShowTimeExpModal(false);
+                                    }}
                                     style={{
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                                         padding: '24px', cursor: 'pointer',
