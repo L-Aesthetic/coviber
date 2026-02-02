@@ -492,7 +492,10 @@ const InteractiveQuiz = () => {
                 });
 
                 if (!emailResponse.ok) {
-                    console.warn("Background Email failed (likely Sandbox or API missing)");
+                    const errorData = await emailResponse.json();
+                    console.warn("Background Email failed details:", errorData);
+                    // alert(`Email failed: ${errorData.error?.message || "Check console"}`); // Optional: show specific error to user?
+                    // For now, keep the friendly alert but log the real error
                     alert("Note: Email confirmation failed to send. Don't worry, your result is saved in the dashboard!");
                 }
 
