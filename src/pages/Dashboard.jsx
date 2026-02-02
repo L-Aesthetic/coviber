@@ -1,4 +1,4 @@
-import { Users, GitPullRequest, Zap, TrendingUp, Plus, Sun, Moon, Calendar, Bell, ArrowRight, CheckCircle2, AlertCircle, Crown } from 'lucide-react';
+import { Users, GitPullRequest, Zap, TrendingUp, Plus, Sun, Moon, Calendar, Bell, ArrowRight, CheckCircle2, AlertCircle, Crown, RefreshCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
@@ -284,6 +284,88 @@ export default function Dashboard() {
                             Initiate Protocol <ArrowRight size={20} style={{ marginLeft: '12px' }} />
                         </button>
                     </Link>
+
+                    <button
+                        className="btn-ghost"
+                        style={{ marginTop: '16px', fontSize: '0.9rem', opacity: 0.8, width: '100%', justifyContent: 'center' }}
+                        onClick={async () => {
+                            // Helper to save immediately (Copied from ProfilePage.jsx for consistency)
+                            const saveToDb = async (arch, leadName) => {
+                                setLoading(true);
+                                try {
+                                    // Lazy load details if not imported, or assume imported. 
+                                    // We need to ensure getArchetypeDetails is imported.
+                                    const { getArchetypeDetails } = await import('../data/archetypes');
+                                    const details = getArchetypeDetails(arch);
+
+                                    // Construct full profile update
+                                    const updates = {
+                                        id: user.id,
+                                        name: leadName || (user.email ? user.email.split('@')[0] : "Founder"),
+                                        headline: details.headline,
+                                        role: details.role,
+                                        bio: details.bio,
+                                        superpower: details.superpower,
+                                        kryptonite: details.kryptonite,
+                                        comm_style: details.commStyle,
+                                        trigger_warning: details.triggerWarning,
+                                        vibe_data: details.vibe_data,
+
+                                        subscription_tier: 'founder',
+                                        updated_at: new Date().toISOString()
+                                    };
+
+                                    const { error } = await supabase
+                                        .from('profiles')
+                                        .upsert(updates, { onConflict: 'id' });
+
+                                    if (error) throw error;
+
+                                    alert(`Sync Complete! Found "${arch}". Entering Workspace...`);
+                                    window.location.reload();
+                                } catch (err) {
+                                    console.error(err);
+                                    alert("Sync failed: " + err.message);
+                                } finally {
+                                    setLoading(false);
+                                }
+                            };
+
+                            // 1. Try LocalStorage
+                            const localArchetype = localStorage.getItem('covibr_archetype');
+                            const localName = localStorage.getItem('covibr_name');
+
+                            if (localArchetype) {
+                                await saveToDb(localArchetype, localName);
+                                return;
+                            }
+
+                            // 2. Try Database
+                            if (!user?.email) {
+                                alert("Please sign in to check database records.");
+                                return;
+                            }
+
+                            const { data } = await supabase
+                                .from('leads')
+                                .select('archetype, name')
+                                .eq('email', user.email)
+                                .order('created_at', { ascending: false })
+                                .limit(1)
+                                .maybeSingle(); // Use maybeSingle to avoid 406
+
+                            if (data?.archetype) {
+                                await saveToDb(data.archetype, data.name);
+                            } else {
+                                if (confirm("No quiz results found for your email. Would you like to take the quiz now?")) {
+                                    window.location.href = '/quiz';
+                                }
+                            }
+                        }}
+                    >
+                        <RefreshCcw size={14} style={{ marginRight: '6px' }} />
+                        I already took the diagnostic (Sync)
+                    </button>
                 </motion.div>
             </div>
         );

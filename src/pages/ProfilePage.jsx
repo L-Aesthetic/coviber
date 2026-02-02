@@ -810,20 +810,28 @@ export default function ProfilePage() {
                     <section className="saas-panel" style={{ padding: '32px' }}>
                         <h3 className="section-title"><Brain size={20} /> Vibe Signature</h3>
                         {/* ... Chart code (omitted for brevity, assume unchanged) ... */}
+                        {/* Chart code: Safeguarded against empty data crashes */}
                         <div style={{ height: '300px', width: '100%', minHeight: '300px', margin: '20px 0' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={profile.vibe_data || []}>
-                                    <PolarGrid stroke="var(--border-subtle)" />
-                                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
-                                    <Radar
-                                        name="Alex"
-                                        dataKey="A"
-                                        stroke="var(--accent-primary)"
-                                        fill="var(--accent-primary)"
-                                        fillOpacity={0.3}
-                                    />
-                                </RadarChart>
-                            </ResponsiveContainer>
+                            {profile.vibe_data && profile.vibe_data.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={profile.vibe_data}>
+                                        <PolarGrid stroke="var(--border-subtle)" />
+                                        <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-tertiary)', fontSize: 12 }} />
+                                        <Radar
+                                            name="Founders"
+                                            dataKey="A"
+                                            stroke="var(--accent-primary)"
+                                            fill="var(--accent-primary)"
+                                            fillOpacity={0.3}
+                                        />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', border: '1px dashed var(--border-subtle)', borderRadius: '12px' }}>
+                                    <Brain size={24} style={{ marginRight: '8px', opacity: 0.5 }} />
+                                    <span>No Vibe Data Available</span>
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '32px' }}>
