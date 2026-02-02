@@ -17,24 +17,24 @@ export default function LiveSession() {
     const [projectName, setProjectName] = useState('Loading...');
     const [targetEndTime, setTargetEndTime] = useState(null);
     const [timeLeft, setTimeLeft] = useState(48 * 3600);
-    const [vibeScore, setVibeScore] = useState(85);
     const [sessionId, setSessionId] = useState(null); // Derived from description
 
     // Button Handlers
-    const handleExtension = async () => {
-        if (!confirm("Add 24 hours to the timer?")) return;
+    const confirmExtension = async () => {
         try {
             const { data: team } = await supabase.from('teams').select('description, created_at').eq('id', teamId).single();
             if (team && !team.description.includes('|EXTENDED')) {
                 const newDesc = team.description + '|EXTENDED';
                 const { error } = await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
                 if (error) throw error;
+
                 // Update local (optimistic)
                 const createdAt = new Date(team.created_at).getTime();
                 setTargetEndTime(createdAt + 72 * 3600 * 1000); // 72h
-                alert("Time Extended! (+24h)");
+                setShowExtensionModal(false);
             } else {
                 alert("Session already extended or invalid.");
+                setShowExtensionModal(false);
             }
         } catch (e) {
             console.error(e);
@@ -43,16 +43,21 @@ export default function LiveSession() {
     };
 
     const handleEndSession = () => {
-        // Go to Chemistry Room for Voting
-        if (sessionId) {
-            navigate(`/chemistry/${sessionId}`);
-        } else {
-            console.error("No Session ID found");
-            // Fallback: try to find it from description if state is missing
-            // But for now, alert
-            alert("Redirecting to Decision Room...");
-            // Hard navigate if needed or just go back
-        }
+        setShowRedirectModal(true);
+        // Delay navigation slightly to show the polished modal
+        setTimeout(() => {
+            if (sessionId) {
+                navigate(`/chemistry/${sessionId}`);
+            } else {
+                // Determine if we should navigate anyway or stay
+                console.error("No Session ID found");
+                // For now, redirect to dashboard if no session found? 
+                // Or navigate to chemistry check with teamId? 
+                // Let's assume we navigate to /chemistry/undefined if we must? No. 
+                navigate('/dashboard');
+            }
+        }, 1500);
+
     };
 
     // --- Timer Logic ---
@@ -92,6 +97,35 @@ export default function LiveSession() {
     const [notes, setNotes] = useState('');
     const [notesId, setNotesId] = useState(null);
     const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+    // Chat State
+    const [chatMessage, setChatMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
+
+    // Modal States for Polish
+    const [showExtensionModal, setShowExtensionModal] = useState(false);
+    const [showRedirectModal, setShowRedirectModal] = useState(false);
+
+    // Call Room State
+    const [isCallActive, setIsCallActive] = useState(false);
+
+    const handleSendMessage = async () => {
+        if (!chatMessage.trim()) return;
+        setIsSending(true);
+        try {
+            await supabase.from('activity_logs').insert([{
+                team_id: teamId,
+                user_id: (await supabase.auth.getUser()).data.user?.id,
+                action_type: 'chat',
+                description: chatMessage
+            }]);
+            setChatMessage('');
+        } catch (error) {
+            console.error('Error sending message:', error);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     // Credentials State
     const [credentials, setCredentials] = useState([]);
@@ -295,7 +329,7 @@ export default function LiveSession() {
                         <ModuleTab active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={Layout} label="Task Board" />
                         <ModuleTab active={activeTab === 'notes'} onClick={() => setActiveTab('notes')} icon={FileText} label="Shared Brain" />
                         <ModuleTab active={activeTab === 'vault'} onClick={() => setActiveTab('vault')} icon={ShieldCheck} label="Credentials" />
-                        <ModuleTab active={activeTab === 'video'} onClick={() => setActiveTab('video')} icon={Video} label="Video Room" />
+                        <ModuleTab active={activeTab === 'video'} onClick={() => setActiveTab('video')} icon={Video} label="Call Room" />
                     </div>
 
                     {/* Main Stage */}
@@ -475,13 +509,42 @@ export default function LiveSession() {
                             )}
 
                             {activeTab === 'video' && (
-                                <motion.div key="video" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-                                        <Video size={40} color="var(--accent-primary)" />
-                                    </div>
-                                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Deep Sync Room</h3>
-                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Always-on audio channel for the sprint.</p>
-                                    <button className="btn-primary" style={{ padding: '12px 32px' }}>Hop in Voice</button>
+                                <motion.div key="video" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                    {!isCallActive ? (
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                                            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                                                <Video size={40} color="var(--accent-primary)" />
+                                            </div>
+                                            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Deep Sync Room</h3>
+                                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Always-on audio channel for the sprint.</p>
+                                            <button
+                                                className="btn-primary"
+                                                style={{ padding: '12px 32px' }}
+                                                onClick={() => setIsCallActive(true)}
+                                            >
+                                                Hop in Voice
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ flex: 1, borderRadius: '12px', overflow: 'hidden', background: '#000', position: 'relative' }}>
+                                            <iframe
+                                                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                                                src={`https://meet.jit.si/CoVibr-${teamId}#config.prejoinPageEnabled=false`}
+                                                style={{ width: '100%', height: '100%', border: 'none' }}
+                                                title="Jitsi Meet"
+                                            />
+                                            <button
+                                                onClick={() => setIsCallActive(false)}
+                                                style={{
+                                                    position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+                                                    background: '#EF4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px',
+                                                    fontWeight: 600, cursor: 'pointer', zIndex: 10
+                                                }}
+                                            >
+                                                Leave Call
+                                            </button>
+                                        </div>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -506,10 +569,20 @@ export default function LiveSession() {
                         <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
                             <input
                                 className="glass-input"
-                                placeholder="Message Alex..."
+                                placeholder="Message team..."
                                 style={{ flex: 1, fontSize: '0.85rem' }}
+                                value={chatMessage}
+                                onChange={e => setChatMessage(e.target.value)}
+                                onKeyDown={async (e) => {
+                                    if (e.key === 'Enter') await handleSendMessage();
+                                }}
                             />
-                            <button className="btn-primary" style={{ width: '40px', height: '40px', padding: 0, justifyContent: 'center' }}>
+                            <button
+                                className="btn-primary"
+                                style={{ width: '40px', height: '40px', padding: 0, justifyContent: 'center' }}
+                                onClick={handleSendMessage}
+                                disabled={isSending}
+                            >
                                 <Send size={16} />
                             </button>
                         </div>
@@ -525,13 +598,68 @@ export default function LiveSession() {
                             <CheckCircle2 size={18} /> Submit MVP for Review
                         </button>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                            <button className="btn-ghost" onClick={handleExtension} style={{ fontSize: '0.8rem', justifyContent: 'center' }}>Need Extension?</button>
+                            <button className="btn-ghost" onClick={() => setShowExtensionModal(true)} style={{ fontSize: '0.8rem', justifyContent: 'center' }}>Need Extension?</button>
                             <button className="btn-ghost" onClick={handleEndSession} style={{ fontSize: '0.8rem', justifyContent: 'center', color: '#EF4444' }}>Abort Mission</button>
                         </div>
                     </div>
                 </div>
 
             </div>
+
+            {/* Polished Modals */}
+            <AnimatePresence>
+                {showExtensionModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 200,
+                            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '400px', width: '90%', padding: '32px', border: '1px solid var(--accent-primary)' }}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '12px' }}>Buy More Time? ⏳</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
+                                Running behind? You can extend the deadline by <strong>24 hours</strong>. This will be logged in your final report.
+                            </p>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowExtensionModal(false)}>Cancel</button>
+                                <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={confirmExtension}>Confirm (+24h)</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showRedirectModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 300,
+                            background: '#05050A',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'
+                        }}
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            style={{ marginBottom: '24px' }}
+                        >
+                            <Zap size={48} color="var(--accent-primary)" />
+                        </motion.div>
+                        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>Entering Decision Protocol...</h2>
+                        <p style={{ color: 'var(--text-tertiary)' }}>Prepare to cast your vote.</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
