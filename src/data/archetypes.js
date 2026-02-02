@@ -98,12 +98,37 @@ export const ARCHETYPE_DATA = {
             { subject: 'Optimism', A: 130, fullMark: 150 },
             { subject: 'Details', A: 20, fullMark: 150 },
         ]
+    },
+    'Unknown': {
+        name: 'Unknown',
+        headline: 'Unverified Builder',
+        role: "Member",
+        bio: "Profile not yet completed.",
+        superpower: "Potential",
+        kryptonite: "Unknown",
+        commStyle: "Unknown",
+        triggerWarning: "No data available",
+        powerDynamics: "Unknown",
+        workDialect: "Unknown",
+        quote: "Building in Stealth",
+        whyEssential: "Every journey begins somewhere.",
+        match: {
+            name: "NONE",
+            desc: "Take the quiz to find your match."
+        },
+        vibe_data: [
+            { subject: 'Risk', A: 50, fullMark: 150 },
+            { subject: 'Pace', A: 50, fullMark: 150 },
+            { subject: 'Control', A: 50, fullMark: 150 },
+            { subject: 'Optimism', A: 50, fullMark: 150 },
+            { subject: 'Details', A: 50, fullMark: 150 },
+        ]
     }
 };
 
 export const getArchetypeDetails = (name) => {
     // Normalize string to match keys
-    if (!name) return ARCHETYPE_DATA['Sovereign'];
+    if (!name) return ARCHETYPE_DATA['Unknown'];
 
     // Check if name contains key words
     if (name.includes('Sovereign')) return ARCHETYPE_DATA['Sovereign'];
@@ -112,5 +137,5 @@ export const getArchetypeDetails = (name) => {
     if (name.includes('Hustler')) return ARCHETYPE_DATA['Hustler'];
 
     // Default
-    return ARCHETYPE_DATA['Sovereign'];
+    return ARCHETYPE_DATA['Unknown'];
 };

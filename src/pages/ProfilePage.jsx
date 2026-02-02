@@ -96,6 +96,9 @@ export default function ProfilePage() {
                     setProfile(prev => ({
                         ...prev,
                         ...data,
+                        // Fix Name Display: Prioritize full_name > display_name > name > "Founder"
+                        name: data.full_name || data.display_name || data.name || "Founder",
+
                         // Apply defaults if DB fields are empty
                         commStyle: data.comm_style || richDetails.commStyle,
                         triggerWarning: data.trigger_warning || richDetails.triggerWarning,
