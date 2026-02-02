@@ -188,15 +188,21 @@ export default function AccountSettings() {
                 console.warn("Cleanup warning:", err);
             }
 
-            // 2. Delete Profile
-            const { error } = await supabase
-                .from('profiles')
-                .delete()
-                .eq('id', user.id);
+            // 2. Delete User Account (Server-Side Admin)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("No active session");
 
-            if (error) {
-                console.error("Supabase Deletion Error:", error);
-                throw error;
+            const response = await fetch('/api/delete-user', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete user');
             }
 
             // 3. Sign out
