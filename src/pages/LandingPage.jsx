@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 
 const LandingPage = () => {
     const navigate = useNavigate();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const scrollToQuiz = () => {
         document.getElementById('quiz-section').scrollIntoView({ behavior: 'smooth' });
@@ -417,7 +418,6 @@ const InteractiveQuiz = () => {
     const [email, setEmail] = useState("");
     const [name, setName] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const totalQuestions = quizQuestions.length;
 
