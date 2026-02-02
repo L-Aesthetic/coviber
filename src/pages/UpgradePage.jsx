@@ -95,17 +95,15 @@ export default function UpgradePage() {
                 }),
             });
 
-            const { sessionId, error: apiError } = await response.json();
+            const { url, error: apiError } = await response.json();
 
             if (apiError) throw new Error(apiError);
 
-            if (!sessionId) throw new Error("Failed to create checkout session");
-
-            // Redirect to Stripe
-            const stripe = await stripePromise;
-            const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
-
-            if (stripeError) throw stripeError;
+            if (url) {
+                window.location.href = url;
+            } else {
+                throw new Error("Failed to create checkout session URL");
+            }
 
         } catch (err) {
             console.error("Checkout Error:", err);

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
             }
         });
 
-        res.status(200).json({ sessionId: session.id });
+        res.status(200).json({ sessionId: session.id, url: session.url });
 
     } catch (error) {
         return safeError(500, 'Internal Server Error', error.message);
