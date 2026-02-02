@@ -4,7 +4,8 @@ import {
     Zap, CheckCircle2, Github as GithubIcon,
     Activity, ShieldCheck,
     Layout, Send,
-    ExternalLink, HardDrive, MoreVertical, Plus
+    ExternalLink, HardDrive, MoreVertical, Plus,
+    Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -19,102 +20,39 @@ export default function LiveSession() {
     const [timeLeft, setTimeLeft] = useState(48 * 3600);
     const [vibeScore, setVibeScore] = useState(85);
     const [sessionId, setSessionId] = useState(null); // Derived from description
-    const [isPaused, setIsPaused] = useState(false);
-    const [sprintStartTime, setSprintStartTime] = useState(null); // Explicit start time
 
+    // --- PAUSE / RESUME LOGIC ---
+    const [isPaused, setIsPaused] = useState(false);
+    const [timeOffset, setTimeOffset] = useState(0); // Total paused duration in ms
 
     // Button Handlers
     const confirmExtension = async () => {
         try {
             const { data: team } = await supabase.from('teams').select('description, created_at').eq('id', teamId).single();
-            if (team) {
-                // If not extended yet, add 24h to the deadline (or rather, note it)
-                // New logic: Just append |EXTENDED to description if not there
-                if (!team.description.includes('|EXTENDED')) {
-                    const newDesc = team.description + '|EXTENDED';
-                    const { error } = await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
-                    if (error) throw error;
-                    // Optimistic update handled by subscription or re-fetch
-                    setShowExtensionModal(false);
-                    // trigger refresh
-                    // fetchData(); // defined inside effect, can't call easily. 
-                    // Subscription will pick it up
-                } else {
-                    alert("Session already extended.");
-                    setShowExtensionModal(false);
-                }
+            if (team && !team.description.includes('|EXTENDED')) {
+                const newDesc = team.description + '|EXTENDED';
+                const { error } = await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+                if (error) throw error;
+
+                // Update local (optimistic)
+                const createdAt = new Date(team.created_at).getTime();
+                // Re-calculate target based on existing offset and new extension
+                let duration = 72 * 3600 * 1000; // 72h
+
+                // We need to respect existing offset if any
+                const offsetMatch = team.description.match(/\|OFFSET:(\d+)/);
+                const savedOffset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+
+                setTargetEndTime(createdAt + duration + savedOffset);
+                setShowExtensionModal(false);
+            } else {
+                alert("Session already extended or invalid.");
+                setShowExtensionModal(false);
             }
         } catch (e) {
             console.error(e);
             alert("Error extending time");
         }
-    };
-
-    const handleStartSprint = async () => {
-        try {
-            // Set START time to now. Remove any PAUSE or OLD start tags?
-            // Strategy: Append |START:<timestamp>
-            // Ideally we clean up old tags, but appending works if we parse last one.
-            // Better: Replace existing START tag or append if properly delimited.
-
-            const now = Date.now();
-            const { data: team } = await supabase.from('teams').select('description').eq('id', teamId).single();
-            if (!team) return;
-
-            // Simple append for MVP, or regex replace
-            // Let's assume description is "Title|Key:Val|..."
-            // We'll just append |START:now
-
-            let newDesc = team.description;
-            // Remove previous START/PAUSE/EXTENDED to reset fully?
-            // "Active Sprint" implies we might want to keep history? 
-            // The user wants to "fix" stuck 00:00:00, so likely a full reset of the timer context.
-
-            // Remove old tags to be clean
-            newDesc = newDesc.replace(/\|START:\d+/g, '').replace(/\|PAUSE:\d+/g, '').replace(/\|EXTENDED/g, '');
-            newDesc += `|START:${now}`;
-
-            await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
-        } catch (e) { console.error(e); }
-    };
-
-    const togglePause = async () => {
-        try {
-            const now = Date.now();
-            const { data: team } = await supabase.from('teams').select('description').eq('id', teamId).single();
-            if (!team) return;
-
-            let newDesc = team.description;
-
-            if (isPaused) {
-                // RESUME: Remove PAUSE tag, and adjust START time so that "used time" creates same specific deadline?
-                // Actually easier: Store "PAUSED_AT" and "ACCUMULATED_PAUSE".
-                // MVP Way: 
-                // If paused, we need to shift the START time forward by (Now - PauseTime).
-                // So EffectiveStart = OldStart + (Now - PauseTime).
-                // We find |PAUSE:timestamp
-                const pauseMatch = newDesc.match(/\|PAUSE:(\d+)/);
-                if (pauseMatch) {
-                    const pauseTime = parseInt(pauseMatch[1]);
-                    const pausedDuration = now - pauseTime;
-
-                    // Find Start
-                    const startMatch = newDesc.match(/\|START:(\d+)/);
-                    if (startMatch) {
-                        const oldStart = parseInt(startMatch[1]);
-                        const newStart = oldStart + pausedDuration;
-                        newDesc = newDesc.replace(`|START:${oldStart}`, `|START:${newStart}`);
-                    }
-                    // Remove Pause
-                    newDesc = newDesc.replace(/\|PAUSE:\d+/g, '');
-                }
-            } else {
-                // PAUSE: Add |PAUSE:now
-                newDesc += `|PAUSE:${now}`;
-            }
-
-            await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
-        } catch (e) { console.error(e); }
     };
 
     const handleEndSession = () => {
@@ -135,24 +73,68 @@ export default function LiveSession() {
 
     };
 
+    const handleTogglePause = async () => {
+        try {
+            const { data: team } = await supabase.from('teams').select('description').eq('id', teamId).single();
+            if (!team) return;
+
+            let newDesc = team.description;
+            const now = Date.now();
+
+            if (isPaused) {
+                // RESUME
+                // 1. Calculate how long we were paused
+                const pausedMatch = newDesc.match(/\|PAUSED:(\d+)/);
+                const pausedAt = pausedMatch ? parseInt(pausedMatch[1]) : now;
+                const diff = now - pausedAt;
+
+                // 2. Add to total offset
+                const offsetMatch = newDesc.match(/\|OFFSET:(\d+)/);
+                const currentOffset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+                const newOffset = currentOffset + diff;
+
+                // 3. Update String (Remove PAUSED, Update OFFSET)
+                newDesc = newDesc.replace(/\|PAUSED:\d+/, '').replace(/\|OFFSET:\d+/, '') + `|OFFSET:${newOffset}`;
+
+                setTimeOffset(newOffset);
+                setIsPaused(false);
+
+                // Update target locally immediately to prevent jump
+                setTargetEndTime(prev => prev + diff);
+
+            } else {
+                // PAUSE
+                // 1. Add PAUSED timestamp
+                // Remove existing just in case
+                newDesc = newDesc.replace(/\|PAUSED:\d+/, '') + `|PAUSED:${now}`;
+
+                setIsPaused(true);
+            }
+
+            await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+
+        } catch (err) {
+            console.error("Error toggling pause:", err);
+            alert("Failed to toggle pause");
+        }
+    };
+
     // --- Timer Logic ---
     useEffect(() => {
-        if (isPaused) return;
-        if (!targetEndTime && !sprintStartTime) return;
+        if (!targetEndTime) return;
 
         const updateTimer = () => {
+            if (isPaused) return; // Don't tick down visually if paused
+
             const now = new Date().getTime();
-            // If we have a specific target end time calculated from logic
-            if (targetEndTime) {
-                const distance = targetEndTime - now;
-                setTimeLeft(Math.max(0, Math.floor(distance / 1000)));
-            }
+            const distance = targetEndTime - now;
+            setTimeLeft(Math.max(0, Math.floor(distance / 1000)));
         };
 
         updateTimer();
         const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, [targetEndTime, sprintStartTime, isPaused]);
+    }, [targetEndTime, isPaused]);
 
     const formatTime = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
@@ -232,6 +214,50 @@ export default function LiveSession() {
         setIsSavingNotes(false);
     };
 
+    // --- Momentum Logic ---
+    const calculateMomentum = (currentTasks, lastActivityTime, isSessionPaused, remainingTime) => {
+        const todo = currentTasks.filter(t => t.status === 'todo');
+        const doing = currentTasks.filter(t => t.status === 'progress');
+        const done = currentTasks.filter(t => t.status === 'shipped' || t.status === 'done');
+
+        const total = todo.length + doing.length + done.length;
+
+        // 1. Base Progress (70%)
+        let progressScore = 0;
+        if (total > 0) {
+            progressScore = (done.length / total) * 100;
+        }
+
+        // 2. Velocity Decay (30%)
+        let velocityScore = 0;
+        if (lastActivityTime) {
+            const now = Date.now();
+
+            if (isSessionPaused) {
+                velocityScore = 100; // Frozen if paused
+            } else {
+                const diffHours = (now - new Date(lastActivityTime).getTime()) / (1000 * 60 * 60);
+
+                if (diffHours < 1) {
+                    velocityScore = 100; // Fresh
+                } else if (diffHours < 4) {
+                    // Linear decay: 1h=100%, 4h=0%
+                    velocityScore = Math.max(0, 100 - ((diffHours - 1) / 3) * 100);
+                } else {
+                    velocityScore = 0; // Stale
+                }
+            }
+        } else if (total > 0) {
+            velocityScore = 50;
+        }
+
+        // 3. Timeout Zero
+        if (remainingTime === 0 && done.length === 0 && !isSessionPaused) return 0;
+
+        // Weighted Average
+        return Math.round((progressScore * 0.7) + (velocityScore * 0.3));
+    };
+
     // --- Supabase Subscription ---
     useEffect(() => {
         // 1. Initial Fetch
@@ -248,48 +274,37 @@ export default function LiveSession() {
                 .eq('id', teamId)
                 .single();
 
+            let currentIsPaused = false;
+            let currentOffset = 0;
+
             if (teamData) {
                 setProjectName(teamData.project_name || 'Chemistry Session');
 
-                // Parse Description for Metadata
-                const desc = teamData.description || '';
+                // Parse Pause/Offset
+                // 1. OFFSET
+                const offsetMatch = teamData.description?.match(/\|OFFSET:(\d+)/);
+                currentOffset = offsetMatch ? parseInt(offsetMatch[1]) : 0;
+                setTimeOffset(currentOffset);
 
-                // Check if Paused
-                const pauseMatch = desc.match(/\|PAUSE:(\d+)/);
-                const isSystemPaused = !!pauseMatch;
-                setIsPaused(isSystemPaused);
-
-                // Determine Start Time
-                // Priority: START tag > created_at
-                const startMatch = desc.match(/\|START:(\d+)/);
-                let startTime = teamData.created_at ? new Date(teamData.created_at).getTime() : Date.now();
-
-                if (startMatch) {
-                    startTime = parseInt(startMatch[1]);
-                    setSprintStartTime(startTime);
-                }
-
-                // Determine Duration
-                let duration = 48 * 3600 * 1000;
-                if (desc.includes('|EXTENDED')) duration += 24 * 3600 * 1000;
-
-                // Calculate Target End
-                const target = startTime + duration;
-                setTargetEndTime(target);
-
-                // If paused, we technically don't countdown, so timeLeft should be fixed at (Target - PauseTime)
-                if (isSystemPaused) {
-                    const pauseTime = parseInt(pauseMatch[1]);
-                    const frozenDistance = target - pauseTime;
-                    setTimeLeft(Math.max(0, Math.floor(frozenDistance / 1000)));
+                // 2. PAUSED
+                const pausedMatch = teamData.description?.match(/\|PAUSED:(\d+)/);
+                if (pausedMatch) {
+                    currentIsPaused = true;
+                    setIsPaused(true);
                 } else {
-                    // Timer effect will handle live update, but set initial here to avoid flash
-                    const now = Date.now();
-                    setTimeLeft(Math.max(0, Math.floor((target - now) / 1000)));
+                    currentIsPaused = false;
+                    setIsPaused(false);
                 }
 
+                if (teamData.created_at) {
+                    const createdAt = new Date(teamData.created_at).getTime();
+                    let duration = 48 * 3600 * 1000;
+                    if (teamData.description?.includes('|EXTENDED')) duration += 24 * 3600 * 1000;
+
+                    setTargetEndTime(createdAt + duration + currentOffset);
+                }
                 // Extract SessionId
-                if (teamData?.description?.startsWith('Chemistry-Session:')) {
+                if (teamData.description?.startsWith('Chemistry-Session:')) {
                     const sid = teamData.description.split('Chemistry-Session:')[1].split('|')[0];
                     setSessionId(sid);
                 }
@@ -328,16 +343,23 @@ export default function LiveSession() {
                 .eq('team_id', teamId);
 
             if (tasksData) {
-                setTasks(tasksData.map(t => ({ ...t, assignee: t.assignee?.name || 'Unassigned' })));
+                const formattedTasks = tasksData.map(t => ({ ...t, assignee: t.assignee?.name || 'Unassigned' }));
+                setTasks(formattedTasks);
 
-                // Calculate Momentum
-                const total = tasksData.length;
-                const completed = tasksData.filter(t => t.status === 'shipped').length;
-                // Simple momentum: % completed. 
-                // If 0 items, 100% velocity (fresh). If items exist, calc real %.
-                const momentum = total === 0 ? 100 : Math.round((completed / total) * 100);
-                setVibeScore(momentum);
+                // MOMENTUM CALC
+                let lastActive = null;
+                if (feedData && feedData.length > 0) {
+                    lastActive = feedData[0].created_at;
+                }
+
+                // Recalc momentum
+                // We need to estimate 'remainingTime' roughly here or use simple 1 if not 0
+                // Ideally passing 'timeLeft' but inside async it might be stale. 
+                // However, timeout logic is less critical than activity logic.
+                const mom = calculateMomentum(formattedTasks, lastActive, currentIsPaused, 1);
+                setVibeScore(mom);
             }
+
             if (feedData) setFeed(feedData.map(f => ({
                 id: f.id,
                 user: f.user?.name || 'System',
@@ -353,7 +375,7 @@ export default function LiveSession() {
                 setNotes(notesData.content);
                 setNotesId(notesData.id);
             } else {
-                setNotes(`# MVP Requirements\\n\\n1. Built with CoVibr.\\n2. ...`);
+                setNotes(`# MVP Requirements\n\n1. Built with CoVibr.\n2. ...`);
             }
             if (credsData) setCredentials(credsData);
 
@@ -366,6 +388,7 @@ export default function LiveSession() {
         const channel = supabase
             .channel('room-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `team_id=eq.${teamId}` }, (payload) => {
+
                 fetchData(); // Simple re-fetch for now to handle joins
             })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_logs', filter: `team_id=eq.${teamId}` }, (payload) => {
@@ -378,6 +401,10 @@ export default function LiveSession() {
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'credentials', filter: `team_id=eq.${teamId}` }, (payload) => {
+                fetchData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'teams', filter: `id=eq.${teamId}` }, (payload) => {
+                // Check if description changed for pause/extend
                 fetchData();
             })
             .subscribe();
@@ -419,24 +446,41 @@ export default function LiveSession() {
                     <div style={{ width: '200px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: '4px', fontWeight: 700 }}>
                             <span style={{ color: 'var(--text-secondary)' }}>MOMENTUM</span>
-                            <span style={{ color: 'var(--accent-primary)' }}>{vibeScore}% VELOCITY</span>
+                            <span style={{ color: vibeScore > 50 ? 'var(--accent-primary)' : '#F59E0B' }}>
+                                {vibeScore}% {vibeScore > 80 ? 'HIGH VELOCITY' : (vibeScore > 40 ? 'STEADY' : 'STALLED')}
+                            </span>
                         </div>
                         <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${vibeScore}%` }}
-                                transition={{ duration: 1 }}
-                                style={{ height: '100%', background: 'var(--accent-primary)', boxShadow: '0 0 10px var(--accent-primary)' }}
+                                style={{
+                                    height: '100%',
+                                    background: vibeScore > 50 ? 'var(--accent-primary)' : '#F59E0B',
+                                    boxShadow: `0 0 10px ${vibeScore > 50 ? 'var(--accent-primary)' : '#F59E0B'}`
+                                }}
                             />
                         </div>
                     </div>
 
                     {/* Timer */}
-                    <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                        <div style={{ fontSize: '0.7rem', color: timeLeft === 0 ? '#EF4444' : (isPaused ? '#F59E0B' : 'var(--text-tertiary)'), fontWeight: 700 }}>
-                            {timeLeft === 0 ? 'TIME EXPIRED' : (isPaused ? 'PAUSED' : 'REMAINING')}
+                    <div style={{ textAlign: 'right', minWidth: '140px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontSize: '0.7rem', color: timeLeft < 3600 * 4 ? '#EF4444' : 'var(--text-tertiary)', fontWeight: 700 }}>
+                                {isPaused ? 'PAUSED' : 'REMAINING'}
+                            </div>
+                            <button
+                                onClick={handleTogglePause}
+                                style={{
+                                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                                    color: isPaused ? '#F59E0B' : 'var(--text-tertiary)'
+                                }}
+                                title={isPaused ? "Resume Sprint" : "Pause Sprint"}
+                            >
+                                {isPaused ? <Play size={14} fill="currentColor" /> : <div style={{ width: 14, height: 14, display: 'flex', justifyContent: 'center', gap: 2 }}><div style={{ background: 'currentColor', width: 4, height: 12, borderRadius: 1 }}></div><div style={{ background: 'currentColor', width: 4, height: 12, borderRadius: 1 }}></div></div>}
+                            </button>
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: timeLeft === 0 ? '#EF4444' : (isPaused ? '#F59E0B' : 'var(--text-primary)'), letterSpacing: '-1px' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums', color: isPaused ? '#F59E0B' : (timeLeft < 3600 * 4 ? '#EF4444' : 'var(--text-primary)'), letterSpacing: '-1px', opacity: isPaused ? 0.7 : 1 }}>
                             {formatTime(timeLeft)}
                         </div>
                     </div>
@@ -537,6 +581,7 @@ export default function LiveSession() {
                                 </motion.div>
                             )}
 
+                            {/* ... (Other Tabs remain similar, just ensuring valid closure) ... */}
                             {activeTab === 'notes' && (
                                 <motion.div key="notes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                                     <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px' }}>Product Requirements Document (Live)</h2>
@@ -672,6 +717,7 @@ export default function LiveSession() {
                             )}
                         </AnimatePresence>
                     </div>
+                </div>
 
                 {/* Right Side: Live Feed & Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minHeight: 0 }}>
@@ -723,88 +769,65 @@ export default function LiveSession() {
                             <button className="btn-ghost" onClick={() => setShowExtensionModal(true)} style={{ fontSize: '0.8rem', justifyContent: 'center' }}>Need Extension?</button>
                             <button className="btn-ghost" onClick={handleEndSession} style={{ fontSize: '0.8rem', justifyContent: 'center', color: '#EF4444' }}>Abort Mission</button>
                         </div>
-
-                        {/* Pause / Resume / Restart Actions */}
-                        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px', display: 'flex', gap: '8px' }}>
-                            {timeLeft === 0 ? (
-                                <button
-                                    className="btn-primary"
-                                    onClick={handleStartSprint}
-                                    style={{ width: '100%', justifyContent: 'center', background: '#10B981' }}
-                                >
-                                    <Zap size={16} /> Start New Sprint
-                                </button>
-                            ) : (
-                                <button
-                                    className="btn-ghost"
-                                    onClick={togglePause}
-                                    style={{ width: '100%', justifyContent: 'center', color: isPaused ? '#10B981' : '#F59E0B', borderColor: 'currentColor', border: '1px solid' }}
-                                >
-                                    {isPaused ? 'Resume Sprint' : 'Pause Timer'}
-                                </button>
-                            )}
-                        </div>
                     </div>
                 </div>
+
             </div>
 
-        </div>
+            {/* Polished Modals */}
+            <AnimatePresence>
+                {showExtensionModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 200,
+                            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '400px', width: '90%', padding: '32px', border: '1px solid var(--accent-primary)' }}
+                        >
+                            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '12px' }}>Buy More Time? ⏳</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
+                                Running behind? You can extend the deadline by <strong>24 hours</strong>. This will be logged in your final report.
+                            </p>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowExtensionModal(false)}>Cancel</button>
+                                <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={confirmExtension}>Confirm (+24h)</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
 
-
-        {/* Polished Modals */}
-        <AnimatePresence>
-        {showExtensionModal && (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{
-                    position: 'fixed', inset: 0, zIndex: 200,
-                    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-            >
-                <motion.div
-                    initial={{ scale: 0.9, y: 20 }}
-                    animate={{ scale: 1, y: 0 }}
-                    className="saas-panel"
-                    style={{ maxWidth: '400px', width: '90%', padding: '32px', border: '1px solid var(--accent-primary)' }}
-                >
-                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '12px' }}>Buy More Time? ⏳</h3>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: 1.5 }}>
-                        Running behind? You can extend the deadline by <strong>24 hours</strong>. This will be logged in your final report.
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn-ghost" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowExtensionModal(false)}>Cancel</button>
-                        <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={confirmExtension}>Confirm (+24h)</button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        )}
-
-        {showRedirectModal && (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{
-                    position: 'fixed', inset: 0, zIndex: 300,
-                    background: '#05050A',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'
-                }}
-            >
-                <motion.div
-                    animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    style={{ marginBottom: '24px' }}
-                >
-                    <Zap size={48} color="var(--accent-primary)" />
-                </motion.div>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>Entering Decision Protocol...</h2>
-                <p style={{ color: 'var(--text-tertiary)' }}>Prepare to cast your vote.</p>
-            </motion.div>
-        )}
-    </AnimatePresence>
+                {showRedirectModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 300,
+                            background: '#05050A',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'
+                        }}
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            style={{ marginBottom: '24px' }}
+                        >
+                            <Zap size={48} color="var(--accent-primary)" />
+                        </motion.div>
+                        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>Entering Decision Protocol...</h2>
+                        <p style={{ color: 'var(--text-tertiary)' }}>Prepare to cast your vote.</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
