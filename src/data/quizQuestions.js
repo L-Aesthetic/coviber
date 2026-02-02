@@ -245,17 +245,28 @@ export const determineArchetype = (answers) => {
     const max = Object.entries(scores).reduce((a, b) => a[1] > b[1] ? a : b);
 
     return {
-        name: max[0], // "Sovereign", "Architect", or "Operator"
+        name: max[0], // "Sovereign", "Architect", or "Operator" or "Hustler"
+        role: getArchetypeRole(max[0]),
         desc: getArchetypeDescription(max[0])
     };
 };
 
+const getArchetypeRole = (name) => {
+    const roles = {
+        Sovereign: "Distribution", // Visionary
+        Hustler: "Distribution",   // Growth
+        Architect: "Builder",      // Systems
+        Operator: "Builder"        // Product
+    };
+    return roles[name] || "Builder";
+};
+
 const getArchetypeDescription = (name) => {
     const descs = {
-        Sovereign: "High Risk • High Vision • Empire Builder",
-        Architect: "High Standards • Technical Mastery • Legacy Focused",
-        Operator: "High Efficiency • Systems Thinker • Scale Oriented",
-        Hustler: "High Velocity • Sales Focused • Unstoppable Force"
+        Sovereign: "High Risk • High Vision • Empire Builder. You need a Builder.",
+        Architect: "High Standards • Technical Mastery • Legacy Focused. You need a Visionary.",
+        Operator: "High Efficiency • Systems Thinker • Scale Oriented. You need a Marketer.",
+        Hustler: "High Velocity • Sales Focused • Unstoppable Force. You need a Builder."
     };
     return descs[name] || descs.Sovereign;
 };

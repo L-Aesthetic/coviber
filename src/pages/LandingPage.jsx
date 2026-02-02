@@ -111,8 +111,8 @@ const LandingPage = () => {
                             className="landing-hero-title"
                             style={{ fontSize: '3.5rem', marginBottom: '24px' }}
                         >
-                            Find the 3 Personality Traits<br />
-                            <span className="text-gradient">Killing Your Startup.</span>
+                            Code Needs Distribution.<br />
+                            <span className="text-gradient">Marketing Needs Product.</span>
                         </motion.h1>
 
                         <motion.p
@@ -122,7 +122,7 @@ const LandingPage = () => {
                             className="landing-hero-desc"
                             style={{ maxWidth: '600px', margin: '0 auto 40px auto' }}
                         >
-                            The free founder diagnostic. We scan for Dark Triad traits, equity misalignment, and "Idea Guy" syndrome. Get your Chemistry Score in 2 minutes.
+                            The Vibe-Coder + Marketer matchmaking protocol. Stop building in silence. Start generating revenue.
                         </motion.p>
 
                         <motion.div
@@ -146,7 +146,7 @@ const LandingPage = () => {
                                     display: 'flex', alignItems: 'center', gap: '12px', margin: '0 auto 16px auto'
                                 }}
                             >
-                                Start Free Diagnostic <ArrowRight size={20} />
+                                Discover Your Archetype <ArrowRight size={20} />
                             </button>
                             <p style={{ fontSize: '0.9rem', color: '#a1a1aa' }}>
                                 Diagnosis is <strong>Free</strong>. The "Founding 100" get <span style={{ color: '#F97316', fontWeight: 600 }}>60% OFF</span> Lifetime Access ($19) with code <span className="tag tag-purple">COVIBR</span>. Others pay $49/mo.
@@ -170,18 +170,18 @@ const LandingPage = () => {
                 <div className="landing-grid">
                     <ProblemCard
                         icon={<Ghost color="#ef4444" size={32} />}
-                        title="The Ghoster"
-                        desc="Great vibes on Zoom. Disappears when you send the Git repo."
+                        title="The Silent Builder"
+                        desc="Great product, 0 users. Builds features in the dark. Hopes 'they will come'. They won't."
                     />
                     <ProblemCard
                         icon={<TrendingDown color="#f59e0b" size={32} />}
-                        title="The Idea Guy"
-                        desc="Wants 50% equity for the 'vision'. Has never opened a terminal."
+                        title="The Empty Marketer"
+                        desc="Great audience, no product. Sells a vision but can't ship code. Needs an engine."
                     />
                     <ProblemCard
                         icon={<Scale color="#a1a1aa" size={32} />}
-                        title="The Equity Fight"
-                        desc="Splitting 50/50 blindly, then realizing one person does 90% of the work."
+                        title="The Revenue Gap"
+                        desc="The $0 to $1M canyon that kills solo founders. You need the other half to cross it."
                     />
                 </div>
             </section>
@@ -675,26 +675,29 @@ const InteractiveQuiz = () => {
                     fontSize: '0.8rem',
                     fontWeight: 700,
                     marginBottom: '32px',
-                    border: '1px solid rgba(139, 92, 246, 0.3)'
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    textTransform: 'uppercase'
                 }}>
-                    ARCHETYPE DETECTED
+                    CLASS: {result.role || 'BUILDER'}
                 </div>
 
                 <h2 className="landing-hero-title">
-                    THE {result.name.toUpperCase()}
+                    {result.name.toUpperCase()}
                 </h2>
                 <p style={{ color: '#a1a1aa', marginBottom: '40px', fontSize: '1.2rem' }}>{result.desc}</p>
 
                 <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', marginBottom: '32px', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>
-                        <strong>The Diagnosis:</strong> You need a co-founder who balances your risk profile.
-                        {result.name === 'Sovereign' && " Look for an Operator to build the rails while you build the vision."}
-                        {result.name === 'Architect' && " Look for a Sovereign to sell the vision while you ensure it scales."}
-                        {result.name === 'Operator' && " Look for a Sovereign to break the rules you're trying to enforce."}
+                        <strong>The Protocol:</strong> You are a <strong>{result.role || 'Builder'}</strong>. You need a <strong>{result.role === 'Builder' ? 'Marketer' : 'Builder'}</strong>.
+                        <br /><br />
+                        {result.name === 'Sovereign' && "Find a Builder to ground your vision in reality."}
+                        {result.name === 'Architect' && "Find a Marketer to sell what you build."}
+                        {result.name === 'Operator' && "Find a Visionary to drive the direction."}
+                        {result.name === 'Hustler' && "Find a Builder to productize your hustle."}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-primary)' }}>
                         <CheckCircle size={18} />
-                        <span>We have 7 compatible matches on the waitlist.</span>
+                        <span>We have {result.role === 'Builder' ? '12 Marketers' : '34 Builders'} waiting for you.</span>
                     </div>
                 </div>
 
