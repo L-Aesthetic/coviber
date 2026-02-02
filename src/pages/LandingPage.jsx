@@ -521,7 +521,7 @@ const InteractiveQuiz = () => {
                     Are you a Builder (Code) or a Marketer (Distribution)? Find your missing half.
                 </p>
                 <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
-                    <div className="tag tag-purple">12 Questions</div>
+                    <div className="tag tag-purple">20 Questions</div>
                     <div className="tag tag-blue">Psychometric AI</div>
                 </div>
                 <button
