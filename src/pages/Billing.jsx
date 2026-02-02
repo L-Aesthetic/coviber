@@ -5,6 +5,9 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthProvider';
 import { motion } from 'framer-motion';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 export default function Billing() {
     const { user } = useAuth();
@@ -12,18 +15,35 @@ export default function Billing() {
     const [loading, setLoading] = useState(true);
     const [memberNumber, setMemberNumber] = useState(1);
 
-    // --- STRIPE CONFIGURATION ---
-    // REPLACE THESE WITH YOUR LIVE STRIPE PRICE IDs
-    // --- STRIPE CONFIGURATION ---
-    const STRIPE_LINKS = {
-        pro_monthly: 'https://buy.stripe.com/5kQbIU8QxbNj9k00vh', // Pro Membership
-        founder_lifetime: 'https://buy.stripe.com/5kQeV67Mt04B1Ry5PB', // Founders Club
-    };
+    const handleCheckout = async (planKey) => {
+        setLoading(true);
+        if (!user) return; // Should not happen if guarded
 
-    const handleCheckout = (linkUrl) => {
-        if (!linkUrl) return;
-        const finalUrl = `${linkUrl}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
-        window.open(finalUrl, '_blank');
+        try {
+            const response = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tier: planKey,
+                    userId: user.id,
+                    email: user.email,
+                    returnUrl: window.location.origin + '/billing'
+                }),
+            });
+
+            const { sessionId, error: apiError } = await response.json();
+            if (apiError) throw new Error(apiError);
+            if (!sessionId) throw new Error("Failed to create session");
+
+            const stripe = await stripePromise;
+            const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+            if (stripeError) throw stripeError;
+
+        } catch (err) {
+            console.error("Billing Checkout Error:", err);
+            alert("Payment init failed: " + err.message);
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -264,14 +284,14 @@ export default function Billing() {
                                 <button
                                     className="btn-primary"
                                     style={{ width: '100%', justifyContent: 'center', fontSize: '1.1rem', padding: '16px' }}
-                                    onClick={() => handleCheckout(STRIPE_LINKS.pro_monthly)}
+                                    onClick={() => handleCheckout('pro')}
                                 >
                                     Unlock Pro Membership - $49/mo
                                 </button>
                                 <button
                                     className="btn-ghost"
                                     style={{ width: '100%', justifyContent: 'center', fontSize: '0.9rem' }}
-                                    onClick={() => handleCheckout(STRIPE_LINKS.founder_lifetime)}
+                                    onClick={() => handleCheckout('founder')}
                                 >
                                     Limited Time User Offer ($49 One-Time)
                                 </button>

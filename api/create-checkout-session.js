@@ -27,6 +27,20 @@ export default async function handler(req, res) {
             recurring: { interval: 'month' }
         };
         mode = 'subscription';
+    } else if (tier === 'founder') {
+        priceData = {
+            currency: 'usd',
+            product_data: {
+                name: 'Founding Member (Gold Card)',
+                description: 'Lifetime Access. First 100 Users Only.',
+            },
+            unit_amount: 1900, // $19.00 (Updated from $49 based on 60% off promo mentioned in UI)
+            // Wait, UI said $49... but then "60% OFF ($19)". Let's honor the $19 price point for "Members" if that's the current deal.
+            // Re-reading UpgradePage.jsx: 
+            // "price: 19, originalPrice: '$49', isOneTime: true"
+            // So the CHARGE should be $19.00 (1900 cents).
+        };
+        mode = 'payment';
     } else if (tier === 'certified') {
         priceData = {
             currency: 'usd',

@@ -71,28 +71,11 @@ export default function UpgradePage() {
 
     const [errorMsg, setErrorMsg] = useState(null);
 
-    // --- STRIPE CONFIGURATION ---
-    // --- STRIPE CONFIGURATION ---
-    const STRIPE_LINKS = {
-        pro: 'https://buy.stripe.com/5kQbIU8QxbNj9k00vh', // Pro Membership
-        founder: 'https://buy.stripe.com/5kQeV67Mt04B1Ry5PB', // Founders Club
-        // Certified is manual now, no link needed here
-    };
-
     const handleUpgrade = async (planKey) => {
         setLoading(true);
         setErrorMsg(null);
 
-        // Special handling for Founder plan (Free switch logic was legacy, now it's Paid)
-        // Actually, "Founder Grade" used to be the free default, but now we monetize it?
-        // Let's stick to the monetized flow for everything except "Free".
-
-        // Wait, wait. "Founder" in the code 'planKey === founder' refers to the "Founding Member" $49 deal.
-        // So it should go to Stripe.
-
         if (!user) {
-            // Save state to redirect after login?
-            // For now, simpler:
             setErrorMsg("Please log in to purchase.");
             navigate('/login?redirect=/upgrade');
             setLoading(false);
@@ -100,19 +83,33 @@ export default function UpgradePage() {
         }
 
         try {
-            const priceId = STRIPE_LINKS[planKey];
-            if (!priceId) throw new Error("Invalid plan selected");
+            // Call Backend to Create Session
+            const response = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tier: planKey,
+                    userId: user.id,
+                    email: user.email,
+                    returnUrl: window.location.origin + '/upgrade' // Redirect back to this page
+                }),
+            });
 
-            // Fix URL issue: priceId IS the full URL now
-            const stripeUrl = `${priceId}?prefilled_email=${encodeURIComponent(user?.email || '')}`;
+            const { sessionId, error: apiError } = await response.json();
 
-            // Note: We use window.open for now, but usually for a main CTA we might want same-tab
-            // provided the Stripe Success URL redirects back to /upgrade?success=true
-            window.location.href = stripeUrl;
+            if (apiError) throw new Error(apiError);
+
+            if (!sessionId) throw new Error("Failed to create checkout session");
+
+            // Redirect to Stripe
+            const stripe = await stripePromise;
+            const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+
+            if (stripeError) throw stripeError;
 
         } catch (err) {
-            console.error(err);
-            setErrorMsg("Unexpected error: " + err.message);
+            console.error("Checkout Error:", err);
+            setErrorMsg(err.message || "Payment initialization failed. Please try again.");
             setLoading(false);
         }
     };
