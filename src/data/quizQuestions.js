@@ -176,6 +176,37 @@ export const quizQuestions = [
             { id: 'B', text: "Quality. You only get one chance to make a first impression.", type: "Veteran" },
             { id: 'C', text: "Scale. Systems need to be robust from Day 1.", type: "Conductor" }
         ]
+    },
+    // Section F: Financial Alignment (Burn Rate)
+    {
+        id: 18,
+        category: "Salary Expectations",
+        text: "We just raised a $2M Seed Round. What is your salary?",
+        options: [
+            { id: 'A', text: "Market Rate ($150k+). I need to be comfortable to perform.", type: "Rich" },
+            { id: 'B', text: "Ramen Profitability ($60k). Every dollar should go to growth.", type: "Indie Hacker" },
+            { id: 'C', text: "Hybrid ($100k). Enough to live, but showing discipline.", type: "Pragmatic" }
+        ]
+    },
+    {
+        id: 19,
+        category: "Burn Multiplier",
+        text: "It's month 3. Growth is flat. Strategy?",
+        options: [
+            { id: 'A', text: "Spend More. We need to buy awareness to get the flywheel spinning.", type: "High Risk" },
+            { id: 'B', text: "Cut Costs. Extend runway to 24 months until we find PMF.", type: "Prudent" },
+            { id: 'C', text: "Do Things That Don't Scale. Manual sales until it hurts.", type: "Grind" }
+        ]
+    },
+    {
+        id: 20,
+        category: "Office vs Remote",
+        text: "Where do we work?",
+        options: [
+            { id: 'A', text: "Premium Office. We need a 'War Room' vibe to win.", type: "Rainmaker" },
+            { id: 'B', text: "Remote. Offices are a vanity metric and value leak.", type: "Efficiency" },
+            { id: 'C', text: "Co-working. Flexible, cheap, but professional.", type: "Mediator" }
+        ]
     }
 ];
 
@@ -205,8 +236,9 @@ export const determineArchetype = (answers) => {
             scores.Operator += 1;
         }
         // HUSTLER: Velocity, Agency, Sales, Grit
+        // Added 'Grind' to Hustler
         if (['Hacker', 'Grind', 'Ownership', 'Ruthless', 'Transactional'].includes(type)) {
-            scores.Hustler += 2; // Weight these specific traits higher
+            scores.Hustler += 2;
         }
     });
 
