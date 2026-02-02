@@ -647,31 +647,31 @@ export default function ChemistryRoom() {
 
                     {/* Countdown Timer */}
                     <div className="saas-panel" style={{ padding: '24px', textAlign: 'center', minWidth: '200px' }}>
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>
-                                <Clock size={16} /> REMAINING
-                            </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: timeRemaining < 3600 ? '#EF4444' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.05em', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600, justifyContent: 'center' }}>
+                            <Clock size={16} /> REMAINING
+                        </div>
+                        <div style={{ fontSize: '2.5rem', fontWeight: 800, color: timeRemaining < 3600 ? '#EF4444' : 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.05em', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                            {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
 
-                                {/* Pause Button */}
-                                <button
-                                    onClick={handleTogglePause}
-                                    className={`btn-ghost ${isPaused ? 'pulsing-border' : ''}`}
-                                    style={{
-                                        padding: '8px', borderRadius: '50%',
-                                        border: isPaused ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.1)',
-                                        color: isPaused ? '#F59E0B' : 'var(--text-secondary)',
-                                        background: isPaused ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
-                                        cursor: 'pointer', transition: 'all 0.2s ease'
-                                    }}
-                                    title={isPaused ? "Resume Session" : "Pause Session"}
-                                >
-                                    {isPaused ? <Play size={20} fill="#F59E0B" /> : <div style={{ width: 20, height: 20, display: 'flex', gap: 4, justifyContent: 'center' }}><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /></div>}
-                                </button>
-                            </div>
-                            {isPaused && <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginTop: 4, fontWeight: 700, letterSpacing: '0.05em' }}>SESSION PAUSED</div>}
-                        </div>        {timeRemaining < 3600 && (
+                            {/* Pause Button */}
+                            <button
+                                onClick={handleTogglePause}
+                                className={`btn-ghost ${isPaused ? 'pulsing-border' : ''}`}
+                                style={{
+                                    padding: '8px', borderRadius: '50%',
+                                    border: isPaused ? '1px solid #F59E0B' : '1px solid rgba(255,255,255,0.1)',
+                                    color: isPaused ? '#F59E0B' : 'var(--text-secondary)',
+                                    background: isPaused ? 'rgba(245, 158, 11, 0.1)' : 'transparent',
+                                    cursor: 'pointer', transition: 'all 0.2s ease'
+                                }}
+                                title={isPaused ? "Resume Session" : "Pause Session"}
+                            >
+                                {isPaused ? <Play size={20} fill="#F59E0B" /> : <div style={{ width: 20, height: 20, display: 'flex', gap: 4, justifyContent: 'center' }}><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /><div style={{ width: 6, height: 16, background: 'currentColor', borderRadius: 2 }} /></div>}
+                            </button>
+                        </div>
+                        {isPaused && <div style={{ fontSize: '0.75rem', color: '#F59E0B', marginTop: 8, fontWeight: 700, letterSpacing: '0.05em' }}>SESSION PAUSED</div>}
+
+                        {timeRemaining < 3600 && !isPaused && (
                             <div style={{ fontSize: '0.75rem', color: '#EF4444', marginTop: '8px', fontWeight: 600 }}>
                                 <AlertCircle size={12} style={{ display: 'inline', marginRight: '4px' }} />
                                 Final hour!
