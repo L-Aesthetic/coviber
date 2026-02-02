@@ -19,19 +19,24 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // 1. Verify Authentication
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).json({ error: 'Missing Authorization header' });
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+
+    // Check multiple variations of the vars to be safe
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.error('Missing Supabase env vars');
-        return res.status(500).json({ error: 'Server configuration error' });
+    if (!supabaseUrl) {
+        console.error('Missing SUPABASE_URL');
+        return res.status(500).json({ error: 'Server Config Error: Missing SUPABASE_URL' });
+    }
+    if (!supabaseServiceKey) {
+        console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
+        return res.status(500).json({ error: 'Server Config Error: Missing SUPABASE_SERVICE_ROLE_KEY' });
     }
 
     // Initialize Admin Client
