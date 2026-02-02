@@ -70,6 +70,7 @@ export default async function handler(req, res) {
                 quantity: 1,
             }],
             mode: mode,
+            allow_promotion_codes: true, // Enable coupon field
             success_url: `${returnUrl}?success=true&tier=${tier}&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${returnUrl}?canceled=true`,
             customer_email: email,
