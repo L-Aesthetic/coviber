@@ -512,7 +512,7 @@ export default function EquityCalculator() {
                             <Zap size={20} color="var(--accent-primary)" />
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Cap Table Simulator</h2>
                         </div>
-                        <div style={{ height: '220px' }}>
+                        <div style={{ height: '220px', width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={capTableData}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -535,7 +535,7 @@ export default function EquityCalculator() {
                             <AlertCircle size={20} color="#ef4444" />
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Breakup Simulator</h2>
                         </div>
-                        <div style={{ height: '180px' }}>
+                        <div style={{ height: '180px', width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={breakupData}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
