@@ -516,9 +516,9 @@ const InteractiveQuiz = () => {
     if (step === 0) {
         return (
             <div className="saas-panel" style={{ padding: '40px', textAlign: 'center' }}>
-                <h3 style={{ fontSize: '2rem', marginBottom: '16px', fontFamily: 'Outfit' }}>What Kind of Builder Are You?</h3>
+                <h3 style={{ fontSize: '2rem', marginBottom: '16px', fontFamily: 'Outfit' }}>What Is Your Founder Class?</h3>
                 <p style={{ color: '#a1a1aa', marginBottom: '32px', fontSize: '1.1rem' }}>
-                    The Architect, The Operator, or The Sovereign? Take the diagnostic.
+                    Are you a Builder (Code) or a Marketer (Distribution)? Find your missing half.
                 </p>
                 <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '32px' }}>
                     <div className="tag tag-purple">12 Questions</div>
