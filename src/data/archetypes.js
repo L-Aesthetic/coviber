@@ -73,6 +73,31 @@ export const ARCHETYPE_DATA = {
             { subject: 'Optimism', A: 90, fullMark: 150 },
             { subject: 'Details', A: 130, fullMark: 150 },
         ]
+    },
+    'Hustler': {
+        name: 'Hustler',
+        headline: 'The Hustler 🚀',
+        role: "Growth",
+        bio: "You are the Velocity Engine. You believe that 'Sales Cures All'. You operate with High Agency and low perfectionism. While the Architect is refactoring code and the Sovereign is dreaming, you are DMing 50 leads to get the first check.",
+        superpower: "The Traction Flywheel: You can generate momentum out of thin air. You don't wait for permission or 'perfect' assets; you hack it together and sell it.",
+        kryptonite: "The 'Burnout' Trap: You often mistake motion for progress. You might scale noise instead of signal, effectively burning through resources (and relationships) to hit short-term targets.",
+        commStyle: "High Energy, Persuasive, Relentless. I prefer a phone call over an email.",
+        triggerWarning: "If you tell me we need to 'wait for the brand guidelines' before launching, I will scream.",
+        powerDynamics: "Equity is for those in the arena. I respect output, not tenure.",
+        workDialect: "Metrics & Momentum. I communicate in CAC, LTV, and Conversion Rates.",
+        quote: "Done is Better than Perfect.",
+        whyEssential: "You are the Rainmaker. Without you, the product is just a secret. You force the market to pay attention.",
+        match: {
+            name: "THE ARCHITECT 🏛️",
+            desc: "You need a Product Anchor. You need someone to actually BUILD what you are selling, ensuring that your aggressive promises don't turn into churn."
+        },
+        vibe_data: [
+            { subject: 'Risk', A: 150, fullMark: 150 },
+            { subject: 'Pace', A: 150, fullMark: 150 },
+            { subject: 'Control', A: 60, fullMark: 150 },
+            { subject: 'Optimism', A: 130, fullMark: 150 },
+            { subject: 'Details', A: 20, fullMark: 150 },
+        ]
     }
 };
 
@@ -84,6 +109,7 @@ export const getArchetypeDetails = (name) => {
     if (name.includes('Sovereign')) return ARCHETYPE_DATA['Sovereign'];
     if (name.includes('Architect')) return ARCHETYPE_DATA['Architect'];
     if (name.includes('Operator')) return ARCHETYPE_DATA['Operator'];
+    if (name.includes('Hustler')) return ARCHETYPE_DATA['Hustler'];
 
     // Default
     return ARCHETYPE_DATA['Sovereign'];

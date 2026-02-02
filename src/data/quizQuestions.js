@@ -125,6 +125,57 @@ export const quizQuestions = [
             { id: 'B', text: "No way. My family's security comes first.", type: "Low Risk" },
             { id: 'C', text: "Search for alternatives. I will find non-dilutive capital or cut costs.", type: "Prudent" }
         ]
+    },
+    // Section E: The Hustle (New "Growth" Questions)
+    {
+        id: 13,
+        category: "Agency",
+        text: "You need to launch a landing page, but the designer is sick and the dev is busy.",
+        options: [
+            { id: 'A', text: "Wait. Brand consistency is everything.", type: "Veteran" },
+            { id: 'B', text: "Build it myself in a no-code tool (Carrd/Webflow) and launch today.", type: "Hacker" },
+            { id: 'C', text: "Write the spec document so they can start immediately upon return.", type: "Bureaucratic" }
+        ]
+    },
+    {
+        id: 14,
+        category: "Outreach",
+        text: "You have 0 users. How do you get the first 10?",
+        options: [
+            { id: 'A', text: "DM 100 people on LinkedIn/Twitter manually.", type: "Grind" },
+            { id: 'B', text: "Run detailed Facebook Ads to a segmented audience.", type: "Rich" },
+            { id: 'C', text: "Post on Product Hunt and wait for organic traffic.", type: "Indie Hacker" }
+        ]
+    },
+    {
+        id: 15,
+        category: "Failure",
+        text: "You spent 3 weeks on a campaign and got 0 leads. What is your post-mortem?",
+        options: [
+            { id: 'A', text: "The market is wrong/early. We need to educate them.", type: "Visionary" },
+            { id: 'B', text: "My copy sucked. I need to iterate the hook and try again tomorrow.", type: "Ownership" },
+            { id: 'C', text: "The product isn't ready. We shouldn't be marketing yet.", type: "Product" }
+        ]
+    },
+    {
+        id: 16,
+        category: "Rule Breaking",
+        text: "A competitor has a public list of their customers. You could scrape it.",
+        options: [
+            { id: 'A', text: "Scrape it immediately. All is fair in love and war.", type: "Ruthless" },
+            { id: 'B', text: "No, that's unethical and maybe illegal.", type: "Duty" },
+            { id: 'C', text: "Manually research the top 20 to see if they are a fit.", type: "Prudent" }
+        ]
+    },
+    {
+        id: 17,
+        category: "Velocity",
+        text: "What means more to you?",
+        options: [
+            { id: 'A', text: "Speed. If you aren't embarrassed by V1, you launched too late.", type: "Hacker" },
+            { id: 'B', text: "Quality. You only get one chance to make a first impression.", type: "Veteran" },
+            { id: 'C', text: "Scale. Systems need to be robust from Day 1.", type: "Conductor" }
+        ]
     }
 ];
 
@@ -135,22 +186,27 @@ export const determineArchetype = (answers) => {
     let scores = {
         Operator: 0,
         Architect: 0,
-        Sovereign: 0
+        Sovereign: 0,
+        Hustler: 0
     };
 
     // Map answers to archetypes
     Object.values(answers).forEach(type => {
         // SOVEREIGN: Visionary, High Risk, Sales, Speed
-        if (['Rich', 'New Vibe', 'Indie Hacker', 'Ruthless', 'Rainmaker', 'Competing', 'High Risk', 'Delegator', 'Transactional'].includes(type)) {
+        if (['Rich', 'New Vibe', 'Indie Hacker', 'Rainmaker', 'Competing', 'High Risk', 'Delegator', 'Visionary'].includes(type)) {
             scores.Sovereign += 1;
         }
         // ARCHITECT: Product-Led, Perfectionist, Low Risk, Control
-        if (['King', 'Veteran', 'Expert', 'Product', 'Rigid', 'Control', 'Security', 'Low Risk', 'Growth'].includes(type)) {
+        if (['King', 'Veteran', 'Expert', 'Product', 'Rigid', 'Control', 'Security', 'Low Risk', 'Growth', 'Duty'].includes(type)) {
             scores.Architect += 1;
         }
         // OPERATOR: Systems, People, Harmony, Efficiency, Prudence
-        if (['Conductor', 'Pragmatic', 'Mediator', 'Efficiency', 'Bureaucratic', 'Avoiding', 'Duty', 'Accommodating', 'Collaborating', 'Sensitive', 'Prudent', 'Relational'].includes(type)) {
+        if (['Conductor', 'Pragmatic', 'Mediator', 'Efficiency', 'Bureaucratic', 'Avoiding', 'Accommodating', 'Collaborating', 'Sensitive', 'Prudent', 'Relational'].includes(type)) {
             scores.Operator += 1;
+        }
+        // HUSTLER: Velocity, Agency, Sales, Grit
+        if (['Hacker', 'Grind', 'Ownership', 'Ruthless', 'Transactional'].includes(type)) {
+            scores.Hustler += 2; // Weight these specific traits higher
         }
     });
 
@@ -166,7 +222,8 @@ const getArchetypeDescription = (name) => {
     const descs = {
         Sovereign: "High Risk • High Vision • Empire Builder",
         Architect: "High Standards • Technical Mastery • Legacy Focused",
-        Operator: "High Efficiency • Systems Thinker • Scale Oriented"
+        Operator: "High Efficiency • Systems Thinker • Scale Oriented",
+        Hustler: "High Velocity • Sales Focused • Unstoppable Force"
     };
     return descs[name] || descs.Sovereign;
 };

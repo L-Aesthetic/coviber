@@ -121,6 +121,20 @@ const getArchetypeData = (name) => {
             flawDesc: 'You might optimize funnels for a product that has no market fit. You struggle with "Irrational Bets" that look bad on a spreadsheet.',
             match: 'THE SOVEREIGN ⚡',
             matchWhy: 'You need a wild card. You need someone to force you to take risks and generate the raw energy that you can then organize.',
+        },
+        'the hustler': {
+            icon: '🚀',
+            color: '#F97316', // Orange
+            rgb: '249, 115, 22',
+            headline: 'Sales Cures All.',
+            profile: 'You are the Velocity Engine. You believe that "Perfect is the enemy of Good." While others debate strategy, you are DMing 50 leads. You operate with High Agency and relentless output.',
+            superpowerTitle: 'The Traction Flywheel',
+            superpowerDesc: 'You generate momentum out of thin air. You don\'t wait for permission or resources; you hack it together and sell it.',
+            superpowerEssential: 'You force the market to pay attention. You turn a "quiet launch" into a noisy event through sheer force of will.',
+            flawTitle: 'The Burnout Trap',
+            flawDesc: 'You often mistake motion for progress. You scale noise instead of signal, burning through cash and relationships to hit vanity metrics.',
+            match: 'THE ARCHITECT 🏛️',
+            matchWhy: 'You need a Product Anchor. You need someone to actually BUILD what you are selling, ensuring that your aggressive promises don\'t result in 100% churn.',
         }
     };
 
@@ -128,6 +142,7 @@ const getArchetypeData = (name) => {
     if (key.includes('architect')) return db['the architect'];
     if (key.includes('sovereign')) return db['the sovereign'];
     if (key.includes('operator')) return db['the operator'];
+    if (key.includes('hustler')) return db['the hustler'];
 
     return db['the sovereign']; // Default
 };
