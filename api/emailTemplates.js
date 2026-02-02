@@ -59,7 +59,7 @@ export const getArchetypeEmail = (archetype) => {
                         (Hint: It's NOT who you think.)
                     </p>
                     
-                    <a href="https://coviber.vercel.app/login?ref=email" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">
+                    <a href="https://covibr.com/login?ref=report" target="_blank" style="display: inline-block; background-color: ${data.color}; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(${data.rgb}, 0.3);">
                         Unlock Full Report
                     </a>
                 </div>
