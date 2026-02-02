@@ -186,8 +186,7 @@ export default function Teams() {
                 .insert([{
                     team_id: newTeam.id,
                     user_id: user.id,
-                    role: 'Founder',
-                    equity: 100 - (inviteList.length * 25) // Simple: split among invites
+                    role: 'Founder'
                 }]);
 
             if (memberError) throw memberError;

@@ -2,15 +2,17 @@ import { motion } from 'framer-motion';
 import { Activity, Zap, MessageSquare, Award, CheckCircle, Share2, Download } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function ChemistryReport({ metrics, challenge }) {
+export default function ChemistryReport({ metrics, challenge, verdict }) {
     // Mock Data if not passed
-    const score = 88;
+    const score = verdict === 'mismatch' ? 32 : 88; // Lower score if mismatch
+    const isMatch = verdict !== 'mismatch';
+
     const velocityData = metrics?.velocity || [
         { time: 'Start', score: 20 },
         { time: '4h', score: 45 },
         { time: '8h', score: 70 },
         { time: '12h', score: 65 },
-        { time: 'End', score: 88 }
+        { time: 'End', score: isMatch ? 88 : 32 }
     ];
 
     return (
@@ -23,14 +25,15 @@ export default function ChemistryReport({ metrics, challenge }) {
                 style={{ padding: '48px', position: 'relative', overflow: 'hidden' }}
             >
                 {/* Background Decor */}
-                <div style={{ position: 'absolute', top: 0, right: 0, width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
+                <div style={{ position: 'absolute', top: 0, right: 0, width: '300px', height: '300px', background: isMatch ? 'radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(239,68,68,0.1) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
 
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '20px', color: '#10B981', fontSize: '0.8rem', fontWeight: 700, marginBottom: '24px' }}>
-                        <CheckCircle size={16} /> CERTIFIED PARTNERSHIP
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: isMatch ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: '20px', color: isMatch ? '#10B981' : '#EF4444', fontSize: '0.8rem', fontWeight: 700, marginBottom: '24px' }}>
+                        {isMatch ? <CheckCircle size={16} /> : <Activity size={16} />}
+                        {isMatch ? 'RESONANCE CONFIRMED' : 'DISSONANCE DETECTED'}
                     </div>
-                    <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '8px', background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '8px', background: isMatch ? 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)' : 'linear-gradient(135deg, #fff 0%, #fca5a5 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         Chemistry Report
                     </h1>
                     <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
@@ -59,7 +62,7 @@ export default function ChemistryReport({ metrics, challenge }) {
                 {/* Visualization */}
                 <div style={{ marginBottom: '48px' }}>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '16px' }}>Velocity Consistency</h3>
-                    <div style={{ height: '200px', width: '100%', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '16px' }}>
+                    <div style={{ height: '200px', width: '100%', minWidth: '100px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '16px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={velocityData}>
                                 <defs>

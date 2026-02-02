@@ -15,7 +15,9 @@ export default function ChemistryRoom() {
     const { sessionId } = useParams();
     const [timeRemaining, setTimeRemaining] = useState(48 * 60 * 60); // 48 hours in seconds
     const [hasVoted, setHasVoted] = useState(false);
+    const [verdict, setVerdict] = useState(null); // 'match' or 'mismatch'
     const [showReport, setShowReport] = useState(false);
+
     const [momentum, setMomentum] = useState(0); // 0-100, dynamic
     const [stressMode, setStressMode] = useState(false); // Pivot Protocol
     const [currentCrisis, setCurrentCrisis] = useState(null); // Active crisis details
@@ -34,6 +36,7 @@ export default function ChemistryRoom() {
 
     // Countdown timer
     const [targetEndTime, setTargetEndTime] = useState(null);
+    const [showTimeExpModal, setShowTimeExpModal] = useState(false); // New: Timer Expiration Modal
 
     // Countdown timer
     useEffect(() => {
@@ -42,13 +45,20 @@ export default function ChemistryRoom() {
         const updateTimer = () => {
             const now = new Date().getTime();
             const distance = targetEndTime - now;
-            setTimeRemaining(Math.max(0, Math.floor(distance / 1000)));
+            const remaining = Math.max(0, Math.floor(distance / 1000));
+            setTimeRemaining(remaining);
+
+            if (remaining === 0 && !hasVoted && !showTimeExpModal) {
+                // Double check we haven't already handled this or aren't in a post-game state
+                // Only show if we haven't voted yet.
+                setShowTimeExpModal(true);
+            }
         };
 
         updateTimer();
         const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, [targetEndTime]);
+    }, [targetEndTime, hasVoted, showTimeExpModal]);
 
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
@@ -69,8 +79,12 @@ export default function ChemistryRoom() {
             const { data: existingTeam } = await supabase
                 .from('teams')
                 .select('*')
-                .eq('description', `Chemistry-Session:${sessionId}`)
-                .single();
+                .eq('description', `Chemistry-Session:${sessionId}`) // Search by base description (or partial if we used contains? No, exact match usually needed unless we change query)
+                // Actually, if we append |EXTENDED, exact match fails. We need to handle that.
+                // Or better: use 'like' or check logic.
+                // Let's refine the query to use 'like' or 'ilike' to catch appended flags.
+                .ilike('description', `Chemistry-Session:${sessionId}%`)
+                .maybeSingle();
 
             // Get current user first
             const { data: { user } } = await supabase.auth.getUser();
@@ -92,7 +106,14 @@ export default function ChemistryRoom() {
 
                 if (existingTeam.created_at) {
                     const createdAt = new Date(existingTeam.created_at).getTime();
-                    setTargetEndTime(createdAt + 48 * 60 * 60 * 1000);
+                    let duration = 48 * 60 * 60 * 1000;
+
+                    // Check for Extension
+                    if (existingTeam.description && existingTeam.description.includes('|EXTENDED')) {
+                        duration += 24 * 60 * 60 * 1000; // Add 24 hours
+                    }
+
+                    setTargetEndTime(createdAt + duration);
                 }
             } else {
                 // 2. Create it if not
@@ -140,6 +161,34 @@ export default function ChemistryRoom() {
             initSession().catch(e => alert(`Init failed: ${e.message}`));
         }
     }, [sessionId]);
+
+    const handleExtendTime = async () => {
+        try {
+            if (!teamId) return;
+
+            // 1. Fetch current description to append safely
+            const { data: team } = await supabase.from('teams').select('description, created_at').eq('id', teamId).single();
+
+            if (team && !team.description.includes('|EXTENDED')) {
+                const newDesc = team.description + '|EXTENDED';
+                const { error } = await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+
+                if (error) throw error;
+
+                // Update local state immediately
+                const createdAt = new Date(team.created_at).getTime();
+                setTargetEndTime(createdAt + (48 + 24) * 60 * 60 * 1000); // 72 hours total
+                setShowTimeExpModal(false);
+                setToast({ message: "Time Extended (+24h)", icon: "⏳" });
+            } else {
+                // Already extended
+                setShowTimeExpModal(false);
+            }
+        } catch (err) {
+            console.error("Error extending time:", err);
+            alert("Failed to extend time.");
+        }
+    };
 
     // Fetch Data from Supabase (Dependent on teamId)
     useEffect(() => {
@@ -596,7 +645,7 @@ export default function ChemistryRoom() {
     const completedTasks = tasks.done.length;
 
     if (showReport) {
-        return <ChemistryReport challenge={activeChallenge} />;
+        return <ChemistryReport challenge={activeChallenge} verdict={verdict} />;
     }
 
     return (
@@ -840,7 +889,7 @@ export default function ChemistryRoom() {
                             <Activity size={16} color="#10B981" />
                             Velocity Index
                         </h3>
-                        <div style={{ height: '100px', marginBottom: '12px' }}>
+                        <div style={{ height: '100px', marginBottom: '12px', minWidth: '100px' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={velocityData}>
                                     <defs>
@@ -1197,11 +1246,11 @@ export default function ChemistryRoom() {
                                             opacity: timeRemaining > 0 ? 0.5 : 1,
                                             cursor: timeRemaining > 0 ? 'not-allowed' : 'pointer'
                                         }}
-                                        onClick={() => setHasVoted(true)}
+                                        onClick={() => { setHasVoted(true); setVerdict('match'); }}
                                         disabled={timeRemaining > 0}
                                     >
                                         <ThumbsUp size={16} />
-                                        Pursue Partnership
+                                        We Co-Vibe ⚡
                                     </button>
                                     <button
                                         className="btn-ghost"
@@ -1212,11 +1261,11 @@ export default function ChemistryRoom() {
                                             opacity: timeRemaining > 0 ? 0.5 : 1,
                                             cursor: timeRemaining > 0 ? 'not-allowed' : 'pointer'
                                         }}
-                                        onClick={() => setHasVoted(true)}
+                                        onClick={() => { setHasVoted(true); setVerdict('mismatch'); }}
                                         disabled={timeRemaining > 0}
                                     >
                                         <ThumbsDown size={16} />
-                                        Pass
+                                        No Resonance 📉
                                     </button>
                                 </div>
                                 {timeRemaining > 0 && (
@@ -1246,6 +1295,74 @@ export default function ChemistryRoom() {
                     </div>
                 </div>
             </div>
+
+            {/* Time's Up Modal */}
+            <AnimatePresence>
+                {showTimeExpModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed', inset: 0, zIndex: 999, // Highest z-index
+                            background: 'rgba(5, 5, 10, 0.9)', backdropFilter: 'blur(10px)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="saas-panel"
+                            style={{
+                                maxWidth: '600px', width: '90%', padding: '40px',
+                                border: '1px solid var(--accent-primary)',
+                                boxShadow: '0 0 50px rgba(99, 102, 241, 0.2)',
+                                textAlign: 'center'
+                            }}
+                        >
+                            <div style={{ fontSize: '4rem', marginBottom: '16px' }}>⏰</div>
+                            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '12px', color: 'white' }}>
+                                Time's Up!
+                            </h2>
+                            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>
+                                The 48-hour pressure cooker has finished. <br />
+                                Did you ship something you're proud of?
+                            </p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <button
+                                    className="saas-panel hover-glass"
+                                    onClick={handleExtendTime}
+                                    style={{
+                                        padding: '24px', cursor: 'pointer',
+                                        border: '1px dashed var(--text-tertiary)',
+                                        background: 'transparent',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>⏳</div>
+                                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Extend (+24h)</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>We need more time to polish.</div>
+                                </button>
+
+                                <button
+                                    className="btn-primary"
+                                    onClick={() => setShowTimeExpModal(false)}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                        padding: '24px', cursor: 'pointer',
+                                        background: 'var(--accent-primary)', border: 'none'
+                                    }}
+                                >
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>🗳️</div>
+                                    <div style={{ fontWeight: 700, color: 'white', marginBottom: '4px' }}>Vote on Resonance</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)' }}>We're ready to decide.</div>
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
