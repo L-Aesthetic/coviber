@@ -26,7 +26,7 @@ export default async function handler(request, response) {
         const htmlContent = getArchetypeEmail(archetype);
 
         const { data, error } = await resend.emails.send({
-            from: 'CoVibr <founder@covibr.com>',
+            from: 'CoVibr <onboarding@resend.dev>', // UPDATE: Use this until you verify 'covibr.com' in Resend Dashboard
             to: [email],
             subject: `Your Founder Archetype: ${archetype}`,
             html: htmlContent,
