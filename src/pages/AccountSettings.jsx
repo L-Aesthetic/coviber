@@ -56,9 +56,9 @@ export default function AccountSettings() {
                 setEmail(user.email);
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('notification_prefs, headline')
+                    .select('full_name, display_name, bio, location, avatar_url, social_links, role, skills, education, notification_prefs, headline')
                     .eq('id', user.id)
-                    .maybeSingle(); // Use maybeSingle to avoid 406/JSON error if no row
+                    .maybeSingle();
 
                 if (error) {
                     console.error("Error fetching profile settings:", error);
@@ -67,9 +67,21 @@ export default function AccountSettings() {
 
                 if (data) {
                     setHeadline(data.headline || '');
-                    if (data.notification_prefs) {
-                        setNotifications(data.notification_prefs);
-                    }
+                    if (data.notification_prefs) setNotifications(data.notification_prefs);
+
+                    // Parse name
+                    const fullName = data.full_name || data.display_name || '';
+                    const [first, ...rest] = fullName.split(' ');
+
+                    setFormData({
+                        first_name: first || '',
+                        last_name: rest.join(' ') || '',
+                        display_name: data.display_name || '',
+                        location: data.location || '',
+                        bio: data.bio || '',
+                        avatar_url: data.avatar_url || '',
+                        social_links: data.social_links || { linkedin: '', twitter: '', github: '', website: '' }
+                    });
                 }
             } catch (err) {
                 console.error("Unexpected error in settings:", err);
@@ -142,8 +154,14 @@ export default function AccountSettings() {
             const { error } = await supabase
                 .from('profiles')
                 .update({
+                    full_name: `${formData.first_name} ${formData.last_name}`.trim(),
+                    display_name: formData.display_name || `${formData.first_name} ${formData.last_name}`.trim(),
+                    bio: formData.bio,
+                    location: formData.location,
+                    avatar_url: formData.avatar_url,
+                    social_links: formData.social_links,
                     notification_prefs: notifications,
-                    headline: headline, // Also save headline changes if any
+                    headline: headline,
                     updated_at: new Date()
                 })
                 .eq('id', user.id);
@@ -233,6 +251,148 @@ export default function AccountSettings() {
             </header>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+                {/* Profile Details */}
+                <div className="saas-panel" style={{ padding: '32px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <User size={20} color="var(--accent-primary)" />
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>Profile Details</h2>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '32px', marginBottom: '32px' }}>
+                        {/* Avatar */}
+                        <div style={{ flexShrink: 0 }}>
+                            <div style={{
+                                width: '100px', height: '100px', borderRadius: '50%',
+                                background: 'var(--bg-secondary)', overflow: 'hidden',
+                                border: '2px solid var(--border-subtle)', marginBottom: '16px',
+                                position: 'relative'
+                            }}>
+                                {formData.avatar_url ? (
+                                    <img src={formData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                                        <User size={40} />
+                                    </div>
+                                )}
+                                {uploading && (
+                                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                                    </div>
+                                )}
+                            </div>
+                            <label className="btn-ghost" style={{ fontSize: '0.8rem', padding: '8px', width: '100%', justifyContent: 'center', cursor: 'pointer' }}>
+                                <Camera size={14} style={{ marginRight: '6px' }} />
+                                Upload Photo
+                                <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                            </label>
+                        </div>
+
+                        {/* Fields */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>First Name</label>
+                                    <input
+                                        className="glass-input"
+                                        name="first_name"
+                                        value={formData.first_name}
+                                        onChange={handleChange}
+                                        placeholder="Jane"
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Last Name</label>
+                                    <input
+                                        className="glass-input"
+                                        name="last_name"
+                                        value={formData.last_name}
+                                        onChange={handleChange}
+                                        placeholder="Doe"
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Headline / Bio</label>
+                                <textarea
+                                    className="glass-input"
+                                    name="bio"
+                                    value={formData.bio}
+                                    onChange={handleChange}
+                                    placeholder="Briefly describe what you're building..."
+                                    style={{ width: '100%', minHeight: '100px', resize: 'vertical' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Location</label>
+                                <input
+                                    className="glass-input"
+                                    name="location"
+                                    value={formData.location}
+                                    onChange={handleChange}
+                                    placeholder="San Francisco, CA (or Remote)"
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Social Links */}
+                    <div>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '16px' }}>Social Presence</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                            <div style={{ position: 'relative' }}>
+                                <Linkedin size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                <input
+                                    className="glass-input"
+                                    name="social_linkedin"
+                                    value={formData.social_links.linkedin}
+                                    onChange={handleChange}
+                                    placeholder="LinkedIn URL"
+                                    style={{ width: '100%', paddingLeft: '40px' }}
+                                />
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Twitter size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                <input
+                                    className="glass-input"
+                                    name="social_twitter"
+                                    value={formData.social_links.twitter}
+                                    onChange={handleChange}
+                                    placeholder="Twitter / X URL"
+                                    style={{ width: '100%', paddingLeft: '40px' }}
+                                />
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Github size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                <input
+                                    className="glass-input"
+                                    name="social_github"
+                                    value={formData.social_links.github}
+                                    onChange={handleChange}
+                                    placeholder="GitHub URL"
+                                    style={{ width: '100%', paddingLeft: '40px' }}
+                                />
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Globe size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                <input
+                                    className="glass-input"
+                                    name="social_website"
+                                    value={formData.social_links.website}
+                                    onChange={handleChange}
+                                    placeholder="Personal Website"
+                                    style={{ width: '100%', paddingLeft: '40px' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Email & Password */}
                 <div className="saas-panel" style={{ padding: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>

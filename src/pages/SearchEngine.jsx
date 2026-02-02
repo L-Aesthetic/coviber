@@ -75,7 +75,7 @@ export default function SearchEngine() {
 
                     return {
                         id: profile.id,
-                        name: profile.name || 'Founder',
+                        name: profile.full_name || profile.display_name || profile.name || 'Founder',
                         role: profile.role || 'Builder',
                         location: profile.location || 'Remote',
                         match: Math.min(99, Math.max(10, score)), // Clamp between 10 and 99
