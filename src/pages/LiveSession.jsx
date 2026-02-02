@@ -17,6 +17,7 @@ export default function LiveSession() {
     const [projectName, setProjectName] = useState('Loading...');
     const [targetEndTime, setTargetEndTime] = useState(null);
     const [timeLeft, setTimeLeft] = useState(48 * 3600);
+    const [vibeScore, setVibeScore] = useState(85);
     const [sessionId, setSessionId] = useState(null); // Derived from description
 
     // Button Handlers
