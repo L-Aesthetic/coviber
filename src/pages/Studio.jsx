@@ -62,14 +62,17 @@ export default function Studio() {
                     name: teamData.name,
                     avatar: '🚀',
                     foundedDate: new Date(teamData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                    members: membersData.map(m => ({
-                        name: m.profile?.name || 'Unknown',
-                        role: m.role || 'Co-Founder',
-                        equity: m.equity || 0,
-                        vested: Math.min(m.equity * 0.65, m.equity), // Simple calculation
-                        avatar: m.profile?.avatar_url || '👤',
-                        active: true
-                    }))
+                    members: membersData.map(m => {
+                        const equityVal = parseFloat(m.equity) || 0;
+                        return {
+                            name: m.profile?.name || 'Unknown',
+                            role: m.role || 'Co-Founder',
+                            equity: equityVal,
+                            vested: (equityVal * 0.65).toFixed(1), // Simple calculation, formatted
+                            avatar: m.profile?.avatar_url || '👤',
+                            active: true
+                        };
+                    })
                 });
             }
 

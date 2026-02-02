@@ -69,7 +69,17 @@ export default function EquityTracker({ team }) {
                     {team.members.map((member, i) => (
                         <div key={i} className="saas-panel" style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.02)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                                <div style={{ fontSize: '1.5rem' }}>{member.avatar}</div>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '50%',
+                                    background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '1.5rem', overflow: 'hidden'
+                                }}>
+                                    {member.avatar && member.avatar.startsWith('http') ? (
+                                        <img src={member.avatar} alt={member.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        member.avatar
+                                    )}
+                                </div>
                                 <div>
                                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{member.name}</div>
                                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{member.role}</div>
