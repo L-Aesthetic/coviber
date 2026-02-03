@@ -40,6 +40,13 @@ export default function ChemistryRoom() {
 
     const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
 
+    // --- Missing State Definitions (Fix for Crash) ---
+    const [isSetupOpen, setIsSetupOpen] = useState(true);
+    const [activeChallenge, setActiveChallenge] = useState(null);
+    const [isAddingTask, setIsAddingTask] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [editingTask, setEditingTask] = useState(null);
+
     // Countdown timer
     useEffect(() => {
         if (!targetEndTime) return;
@@ -488,6 +495,93 @@ export default function ChemistryRoom() {
         }
     };
 
+    // --- Missing Handlers (Fix for Crash) ---
+
+    const handleStartChallenge = (type) => {
+        const challenges = {
+            stripe: { title: "The Stripe Integration", desc: "Build a subscription checkout flow." },
+            api_race: { title: "The API Wrapper Race", desc: "Build a typed SDK." }
+        };
+        setActiveChallenge(challenges[type]);
+        setIsSetupOpen(false);
+    };
+
+    const handleTriggerStress = () => {
+        setStressMode(true);
+        const scenarios = [
+            { title: "Database Outage", desc: "Production DB is down. 500 errors everywhere." },
+            { title: "Legal Threat", desc: "Cease & Desist received for logo. Rebrand immediately." },
+            { title: "Viral Spike", desc: "Traffic up 1000%. Server CPU at 99%." }
+        ];
+        setCurrentCrisis(scenarios[Math.floor(Math.random() * scenarios.length)]);
+    };
+
+    const handleResolveCrisis = () => {
+        setStressMode(false);
+        setCurrentCrisis(null);
+        setToast({ message: "Crisis Averted!", icon: "✅" });
+    };
+
+    const handleAddTask = async (e) => {
+        e.preventDefault();
+        if (!newTaskTitle.trim() || !teamId) return;
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { error } = await supabase.from('tasks').insert([{
+                team_id: teamId,
+                title: newTaskTitle,
+                status: 'todo',
+                assignee_id: user?.id
+            }]);
+
+            if (error) throw error;
+
+            // Optimistic update handled by poll or we can force fetch
+            setNewTaskTitle('');
+            setIsAddingTask(false);
+            setToast({ message: "Task Added", icon: "📌" });
+        } catch (err) {
+            console.error(err);
+            alert("Failed to add task");
+        }
+    };
+
+    const handleDeleteTask = async (taskId) => {
+        try {
+            await supabase.from('tasks').delete().eq('id', taskId);
+            // Optimistic removal? relying on poll for now to keep code simple
+            setToast({ message: "Task Deleted", icon: "🗑️" });
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleTaskClick = (task) => {
+        setEditingTask(task);
+    };
+
+    const handleUpdateTaskDetails = async (taskId, updates) => {
+        try {
+            await supabase.from('tasks').update(updates).eq('id', taskId);
+            setEditingTask(null);
+            setToast({ message: "Task Updated", icon: "✏️" });
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleDragStart = (e, task) => {
+        // e.dataTransfer.setData("taskId", task.id);
+        // Using simple state or just relying on HTML5 drag API
+    };
+
+    const handleDrop = async (status) => {
+        // Implementation detail: this needs full drag-and-drop context usually.
+        // For now, assuming drag library or simple HTML5.
+        // We'll leave this as a stub to prevent crash, implementing actual logic requires Dnd context or similar.
+    };
+
 
     const totalTasks = Object.values(tasks).flat().length;
     const completedTasks = tasks.done.length;
@@ -757,7 +851,7 @@ export default function ChemistryRoom() {
                             Velocity Index
                         </h3>
                         <div style={{ height: '100px', marginBottom: '12px', minWidth: '100px' }}>
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={50}>
                                 <AreaChart data={velocityData}>
                                     <defs>
                                         <linearGradient id="colorDeploys" x1="0" y1="0" x2="0" y2="1">

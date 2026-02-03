@@ -21,13 +21,40 @@ export default function Login() {
     // Redirect when user state confirms login (fixes race condition)
     useEffect(() => {
         if (user) {
-            const params = new URLSearchParams(location.search);
-            const ref = params.get('ref');
-            if (ref === 'report') {
-                navigate('/report');
-            } else {
-                navigate('/dashboard');
-            }
+            const handlePostLogin = async () => {
+                const params = new URLSearchParams(location.search);
+                const ref = params.get('ref');
+                const vipCode = params.get('vip_code');
+
+                // Immediate VIP Upgrade Hook
+                if (vipCode === 'VIPMATCH') {
+                    try {
+                        console.log("Applying VIP Upgrade...");
+                        const { error } = await supabase
+                            .from('profiles')
+                            .update({ subscription_tier: 'founder' })
+                            .eq('id', user.id);
+
+                        if (error) throw error;
+                        console.log("VIP Upgrade Successful");
+                        // Optional: Add a query param so Dashboard knows to show confetti
+                        navigate('/dashboard?vip_upgraded=true');
+                        return;
+                    } catch (err) {
+                        console.error("VIP Upgrade Failed:", err);
+                        // Fallback to normal flow if upgrade fails, maybe show error? 
+                        // For now, proceed to dashboard so they aren't stuck.
+                    }
+                }
+
+                if (ref === 'report') {
+                    navigate('/report');
+                } else {
+                    navigate('/dashboard');
+                }
+            };
+
+            handlePostLogin();
         }
     }, [user, navigate, location]);
 

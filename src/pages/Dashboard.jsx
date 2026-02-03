@@ -1,6 +1,6 @@
 import { Users, GitPullRequest, Zap, TrendingUp, Plus, Sun, Moon, Calendar, Bell, ArrowRight, CheckCircle2, AlertCircle, Crown, RefreshCcw } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Link, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeProvider';
 import { useAuth } from '../context/AuthProvider';
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabaseClient';
 export default function Dashboard() {
     const { theme, toggleTheme } = useTheme();
     const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [teams, setTeams] = useState([]);
     const [stats, setStats] = useState({
         teamCount: 0,
@@ -25,9 +26,21 @@ export default function Dashboard() {
     });
 
     const [showOnboarding, setShowOnboarding] = useState(false);
-
-    // Milestones Data
     const [milestones, setMilestones] = useState([]);
+
+    // VIP Success Modal State
+    const [showVipSuccess, setShowVipSuccess] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get('vip_upgraded') === 'true') {
+            setShowVipSuccess(true);
+            // Clean URL
+            setSearchParams(params => {
+                params.delete('vip_upgraded');
+                return params;
+            });
+        }
+    }, [searchParams, setSearchParams]);
 
     useEffect(() => {
         if (!user) return;
@@ -373,6 +386,39 @@ export default function Dashboard() {
 
     return (
         <div>
+            {/* VIP Success Modal */}
+            <AnimatePresence>
+                {showVipSuccess && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+                    }} onClick={() => setShowVipSuccess(false)}>
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="saas-panel"
+                            style={{ maxWidth: '500px', width: '90%', padding: '40px', textAlign: 'center', border: '1px solid #F59E0B', boxShadow: '0 0 50px rgba(245, 158, 11, 0.2)' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div style={{ fontSize: '4rem', marginBottom: '24px' }}>🏆</div>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#F59E0B', marginBottom: '16px' }}>VIP Status Unlocked</h2>
+                            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>
+                                Welcome to the <strong>Founder Tier</strong>.<br />
+                                You now have lifetime access to the Protocol.
+                            </p>
+                            <button
+                                className="btn-primary"
+                                style={{ width: '100%', justifyContent: 'center', background: '#F59E0B', border: 'none', color: 'black' }}
+                                onClick={() => setShowVipSuccess(false)}
+                            >
+                                Enter Workspace
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>

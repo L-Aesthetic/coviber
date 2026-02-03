@@ -631,7 +631,7 @@ function TeamCard({ team, onDelete }) {
                     {/* Special Loop for Chemistry Teams */}
                     {team.description?.startsWith('Chemistry-Session:') ? (
                         <>
-                            <Link to={`/chemistry/${team.description.split('Chemistry-Session:')[1]}`}>
+                            <Link to={`/chemistry/${team.description.split('Chemistry-Session:')[1].split('|')[0]}`}>
                                 <button className="btn-secondary" style={{ padding: '10px 16px', height: '40px', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}>
                                     <Zap size={16} /> Protocol
                                 </button>
@@ -690,13 +690,25 @@ function TeamCard({ team, onDelete }) {
                                     }}
                                     onClick={e => e.stopPropagation()}
                                 >
-                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div
+                                        className="menu-item"
+                                        onClick={() => alert("Rename feature coming soon")}
+                                        style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                                    >
                                         <Edit3 size={14} /> Rename
                                     </div>
-                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div
+                                        className="menu-item"
+                                        onClick={() => alert("Member management coming soon")}
+                                        style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                                    >
                                         <Users size={14} /> Manage Members
                                     </div>
-                                    <div className="menu-item" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444' }}>
+                                    <div
+                                        className="menu-item"
+                                        onClick={() => alert("Leave team feature coming soon")}
+                                        style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', cursor: 'pointer', color: '#EF4444' }}
+                                    >
                                         <LogOut size={14} /> Leave Team
                                     </div>
                                     <div
