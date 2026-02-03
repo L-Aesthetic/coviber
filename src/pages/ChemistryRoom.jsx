@@ -11,6 +11,11 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart,
 import ChemistryReport from '../components/ChemistryReport';
 import { supabase } from '../lib/supabaseClient';
 
+const CHALLENGES = {
+    stripe: { title: "The Stripe Integration", desc: "Build a subscription checkout flow." },
+    api_race: { title: "The API Wrapper Race", desc: "Build a typed SDK." }
+};
+
 export default function ChemistryRoom() {
     const { sessionId } = useParams();
     const [timeRemaining, setTimeRemaining] = useState(48 * 60 * 60); // 48 hours in seconds
@@ -40,8 +45,10 @@ export default function ChemistryRoom() {
 
     const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
 
+    const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
+
     // --- Missing State Definitions (Fix for Crash) ---
-    const [isSetupOpen, setIsSetupOpen] = useState(true);
+    const [isSetupOpen, setIsSetupOpen] = useState(false); // Default closed until checked
     const [activeChallenge, setActiveChallenge] = useState(null);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -224,14 +231,21 @@ export default function ChemistryRoom() {
                 const pausedMatch = team.description.match(/\|PAUSED:(\d+)/);
                 if (pausedMatch) {
                     setIsPaused(true);
-                    // If paused, targetEndTime handles differently?
-                    // actually, if paused, we just stop timer.
-                    // But to display remaining time correctly, we need to know when it WAS paused.
-                    // effectively: targetEndTime = originalTarget + savedOffset + (NOW - pausedAt) <-- dynamic?
-                    // No, when paused, the "remaining" is static.
-                    // Let's calculate "Effective End Time"
                 } else {
                     setIsPaused(false);
+                }
+
+                // 4. CHALLENGE (Fix Persistence)
+                const challengeMatch = team.description.match(/\|CHALLENGE:(\w+)/);
+                if (challengeMatch) {
+                    const challengeType = challengeMatch[1];
+                    if (CHALLENGES[challengeType]) {
+                        setActiveChallenge(CHALLENGES[challengeType]);
+                        setIsSetupOpen(false); // Ensure modal is closed if challenge exists
+                    }
+                } else {
+                    // No challenge found? Open setup if we have a team
+                    setIsSetupOpen(true);
                 }
 
                 // Base Target
@@ -497,13 +511,25 @@ export default function ChemistryRoom() {
 
     // --- Missing Handlers (Fix for Crash) ---
 
-    const handleStartChallenge = (type) => {
-        const challenges = {
-            stripe: { title: "The Stripe Integration", desc: "Build a subscription checkout flow." },
-            api_race: { title: "The API Wrapper Race", desc: "Build a typed SDK." }
-        };
-        setActiveChallenge(challenges[type]);
+    const handleStartChallenge = async (type) => {
+        if (!teamId) return;
+
+        // Optimistic UI
+        setActiveChallenge(CHALLENGES[type]);
         setIsSetupOpen(false);
+
+        // Persist to DB
+        try {
+            const { data: team } = await supabase.from('teams').select('description').eq('id', teamId).single();
+            if (team) {
+                const newDesc = team.description + `|CHALLENGE:${type}`;
+                await supabase.from('teams').update({ description: newDesc }).eq('id', teamId);
+            }
+        } catch (err) {
+            console.error("Failed to save challenge selection:", err);
+            // Revert on error? Or just warn.
+            alert("Warning: Could not save challenge selection to server.");
+        }
     };
 
     const handleTriggerStress = () => {
@@ -1188,7 +1214,7 @@ export default function ChemistryRoom() {
                     </AnimatePresence>
 
                     {/* Voting Panel */}
-                    <div className="saas-panel" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid var(--accent-primary)' }}>
+                    <div id="voting-panel" className="saas-panel" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid var(--accent-primary)' }}>
                         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
                             Ready to Vote?
                         </h3>
@@ -1311,6 +1337,11 @@ export default function ChemistryRoom() {
                                     onClick={() => {
                                         setModalDismissed(true);
                                         setShowTimeExpModal(false);
+                                        // Scroll to voting panel
+                                        setTimeout(() => {
+                                            const panel = document.getElementById('voting-panel');
+                                            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }, 100);
                                     }}
                                     style={{
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
