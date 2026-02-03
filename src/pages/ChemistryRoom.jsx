@@ -45,7 +45,7 @@ export default function ChemistryRoom() {
 
     const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
 
-    const [modalDismissed, setModalDismissed] = useState(false); // Prevent loop
+
 
     // --- Missing State Definitions (Fix for Crash) ---
     const [isSetupOpen, setIsSetupOpen] = useState(false); // Default closed until checked
