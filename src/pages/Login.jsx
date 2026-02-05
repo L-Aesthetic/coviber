@@ -70,6 +70,9 @@ export default function Login() {
             const { error } = await supabase.auth.resend({
                 type: 'signup',
                 email: email,
+                options: {
+                    emailRedirectTo: window.location.origin
+                }
             });
             if (error) throw error;
             setSentMessage({ title: 'Link Resent', sub: `We sent a new confirmation link to ${email}` });
@@ -98,7 +101,7 @@ export default function Login() {
             } else if (mode === 'signup') {
                 await signUp(email, password, {
                     full_name: email.split('@')[0] // Default name
-                });
+                }, window.location.origin);
                 setSentMessage({ title: 'Account Created', sub: `Please check ${email} to verify your account.` });
                 setSent(true);
             } else if (mode === 'forgot') {

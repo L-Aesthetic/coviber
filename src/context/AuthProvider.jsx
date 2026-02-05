@@ -103,12 +103,13 @@ export const AuthProvider = ({ children }) => {
         return data;
     };
 
-    const signUp = async (email, password, metadata = {}) => {
+    const signUp = async (email, password, metadata = {}, redirectTo = undefined) => {
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: metadata
+                data: metadata,
+                emailRedirectTo: redirectTo
             }
         });
         if (error) throw error;
