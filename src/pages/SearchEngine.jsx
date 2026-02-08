@@ -1,4 +1,5 @@
 import { Search as SearchIcon, Filter, MapPin, Briefcase, Star, CheckCircle2, SlidersHorizontal, Zap, Hammer, Clock, Scale, Info, ShieldCheck, Trophy, X, MessageSquare } from 'lucide-react';
+import SearchAutocomplete from '../components/SearchAutocomplete';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -231,15 +232,13 @@ export default function SearchEngine() {
             {/* Main Content */}
             <main>
                 <div style={{ marginBottom: '32px' }}>
-                    <div style={{ position: 'relative', marginBottom: '16px' }}>
-                        <SearchIcon size={20} style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                        <input
-                            type="text"
-                            className="glass-input"
-                            placeholder="Search by skills, past projects, or problems solved (e.g. 'HIPAA compliance', 'Stripe Connect')..."
-                            style={{ paddingLeft: '56px', fontSize: '1.1rem' }}
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                    <div style={{ position: 'relative', marginBottom: '16px', zIndex: 100 }}>
+                        <SearchAutocomplete
+                            candidates={candidates}
+                            placeholder="Search by skills, past projects, or problems solved (e.g. 'HIPAA compliance')..."
+                            onSelect={(val) => {
+                                setSearchQuery(val);
+                            }}
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
