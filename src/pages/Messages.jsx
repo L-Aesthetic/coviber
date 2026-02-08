@@ -92,7 +92,7 @@ export default function Messages() {
         fetchConversation();
 
         // Set up real-time subscription
-        const subscription = supabase
+        const channel = supabase
             .channel(`conversation_${conversationId}`)
             .on('postgres_changes', {
                 event: 'INSERT',
@@ -100,15 +100,18 @@ export default function Messages() {
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             }, (payload) => {
+                console.log("Realtime message received:", payload);
                 setMessages(prev => {
                     if (prev.find(msg => msg.id === payload.new.id)) return prev;
                     return [...prev, payload.new];
                 });
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log(`Subscription status for conservation_${conversationId}:`, status);
+            });
 
         return () => {
-            subscription.unsubscribe();
+            supabase.removeChannel(channel);
         };
     }, [conversationId, user]);
 
@@ -195,7 +198,14 @@ export default function Messages() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
             {/* Header */}
-            <div className="saas-panel" style={{ padding: '20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="saas-panel" style={{
+                padding: '20px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                overflow: 'visible' // Allow dropdown to overflow
+            }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button
                         className="btn-ghost"
@@ -228,9 +238,10 @@ export default function Messages() {
                             right: 0,
                             marginTop: '8px',
                             padding: '8px',
-                            minWidth: '160px',
-                            zIndex: 10,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                            minWidth: '180px',
+                            zIndex: 100,
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                            background: 'rgba(13, 15, 25, 0.95)' // Ensure contrast
                         }}>
                             <button
                                 className="btn-ghost"
@@ -241,13 +252,45 @@ export default function Messages() {
                             </button>
                             <button
                                 className="btn-ghost"
-                                style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.9rem', color: '#EF4444' }}
-                                onClick={() => {
-                                    alert("Archived (Mock)");
+                                style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.9rem' }}
+                                onClick={async () => {
+                                    // Save Chat
+                                    const chatContent = messages.map(m =>
+                                        `[${new Date(m.created_at).toLocaleString()}] ${m.sender_id === user.id ? 'Me' : otherUser?.name}: ${m.content}`
+                                    ).join('\n');
+                                    const blob = new Blob([chatContent], { type: 'text/plain' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `chat-with-${otherUser?.name || 'user'}.txt`;
+                                    a.click();
                                     setShowMenu(false);
                                 }}
                             >
-                                Archive Chat
+                                Save Chat
+                            </button>
+                            <div style={{ height: 1, background: 'var(--border-subtle)', margin: '4px 0' }}></div>
+                            <button
+                                className="btn-ghost"
+                                style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.9rem', color: '#EF4444' }}
+                                onClick={async () => {
+                                    if (confirm("Are you sure? This will delete the conversation for both sides.")) {
+                                        const { error } = await supabase
+                                            .from('messages')
+                                            .delete()
+                                            .eq('conversation_id', conversationId);
+
+                                        if (error) {
+                                            alert("Failed to delete chat");
+                                            console.error(error);
+                                        } else {
+                                            navigate('/pipeline?tab=conversations');
+                                        }
+                                    }
+                                    setShowMenu(false);
+                                }}
+                            >
+                                Clear Chat
                             </button>
                         </div>
                     )}
