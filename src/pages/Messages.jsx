@@ -100,7 +100,10 @@ export default function Messages() {
                 table: 'messages',
                 filter: `conversation_id=eq.${conversationId}`
             }, (payload) => {
-                setMessages(prev => [...prev, payload.new]);
+                setMessages(prev => {
+                    if (prev.find(msg => msg.id === payload.new.id)) return prev;
+                    return [...prev, payload.new];
+                });
             })
             .subscribe();
 
@@ -115,26 +118,54 @@ export default function Messages() {
 
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !otherUser || sending) return;
+        const content = newMessage.trim();
+        if (!content || !otherUser || sending) return;
 
+        // Optimistic Update
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMessage = {
+            id: tempId,
+            conversation_id: conversationId,
+            sender_id: user.id,
+            receiver_id: otherUser.id,
+            content: content,
+            created_at: new Date().toISOString(),
+            read: false
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
+        setNewMessage('');
         setSending(true);
 
         try {
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('messages')
                 .insert([{
                     conversation_id: conversationId,
                     sender_id: user.id,
                     receiver_id: otherUser.id,
-                    content: newMessage.trim()
-                }]);
+                    content: content
+                }])
+                .select()
+                .single();
 
             if (error) throw error;
 
-            setNewMessage('');
+            // Replace optimistic message with real one
+            setMessages(prev => {
+                // If real message already exists (from realtime), just remove optimistic one
+                if (prev.find(msg => msg.id === data.id)) {
+                    return prev.filter(msg => msg.id !== tempId);
+                }
+                return prev.map(msg => msg.id === tempId ? data : msg);
+            });
+
         } catch (error) {
             console.error('Error sending message:', error);
             alert('Failed to send message');
+            // Revert optimistic update
+            setMessages(prev => prev.filter(msg => msg.id !== tempId));
+            setNewMessage(content); // Restore input
         } finally {
             setSending(false);
         }

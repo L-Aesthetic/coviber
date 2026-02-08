@@ -609,22 +609,19 @@ function NotificationBell({ user }) {
                 .eq('status', 'pending');
 
             // 2. Unread Messages
-            // Note: Grouping by sender would be ideal, but for MVP we list individual unread messages or just recent ones.
-            // Let's list simplified: "X sent you a message"
             const { data: msgs } = await supabase
                 .from('messages')
                 .select(`
                     id,
                     created_at,
                     content,
+                    conversation_id,
                     sender:sender_id(name, avatar_url)
                 `)
                 .eq('receiver_id', user.id)
                 .eq('read', false);
 
             // 3. Accepted Intros (Sent by me, accepted by them)
-            // We need a way to filter "seen" ones. For MVP, we'll just show them.
-            // In a real app, we'd add 'sender_read' column.
             const { data: accepted } = await supabase
                 .from('intro_requests')
                 .select(`
@@ -636,8 +633,7 @@ function NotificationBell({ user }) {
                 `)
                 .eq('from_user_id', user.id)
                 .eq('status', 'accepted')
-                // .gt('updated_at', someDate) // Optional: only show recent?
-                .limit(5); // Limit to avoid clutter for now
+                .limit(5);
 
             const newNotifs = [];
 
@@ -645,6 +641,7 @@ function NotificationBell({ user }) {
             (intros || []).forEach(i => {
                 newNotifs.push({
                     id: `intro-${i.id}`,
+                    dbId: i.id,
                     type: 'intro_request',
                     avatar: i.from_user?.avatar_url,
                     name: i.from_user?.name || 'Someone',
@@ -658,13 +655,14 @@ function NotificationBell({ user }) {
             (msgs || []).forEach(m => {
                 newNotifs.push({
                     id: `msg-${m.id}`,
+                    dbId: m.id,
                     type: 'message',
                     avatar: m.sender?.avatar_url,
                     name: m.sender?.name || 'Someone',
                     text: `sent you a message`,
                     subtext: m.content,
                     timestamp: m.created_at,
-                    link: '/pipeline?tab=conversations' // Or specific chat if possible
+                    link: `/messages/${m.conversation_id}`
                 });
             });
 
@@ -672,12 +670,13 @@ function NotificationBell({ user }) {
             (accepted || []).forEach(a => {
                 newNotifs.push({
                     id: `accepted-${a.id}`,
+                    dbId: a.id,
                     type: 'intro_accepted',
                     avatar: a.to_user?.avatar_url,
                     name: a.to_user?.name || 'Someone',
                     text: `accepted your intro!`,
                     timestamp: a.updated_at || a.created_at,
-                    link: '/pipeline?tab=conversations'
+                    link: `/messages/${a.id}` // Intro ID is conversation ID
                 });
             });
 
@@ -685,7 +684,7 @@ function NotificationBell({ user }) {
             newNotifs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             setNotifications(newNotifs);
-            setUnreadCount(newNotifs.length); // Aggregated count
+            setUnreadCount(newNotifs.length);
         };
 
         fetchNotifications();
@@ -714,6 +713,30 @@ function NotificationBell({ user }) {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
+
+    const markAsRead = async (notif) => {
+        // Immediate UI Update
+        const updated = notifications.filter(n => n.id !== notif.id);
+        setNotifications(updated);
+        setUnreadCount(updated.length);
+        setShowPopover(false);
+        navigate(notif.link);
+
+        // Backend Update
+        try {
+            if (notif.type === 'message') {
+                await supabase
+                    .from('messages')
+                    .update({ read: true })
+                    .eq('id', notif.dbId);
+            }
+            // For intro_requests, we rely on accepting/declining or just viewing for now.
+            // If we wanted to mark accepted intros as 'seen', we'd need a field for that.
+            // Since navigating to the message marks messages as read, we are good for now.
+        } catch (err) {
+            console.error("Error marking as read", err);
+        }
+    };
 
     return (
         <div style={{ position: 'relative' }} ref={popoverRef}>
@@ -799,10 +822,7 @@ function NotificationBell({ user }) {
                                 {notifications.map(notif => (
                                     <div
                                         key={notif.id}
-                                        onClick={() => {
-                                            setShowPopover(false);
-                                            navigate(notif.link);
-                                        }}
+                                        onClick={() => markAsRead(notif)}
                                         style={{
                                             display: 'flex',
                                             gap: '12px',
@@ -855,3 +875,4 @@ function NotificationBell({ user }) {
         </div>
     )
 }
+
