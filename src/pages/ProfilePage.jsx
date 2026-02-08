@@ -910,7 +910,14 @@ export default function ProfilePage() {
                                                 {proj.isFailure ? <XCircle size={24} /> : <Github size={24} />}
                                             </div>
                                             <div>
-                                                <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: proj.isFailure ? '#ef4444' : 'var(--text-primary)' }}>{proj.title}</h4>
+                                                <h4 style={{ fontWeight: 800, fontSize: '1.2rem', color: proj.isFailure ? '#ef4444' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {proj.title}
+                                                    {proj.url && (
+                                                        <a href={proj.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-tertiary)', display: 'flex' }} onClick={e => e.stopPropagation()}>
+                                                            <ExternalLink size={14} />
+                                                        </a>
+                                                    )}
+                                                </h4>
                                                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-tertiary)' }}>{proj.role} • {proj.outcome}</span>
                                             </div>
                                         </div>
@@ -1065,6 +1072,15 @@ export default function ProfilePage() {
                                     />
                                 </div>
                                 <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Project URL (Optional)</label>
+                                    <input
+                                        className="glass-input"
+                                        placeholder="https://..."
+                                        value={newProject.url || ''}
+                                        onChange={(e) => setNewProject({ ...newProject, url: e.target.value })}
+                                    />
+                                </div>
+                                <div>
                                     <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Your Role</label>
                                     <input
                                         className="glass-input"
@@ -1106,6 +1122,7 @@ export default function ProfilePage() {
                                                         outcome: 'Active',
                                                         desc: newProject.desc || 'Description...',
                                                         stack: newProject.stack || 'Various',
+                                                        url: newProject.url || '',
                                                         color: '#3b82f6'
                                                     }]
                                                 });
