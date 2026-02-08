@@ -204,7 +204,9 @@ export default function Messages() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                overflow: 'visible' // Allow dropdown to overflow
+                overflow: 'visible',
+                position: 'relative',
+                zIndex: 50 // Ensure header stays on top of message list
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button
