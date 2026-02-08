@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, GitPullRequest, Search, FileText, Settings, Zap, Brain, User, Scale, TrendingUp, Sparkles, CreditCard, LogOut, ChevronUp, MessageSquare, Lock, Trash2, X, Bell, Mail, ShieldCheck, Rocket } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -215,92 +215,120 @@ export default function SidebarLayout({ children }) {
                     )}
                 </nav>
 
-                {/* User Profile Snippet with Dropdown */}
-                <div style={{ position: 'relative' }} ref={profileMenuRef}>
-                    <div
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        style={{
-                            marginTop: 'auto',
-                            padding: '12px',
-                            borderTop: '1px solid var(--border-subtle)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            cursor: 'pointer',
-                            transition: 'background 0.2s',
-                            borderRadius: '8px',
-                            background: showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent'}
-                    >
+                {/* Notifications & Profile Section */}
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-                        <div style={{
-                            width: '32px', height: '32px', borderRadius: '50%',
-                            background: profileData?.avatar_url ? 'none' : 'linear-gradient(135deg, #6366F1, #EC4899)',
-                            flexShrink: 0, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)'
-                        }}>
-                            {profileData?.avatar_url ? (
-                                <img src={profileData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : null}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-                                {profileData?.full_name || user?.email || 'User'}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                {profileData?.subscription_tier === 'founder' ? 'Founding Member' :
-                                    profileData?.subscription_tier === 'pro' ? 'Pro Member' : 'Builder Plan'}
-                            </div>
-                        </div>
-                        <ChevronUp size={16} style={{
-                            color: 'var(--text-tertiary)',
-                            transform: showProfileMenu ? 'rotate(0deg)' : 'rotate(180deg)',
-                            transition: 'transform 0.2s'
-                        }} />
-                    </div>
+                    {/* Notification Bell */}
+                    <NotificationBell user={user} />
 
-                    {/* Dropdown Menu */}
-                    {showProfileMenu && (
+                    <div style={{ position: 'relative' }} ref={profileMenuRef}>
                         <div
-                            className="saas-panel"
+                            onClick={() => setShowProfileMenu(!showProfileMenu)}
                             style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: 0,
-                                right: 0,
-                                marginBottom: '8px',
-                                padding: '8px',
+                                padding: '12px',
+                                borderTop: '1px solid var(--border-subtle)',
                                 display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px',
-                                animation: 'slideUp 0.2s ease-out',
-                                backdropFilter: 'blur(40px) saturate(180%)',
-                                WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-                                background: 'rgba(13, 15, 25, 0.95)',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                                zIndex: 1000
+                                alignItems: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s',
+                                borderRadius: '8px',
+                                background: showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent'
                             }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = showProfileMenu ? 'rgba(255,255,255,0.05)' : 'transparent'}
                         >
-                            <Link to="/settings" style={{ textDecoration: 'none' }}>
-                                <button
-                                    onClick={() => setShowProfileMenu(false)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        padding: '10px 12px',
-                                        borderRadius: '8px',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        color: 'var(--text-secondary)',
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        width: '100%',
-                                        textAlign: 'left'
-                                    }}
+
+                            <div style={{
+                                width: '32px', height: '32px', borderRadius: '50%',
+                                background: profileData?.avatar_url ? 'none' : 'linear-gradient(135deg, #6366F1, #EC4899)',
+                                flexShrink: 0, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                {profileData?.avatar_url ? (
+                                    <img src={profileData.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : null}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                                    {profileData?.full_name || user?.email || 'User'}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                    {profileData?.subscription_tier === 'founder' ? 'Founding Member' :
+                                        profileData?.subscription_tier === 'pro' ? 'Pro Member' : 'Builder Plan'}
+                                </div>
+                            </div>
+                            <ChevronUp size={16} style={{
+                                color: 'var(--text-tertiary)',
+                                transform: showProfileMenu ? 'rotate(0deg)' : 'rotate(180deg)',
+                                transition: 'transform 0.2s'
+                            }} />
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {showProfileMenu && (
+                            <div
+                                className="saas-panel"
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    marginBottom: '8px',
+                                    padding: '8px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    animation: 'slideUp 0.2s ease-out',
+                                    backdropFilter: 'blur(40px) saturate(180%)',
+                                    WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                                    background: 'rgba(13, 15, 25, 0.95)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                                    zIndex: 1000
+                                }}
+                            >
+                                <Link to="/settings" style={{ textDecoration: 'none' }}>
+                                    <button
+                                        onClick={() => setShowProfileMenu(false)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            padding: '10px 12px',
+                                            borderRadius: '8px',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            width: '100%',
+                                            textAlign: 'left'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
+                                            e.currentTarget.style.color = 'var(--accent-primary)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.color = 'var(--text-secondary)';
+                                        }}
+                                    >
+                                        <Settings size={16} />
+                                        Account Settings
+                                    </button>
+                                </Link>
+                                <Link to="/billing" style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    textDecoration: 'none',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: '0.9rem',
+                                    transition: 'all 0.2s'
+                                }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
                                         e.currentTarget.style.color = 'var(--accent-primary)';
@@ -310,71 +338,48 @@ export default function SidebarLayout({ children }) {
                                         e.currentTarget.style.color = 'var(--text-secondary)';
                                     }}
                                 >
-                                    <Settings size={16} />
-                                    Account Settings
+                                    <CreditCard size={16} />
+                                    Billing & Plan
+                                </Link>
+                                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await supabase.auth.signOut();
+                                            window.location.href = '/login';
+                                        } catch (error) {
+                                            console.error('Error logging out:', error);
+                                            window.location.href = '/login';
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#EF4444',
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        width: '100%',
+                                        textAlign: 'left'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                    }}
+                                >
+                                    <LogOut size={16} />
+                                    Logout
                                 </button>
-                            </Link>
-                            <Link to="/billing" style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '10px 12px',
-                                borderRadius: '8px',
-                                textDecoration: 'none',
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s'
-                            }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.05)';
-                                    e.currentTarget.style.color = 'var(--accent-primary)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = 'var(--text-secondary)';
-                                }}
-                            >
-                                <CreditCard size={16} />
-                                Billing & Plan
-                            </Link>
-                            <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }}></div>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        await supabase.auth.signOut();
-                                        window.location.href = '/login';
-                                    } catch (error) {
-                                        console.error('Error logging out:', error);
-                                        window.location.href = '/login';
-                                    }
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '10px 12px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#EF4444',
-                                    fontSize: '0.9rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    width: '100%',
-                                    textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                }}
-                            >
-                                <LogOut size={16} />
-                                Logout
-                            </button>
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <style>{`
@@ -576,4 +581,202 @@ export default function SidebarLayout({ children }) {
             </AnimatePresence>
         </div>
     );
+}
+
+function NotificationBell({ user }) {
+    const [notifications, setNotifications] = useState([]);
+    const [showPopover, setShowPopover] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const popoverRef = useRef(null);
+    const navigate = useNavigate();
+
+    // Fetch Notifications (Pending Intros)
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchNotifications = async () => {
+            const { data } = await supabase
+                .from('intro_requests')
+                .select(`
+                    id,
+                    created_at,
+                    message,
+                    from_user:from_user_id(name, avatar_url)
+                `)
+                .eq('to_user_id', user.id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if (data) {
+                setNotifications(data);
+                setUnreadCount(data.length);
+            }
+        };
+
+        fetchNotifications();
+
+        // Realtime subscription for new intros
+        const channel = supabase
+            .channel('intro_notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'intro_requests',
+                    filter: `to_user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    fetchNotifications(); // Refresh on new intro
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user]);
+
+    // Click Outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+                setShowPopover(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    return (
+        <div style={{ position: 'relative' }} ref={popoverRef}>
+            <div
+                onClick={() => setShowPopover(!showPopover)}
+                style={{
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    color: showPopover ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    background: showPopover ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = showPopover ? 'rgba(255,255,255,0.05)' : 'transparent'}
+            >
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '-2px',
+                            right: '-2px',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#EF4444',
+                            border: '1px solid var(--bg-primary)'
+                        }} />
+                    )}
+                </div>
+                <div style={{ flex: 1, fontSize: '0.9rem', fontWeight: 500 }}>Notifications</div>
+                {unreadCount > 0 && (
+                    <span style={{
+                        background: '#EF4444',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        lineHeight: 1
+                    }}>
+                        {unreadCount}
+                    </span>
+                )}
+            </div>
+
+            <AnimatePresence>
+                {showPopover && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: 0,
+                            right: 0,
+                            marginBottom: '8px',
+                            background: 'rgba(13, 15, 25, 0.95)',
+                            backdropFilter: 'blur(20px)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                            padding: '16px',
+                            zIndex: 1000,
+                            width: '300px'
+                        }}
+                    >
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                            Notifications
+                        </h4>
+
+                        {notifications.length === 0 ? (
+                            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem', padding: '12px 0' }}>
+                                No new notifications
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                                {notifications.map(notif => (
+                                    <div
+                                        key={notif.id}
+                                        onClick={() => {
+                                            setShowPopover(false);
+                                            navigate('/pipeline?tab=intros');
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            padding: '8px',
+                                            borderRadius: '8px',
+                                            background: 'rgba(255,255,255,0.03)',
+                                            cursor: 'pointer',
+                                            alignItems: 'center'
+                                        }}
+                                        className="hover-glass"
+                                    >
+                                        <div style={{
+                                            width: '32px', height: '32px', borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #6366F1, #A855F7)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            flexShrink: 0, fontWeight: 700, color: 'white', fontSize: '0.8rem',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {notif.from_user?.avatar_url ? (
+                                                <img src={notif.from_user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                notif.from_user?.name?.[0] || '?'
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '2px', lineHeight: 1.3 }}>
+                                                <span style={{ fontWeight: 600 }}>{notif.from_user?.name || 'Someone'}</span> requested an intro
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                {new Date(notif.created_at).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
 }

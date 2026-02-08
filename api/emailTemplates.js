@@ -15,7 +15,7 @@ export const getArchetypeEmail = (archetype) => {
             
             <!-- Header -->
             <div style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #27272a; background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0) 100%);">
-                <img src="https://coviber.vercel.app/logo-full.png" alt="CoVibr" style="height: 60px; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto;" />
+                <img src="https://covibr.vercel.app/logo-full.png" alt="CoVibr" style="height: 60px; margin-bottom: 24px; display: block; margin-left: auto; margin-right: auto;" />
                 <div style="font-size: 48px; margin-bottom: 16px; line-height: 1;">${data.icon}</div>
                 <h1 style="color: #ffffff; font-size: 24px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800;">${archetype}</h1>
                 <p style="color: ${data.color}; font-size: 14px; font-weight: 600; margin: 0; letter-spacing: 0.5px;">"${data.headline}"</p>
@@ -75,6 +75,58 @@ export const getArchetypeEmail = (archetype) => {
     `;
 };
 
+export const getIntroEmail = (recipientName, senderName, message, senderProfileUrl) => {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Intro Request: ${senderName}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #cccccc; -webkit-font-smoothing: antialiased;">
+        <div style="max-width: 600px; margin: 20px auto; background-color: #09090b; border: 1px solid #27272a; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.5);">
+            
+            <!-- Header -->
+            <div style="padding: 30px; text-align: center; border-bottom: 1px solid #27272a; background: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, rgba(0,0,0,0) 100%);">
+                <div style="font-size: 40px; margin-bottom: 12px;">🚀</div>
+                <h1 style="color: #ffffff; font-size: 20px; margin: 0; font-weight: 700;">New Co-Founder Match</h1>
+            </div>
+
+            <div style="padding: 30px;">
+                <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px; color: #e4e4e7;">
+                    Hi <strong>${recipientName}</strong>,
+                </p>
+                <p style="font-size: 16px; line-height: 1.6; margin: 0 0 24px; color: #a1a1aa;">
+                    <strong>${senderName}</strong> viewed your profile on CoVibr and thinks you could be a great match. They've requested an intro called:
+                </p>
+
+                <!-- Message Card -->
+                <div style="background-color: rgba(255,255,255,0.03); padding: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 32px; font-style: italic; color: #d4d4d8;">
+                    "${message}"
+                </div>
+
+                <div style="text-align: center;">
+                    <a href="https://covibr.com/dashboard?tab=requests" target="_blank" style="display: inline-block; background-color: #6366F1; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                        View Profile & Accept Intro
+                    </a>
+                </div>
+                
+                <p style="font-size: 12px; margin-top: 24px; text-align: center; color: #71717a;">
+                    You can view their full psychometric profile before accepting.
+                </p>
+
+            </div>
+            
+            <div style="padding: 24px; text-align: center; font-size: 12px; color: #52525b; border-top: 1px solid #27272a; background-color: #050505;">
+                <p style="margin: 0;">CoVibr • Build together. Ship faster. Split fairly.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+}
+
 const getArchetypeData = (name) => {
     // Normalize input
     const key = name?.toLowerCase().trim();
@@ -106,7 +158,7 @@ const getArchetypeData = (name) => {
             flawTitle: 'The "House of Cards" Trap',
             flawDesc: 'You often sell the dream before the reality exists. Without checks, you will scale a broken system until it collapses.',
             match: 'THE OPERATOR 🎯',
-            matchWhy: 'You need an Adult in the room. You need someone who converts your chaos into systems and is the only person you respect enough to listen to when they say "No".',
+            matchWhy: 'You need an Adult in the room. You need someone to force you to take risks and generate the raw energy that you can then organize.',
         },
         'the operator': {
             icon: '🎯',

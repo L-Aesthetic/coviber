@@ -389,7 +389,8 @@ function CandidateCard({ id, name, role, location, match, skills, isVerified, ha
 }
 
 function IntroButton({ candidate }) {
-    const [status, setStatus] = useState('idle'); // idle, sending, sent, received, error
+    const [status, setStatus] = useState('idle'); // idle, sending, sent_pending, sent_accepted, sent_rejected, received_pending, received_accepted, received_rejected, error
+    const [requestId, setRequestId] = useState(null);
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -405,7 +406,8 @@ function IntroButton({ candidate }) {
                 .maybeSingle();
 
             if (sentData) {
-                setStatus('sent');
+                setStatus(`sent_${sentData.status}`);
+                setRequestId(sentData.id);
                 return;
             }
 
@@ -418,7 +420,8 @@ function IntroButton({ candidate }) {
                 .maybeSingle();
 
             if (receivedData) {
-                setStatus('received');
+                setStatus(`received_${receivedData.status}`);
+                setRequestId(receivedData.id);
             }
         };
         checkStatus();
@@ -441,17 +444,33 @@ function IntroButton({ candidate }) {
                 }]);
 
             // 2. Create intro request
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('intro_requests')
                 .insert([{
                     from_user_id: user.id,
                     to_user_id: candidate.id,
                     status: 'pending',
                     message: `Hi! I'd love to connect and explore potential collaboration.`
-                }]);
+                }])
+                .select()
+                .single();
 
             if (error) throw error;
-            setStatus('sent');
+            setRequestId(data.id);
+
+            // 3. Trigger Email Notification (Non-blocking)
+            fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'intro',
+                    targetUserId: candidate.id,
+                    senderName: user.user_metadata?.full_name || 'A Founder',
+                    message: "Hi! I'd love to connect and explore potential collaboration."
+                })
+            }).catch(err => console.error("Failed to send intro email:", err));
+
+            setStatus('sent_pending');
         } catch (e) {
             console.error(e);
             setStatus('error');
@@ -459,31 +478,84 @@ function IntroButton({ candidate }) {
         }
     };
 
-    if (status === 'sent') {
+    const handleAccept = async () => {
+        if (!requestId) return;
+        try {
+            const { error } = await supabase
+                .from('intro_requests')
+                .update({ status: 'accepted', updated_at: new Date().toISOString() })
+                .eq('id', requestId);
+
+            if (error) throw error;
+            setStatus('received_accepted');
+        } catch (e) {
+            console.error(e);
+            alert("Failed to accept intro.");
+        }
+    };
+
+    // --- RENDER LOGIC ---
+
+    // 1. I Sent It
+    if (status === 'sent_pending') {
         return (
-            <button
-                className="btn-ghost"
-                style={{ width: '100%', justifyContent: 'center', color: '#10B981', borderColor: '#10B981', opacity: 0.8 }}
-                disabled
-            >
+            <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: '#10B981', borderColor: '#10B981', opacity: 0.8 }} disabled>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={16} /> Sent</span>
             </button>
         )
     }
-
-    if (status === 'received') {
+    if (status === 'sent_accepted') {
         return (
-            <Link to="/dashboard" style={{ textDecoration: 'none', width: '100%' }}>
-                <button
-                    className="btn-ghost"
-                    style={{ width: '100%', justifyContent: 'center', color: '#F59E0B', borderColor: '#F59E0B', background: 'rgba(245, 158, 11, 0.1)' }}
-                >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Please Accept in Dashboard</span>
+            <Link to="/pipeline?tab=conversations" style={{ textDecoration: 'none', width: '100%' }}>
+                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: '#10B981', borderColor: '#10B981' }}>
+                    <MessageSquare size={16} style={{ marginRight: '6px' }} /> Chat Open
+                </button>
+            </Link>
+        )
+    }
+    if (status === 'sent_rejected' || status === 'sent_declined') { // Handle both just in case
+        return (
+            <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: '#EF4444', borderColor: '#EF4444', opacity: 0.8 }} disabled>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><X size={16} /> Declined</span>
+            </button>
+        )
+    }
+
+    // 2. I Received It
+    if (status === 'received_pending') {
+        return (
+            <Link to="/pipeline?tab=intros" style={{ textDecoration: 'none', width: '100%' }}>
+                <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: '#F59E0B', borderColor: '#F59E0B', background: 'rgba(245, 158, 11, 0.1)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Accept in Dashboard</span>
+                </button>
+            </Link>
+        )
+    }
+    if (status === 'received_rejected' || status === 'received_declined') {
+        return (
+            <button
+                className="btn-ghost"
+                style={{ width: '100%', justifyContent: 'center', color: '#EF4444', borderColor: '#EF4444' }}
+                onClick={handleAccept}
+                title="Click to change your mind and accept"
+            >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <X size={16} /> Declined (Undo)
+                </span>
+            </button>
+        )
+    }
+    if (status === 'received_accepted') {
+        return (
+            <Link to="/pipeline?tab=conversations" style={{ textDecoration: 'none', width: '100%' }}>
+                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: '#10B981', borderColor: '#10B981' }}>
+                    <MessageSquare size={16} style={{ marginRight: '6px' }} /> Chat Open
                 </button>
             </Link>
         )
     }
 
+    // 3. Default / Sending
     return (
         <button
             className="btn-primary"
