@@ -590,46 +590,111 @@ function NotificationBell({ user }) {
     const popoverRef = useRef(null);
     const navigate = useNavigate();
 
-    // Fetch Notifications (Pending Intros)
+    // Fetch Notifications (Pending Intros & Unread Messages & Accepted Intros)
     useEffect(() => {
         if (!user) return;
 
         const fetchNotifications = async () => {
-            const { data } = await supabase
+            // 1. Pending Intros (Received)
+            const { data: intros } = await supabase
                 .from('intro_requests')
                 .select(`
                     id,
                     created_at,
                     message,
+                    status,
                     from_user:from_user_id(name, avatar_url)
                 `)
                 .eq('to_user_id', user.id)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
+                .eq('status', 'pending');
 
-            if (data) {
-                setNotifications(data);
-                setUnreadCount(data.length);
-            }
+            // 2. Unread Messages
+            // Note: Grouping by sender would be ideal, but for MVP we list individual unread messages or just recent ones.
+            // Let's list simplified: "X sent you a message"
+            const { data: msgs } = await supabase
+                .from('messages')
+                .select(`
+                    id,
+                    created_at,
+                    content,
+                    sender:sender_id(name, avatar_url)
+                `)
+                .eq('receiver_id', user.id)
+                .eq('read', false);
+
+            // 3. Accepted Intros (Sent by me, accepted by them)
+            // We need a way to filter "seen" ones. For MVP, we'll just show them.
+            // In a real app, we'd add 'sender_read' column.
+            const { data: accepted } = await supabase
+                .from('intro_requests')
+                .select(`
+                    id,
+                    created_at,
+                    updated_at,
+                    status,
+                    to_user:to_user_id(name, avatar_url)
+                `)
+                .eq('from_user_id', user.id)
+                .eq('status', 'accepted')
+                // .gt('updated_at', someDate) // Optional: only show recent?
+                .limit(5); // Limit to avoid clutter for now
+
+            const newNotifs = [];
+
+            // Format Intros
+            (intros || []).forEach(i => {
+                newNotifs.push({
+                    id: `intro-${i.id}`,
+                    type: 'intro_request',
+                    avatar: i.from_user?.avatar_url,
+                    name: i.from_user?.name || 'Someone',
+                    text: 'requested an intro',
+                    timestamp: i.created_at,
+                    link: '/pipeline?tab=intros'
+                });
+            });
+
+            // Format Messages
+            (msgs || []).forEach(m => {
+                newNotifs.push({
+                    id: `msg-${m.id}`,
+                    type: 'message',
+                    avatar: m.sender?.avatar_url,
+                    name: m.sender?.name || 'Someone',
+                    text: `sent you a message`,
+                    subtext: m.content,
+                    timestamp: m.created_at,
+                    link: '/pipeline?tab=conversations' // Or specific chat if possible
+                });
+            });
+
+            // Format Accepted
+            (accepted || []).forEach(a => {
+                newNotifs.push({
+                    id: `accepted-${a.id}`,
+                    type: 'intro_accepted',
+                    avatar: a.to_user?.avatar_url,
+                    name: a.to_user?.name || 'Someone',
+                    text: `accepted your intro!`,
+                    timestamp: a.updated_at || a.created_at,
+                    link: '/pipeline?tab=conversations'
+                });
+            });
+
+            // Sort by time
+            newNotifs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            setNotifications(newNotifs);
+            setUnreadCount(newNotifs.length); // Aggregated count
         };
 
         fetchNotifications();
 
-        // Realtime subscription for new intros
-        const channel = supabase
-            .channel('intro_notifications')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'intro_requests',
-                    filter: `to_user_id=eq.${user.id}`
-                },
-                (payload) => {
-                    fetchNotifications(); // Refresh on new intro
-                }
-            )
+        // Realtime Subscriptions
+        const channel = supabase.channel('global_notifications')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'intro_requests', filter: `to_user_id=eq.${user.id}` }, () => fetchNotifications())
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'intro_requests', filter: `from_user_id=eq.${user.id}` }, () => fetchNotifications()) // Accepted
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` }, () => fetchNotifications())
             .subscribe();
 
         return () => {
@@ -736,7 +801,7 @@ function NotificationBell({ user }) {
                                         key={notif.id}
                                         onClick={() => {
                                             setShowPopover(false);
-                                            navigate('/pipeline?tab=intros');
+                                            navigate(notif.link);
                                         }}
                                         style={{
                                             display: 'flex',
@@ -751,25 +816,35 @@ function NotificationBell({ user }) {
                                     >
                                         <div style={{
                                             width: '32px', height: '32px', borderRadius: '50%',
-                                            background: 'linear-gradient(135deg, #6366F1, #A855F7)',
+                                            background: notif.type === 'message' ? 'var(--accent-primary)' :
+                                                notif.type === 'intro_accepted' ? '#10B981' :
+                                                    'linear-gradient(135deg, #6366F1, #A855F7)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             flexShrink: 0, fontWeight: 700, color: 'white', fontSize: '0.8rem',
                                             overflow: 'hidden'
                                         }}>
-                                            {notif.from_user?.avatar_url ? (
-                                                <img src={notif.from_user.avatar_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            {notif.avatar ? (
+                                                <img src={notif.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
-                                                notif.from_user?.name?.[0] || '?'
+                                                notif.type === 'message' ? <MessageSquare size={14} /> :
+                                                    notif.type === 'intro_accepted' ? <CheckCircle2 size={14} /> :
+                                                        notif.name?.[0] || '?'
                                             )}
                                         </div>
-                                        <div>
+                                        <div style={{ flex: 1, overflow: 'hidden' }}>
                                             <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '2px', lineHeight: 1.3 }}>
-                                                <span style={{ fontWeight: 600 }}>{notif.from_user?.name || 'Someone'}</span> requested an intro
+                                                <span style={{ fontWeight: 600 }}>{notif.name}</span> {notif.text}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                                {new Date(notif.created_at).toLocaleDateString()}
+                                            {notif.subtext && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {notif.subtext}
+                                                </div>
+                                            )}
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                {new Date(notif.timestamp).toLocaleDateString()}
                                             </div>
                                         </div>
+                                        {notif.type === 'message' && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-primary)' }}></div>}
                                     </div>
                                 ))}
                             </div>
