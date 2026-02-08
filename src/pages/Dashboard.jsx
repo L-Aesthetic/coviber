@@ -459,7 +459,7 @@ export default function Dashboard() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
                     <StatCard icon={Users} label="Your Teams" value={stats.teamCount.toString()} linkTo="/teams" />
                     <StatCard icon={Zap} label="Active Sessions" value={stats.activeSessions.toString()} linkTo={teams.length > 0 ? `/session/${teams[0].id}` : '/teams'} />
-                    <StatCard icon={GitPullRequest} label="Open Matches" value={stats.openMatches.toString()} linkTo="/pipeline?tab=matches" />
+                    <StatCard icon={GitPullRequest} label="Open Matches" value={stats.openMatches.toString()} linkTo="/pipeline?tab=conversations" />
                     <StatCard icon={TrendingUp} label="Avg. Vesting" value={`${stats.avgVesting}%`} linkTo="/teams" />
                 </div>
 

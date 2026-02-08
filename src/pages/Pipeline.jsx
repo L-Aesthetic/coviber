@@ -19,8 +19,9 @@ export default function Pipeline() {
 
     useEffect(() => {
         const tab = searchParams.get('tab');
-        if (tab && ['conversations', 'intros', 'pipeline'].includes(tab)) {
-            setActiveTab(tab);
+        if (tab) {
+            if (tab === 'matches') setActiveTab('conversations'); // Alias
+            else if (['conversations', 'intros', 'pipeline'].includes(tab)) setActiveTab(tab);
         }
     }, [searchParams]);
 
