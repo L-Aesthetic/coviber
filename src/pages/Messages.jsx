@@ -16,6 +16,7 @@ export default function Messages() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [otherUser, setOtherUser] = useState(null);
+    const [showMenu, setShowMenu] = useState(false);
 
     useEffect(() => {
         if (!user || !conversationId) return;
@@ -181,9 +182,45 @@ export default function Messages() {
                         </div>
                     </div>
                 </div>
-                <button className="btn-ghost" style={{ padding: '8px' }}>
-                    <MoreVertical size={20} />
-                </button>
+                <div style={{ position: 'relative' }}>
+                    <button
+                        className="btn-ghost"
+                        style={{ padding: '8px' }}
+                        onClick={() => setShowMenu(!showMenu)}
+                    >
+                        <MoreVertical size={20} />
+                    </button>
+                    {showMenu && (
+                        <div className="saas-panel" style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '8px',
+                            padding: '8px',
+                            minWidth: '160px',
+                            zIndex: 10,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                        }}>
+                            <button
+                                className="btn-ghost"
+                                style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.9rem' }}
+                                onClick={() => navigate(`/profile/${otherUser?.id}`)}
+                            >
+                                View Profile
+                            </button>
+                            <button
+                                className="btn-ghost"
+                                style={{ width: '100%', justifyContent: 'flex-start', fontSize: '0.9rem', color: '#EF4444' }}
+                                onClick={() => {
+                                    alert("Archived (Mock)");
+                                    setShowMenu(false);
+                                }}
+                            >
+                                Archive Chat
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Messages */}
